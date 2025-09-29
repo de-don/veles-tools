@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Veles Multi Backtests",
+  "description": "Запуск последовательных бектестов для нескольких валют на veles.finance.",
+  "version": "0.1.0",
+  "permissions": ["storage"],
+  "host_permissions": ["https://veles.finance/*"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://veles.finance/cabinet/backtests*",
+        "https://veles.finance/cabinet/bot/*"
+      ],
+      "js": [
+        "scripts/bootstrap.js",
+        "scripts/multi-runner.js",
+        "scripts/aggregator.js",
+        "scripts/init.js"
+      ],
+      "css": ["content-styles.css"]
+    }
+  ]
+}
