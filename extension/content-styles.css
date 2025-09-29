@@ -1,0 +1,633 @@
+#veles-multi-backtests-panel {
+  display: none;
+  padding: 2.4rem;
+  border-top: 1px solid var(--ui200);
+  background: #ffffff;
+  color: #0f172a;
+}
+
+#veles-multi-backtests-panel.veles-multi-active {
+  display: block;
+}
+
+#veles-multi-backtests-panel h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.veles-multi-header {
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.75);
+}
+
+.veles-multi-subtitle {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.58);
+}
+
+.veles-multi-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.veles-multi-field label {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.veles-multi-hint {
+  margin: 6px 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(148, 163, 184, 0.45);
+  color: rgba(71, 85, 105, 0.8);
+  background: rgba(241, 245, 249, 0.75);
+}
+
+.veles-multi-field input,
+.veles-multi-field textarea,
+.veles-multi-field select {
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 12px;
+  color: #0f172a;
+  padding: 12px 14px;
+  font-size: 14px;
+  transition: border 0.15s ease, box-shadow 0.15s ease;
+}
+
+.veles-multi-field input:focus,
+.veles-multi-field textarea:focus,
+.veles-multi-field select:focus {
+  outline: none;
+  border-color: rgba(138, 91, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(138, 91, 255, 0.15);
+}
+
+.veles-multi-field textarea {
+  resize: vertical;
+  min-height: 140px;
+  line-height: 1.45;
+}
+
+#veles-multi-progress {
+  display: none;
+  margin-top: 18px;
+}
+
+#veles-multi-progress-text {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: rgba(71, 85, 105, 0.75);
+}
+
+#veles-multi-progress progress {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(241, 245, 249, 0.9);
+}
+
+#veles-multi-progress progress::-webkit-progress-bar {
+  background: transparent;
+}
+
+#veles-multi-progress progress::-webkit-progress-value {
+  background: linear-gradient(135deg, #8f68ff, #5c7cfa);
+}
+
+.veles-multi-log-label {
+  margin-top: 20px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.72);
+}
+
+#veles-multi-log {
+  margin-top: 18px;
+  background: rgba(248, 250, 252, 0.95);
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 12px;
+  min-height: 150px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  color: rgba(71, 85, 105, 0.95);
+  line-height: 1.5;
+}
+
+.veles-multi-log-entry {
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+}
+
+.veles-multi-log-entry:last-child {
+  margin-bottom: 0;
+}
+
+.veles-multi-log-error {
+  color: #f87171;
+}
+
+.veles-multi-log-warn {
+  color: #f59e0b;
+}
+
+.veles-multi-trigger {
+  margin-right: 12px;
+}
+
+.veles-multi-trigger.button {
+  background: rgba(248, 250, 252, 0.9);
+  color: rgba(71, 85, 105, 0.9);
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 600;
+  border: 1px solid rgba(196, 205, 222, 0.8);
+}
+
+.veles-multi-trigger.button.veles-multi-trigger--active {
+  background: rgba(209, 250, 229, 0.94);
+  border-color: rgba(34, 197, 94, 0.45);
+  color: rgba(22, 163, 74, 0.95);
+}
+
+.veles-multi-trigger.button:hover {
+  background: rgba(237, 242, 255, 0.95);
+}
+
+.veles-multi-trigger.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.veles-multi-run-button {
+  min-width: 190px;
+}
+
+.veles-multi-run-button.veles-multi-run-button--stop {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  color: #ffffff;
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 10px 24px rgba(239, 68, 68, 0.2);
+}
+
+#veles-aggregation-panel {
+  margin: 18px 0;
+  padding: 20px 24px 26px;
+  border-radius: 18px;
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  width: 100%;
+  max-width: 100%;
+}
+
+.veles-agg-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.veles-agg-title h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.veles-agg-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.62);
+}
+
+.veles-agg-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.veles-agg-button {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(248, 250, 252, 0.95);
+  color: rgba(30, 41, 59, 0.9);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.veles-agg-button:hover:not(:disabled) {
+  background: rgba(226, 232, 240, 0.85);
+  transform: translateY(-1px);
+}
+
+.veles-agg-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.veles-agg-button--primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.25);
+}
+
+.veles-agg-progress {
+  display: none;
+  margin: 14px 0 18px;
+}
+
+.veles-agg-progress-text {
+  font-size: 13px;
+  color: rgba(71, 85, 105, 0.78);
+  margin-bottom: 6px;
+}
+
+.veles-agg-progress-bar {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(241, 245, 249, 0.9);
+}
+
+.veles-agg-progress-bar::-webkit-progress-bar {
+  background: transparent;
+}
+
+.veles-agg-progress-bar::-webkit-progress-value {
+  background: linear-gradient(135deg, #8f68ff, #5c7cfa);
+}
+
+.veles-agg-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.veles-agg-concurrency {
+  margin-bottom: 24px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.veles-agg-concurrency-header {
+  margin-bottom: 14px;
+}
+
+.veles-agg-concurrency-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.veles-agg-concurrency-header p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.6);
+}
+
+.veles-agg-concurrency-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.veles-agg-concurrency .veles-agg-metric {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.veles-agg-concurrency-hint {
+  font-size: 12px;
+  color: rgba(71, 85, 105, 0.85);
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.veles-agg-chart-wrapper {
+  position: relative;
+  min-height: 180px;
+}
+
+.veles-agg-chart {
+  display: block;
+  width: 100%;
+  height: 200px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+.veles-agg-chart-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: rgba(100, 116, 139, 0.85);
+  text-align: center;
+  padding: 0 16px;
+}
+
+.veles-agg-metric {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.75);
+}
+
+.veles-agg-metric-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  color: rgba(15, 23, 42, 0.55);
+}
+
+.veles-agg-metric-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.veles-agg-metric-combo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.veles-agg-positive {
+  color: #16a34a;
+}
+
+.veles-agg-negative {
+  color: #dc2626;
+}
+
+.veles-agg-neutral {
+  color: #0f172a;
+}
+
+.veles-agg-metric-value.veles-agg-positive,
+.veles-agg-table td.veles-agg-positive {
+  color: #16a34a;
+}
+
+.veles-agg-metric-value.veles-agg-negative,
+.veles-agg-table td.veles-agg-negative {
+  color: #dc2626;
+}
+
+.veles-agg-metric-value.veles-agg-neutral,
+.veles-agg-table td.veles-agg-neutral {
+  color: #0f172a;
+}
+
+.veles-agg-total {
+  color: rgba(15, 23, 42, 0.75);
+}
+
+.veles-agg-table-wrapper {
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.78);
+  background: rgba(255, 255, 255, 0.98);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.veles-agg-table {
+  width: 100%;
+  min-width: 960px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.veles-agg-table thead {
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.veles-agg-table th,
+.veles-agg-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+  text-align: left;
+}
+
+.veles-agg-table th:first-child,
+.veles-agg-table td:first-child {
+  width: 36px;
+  text-align: center;
+}
+
+.veles-agg-row-stale td {
+  opacity: 1;
+  font-style: normal;
+}
+
+.veles-agg-row-error td {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.veles-agg-row-loading td {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.veles-agg-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.veles-agg-checkbox {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #6366f1;
+  background-color: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.65);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.veles-agg-checkbox::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  transform: scale(0);
+  transition: transform 0.15s ease;
+  background-color: #6366f1;
+}
+
+.veles-agg-checkbox:checked {
+  border-color: #4f46e5;
+  background-color: #eef2ff;
+}
+
+.veles-agg-checkbox:checked::after {
+  transform: scale(1);
+}
+
+.veles-agg-link {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.veles-agg-link:hover {
+  text-decoration: underline;
+}
+
+.veles-agg-pnl {
+  font-weight: 600;
+}
+
+.veles-agg-deals span {
+  font-weight: 600;
+}
+
+.veles-agg-empty {
+  display: none;
+  padding: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(71, 85, 105, 0.76);
+}
+
+.veles-agg-log {
+  margin-top: 22px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.75);
+  background: rgba(248, 250, 252, 0.92);
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(30, 41, 59, 0.82);
+}
+
+.veles-agg-log-entry {
+  margin-bottom: 6px;
+}
+
+.veles-agg-log-entry:last-child {
+  margin-bottom: 0;
+}
+
+.veles-agg-log-info {
+  color: rgba(15, 23, 42, 0.72);
+}
+
+.veles-agg-log-warn {
+  color: #d97706;
+}
+
+.veles-agg-log-error {
+  color: #dc2626;
+}
+
+.veles-agg-log-success {
+  color: #16a34a;
+}
+
+.veles-agg-status-info {
+  color: rgba(30, 64, 175, 0.88);
+}
+
+.veles-agg-status-error {
+  color: #dc2626;
+}
+
+.veles-agg-status-success {
+  color: #16a34a;
+}
+
+.veles-agg-source-header,
+.veles-agg-source-cell {
+  width: 42px;
+  text-align: center;
+  padding: 10px 12px;
+}
+
+.veles-agg-source-checkbox {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #6366f1;
+  background-color: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.65);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+.veles-agg-source-checkbox::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  transform: scale(0);
+  transition: transform 0.15s ease;
+  background-color: #6366f1;
+}
+
+.veles-agg-source-checkbox:checked {
+  border-color: #4f46e5;
+  background-color: #eef2ff;
+}
+
+.veles-agg-source-checkbox:checked::after {
+  transform: scale(1);
+}
+
+.veles-agg-source-container .row-wrapper[data-veles-agg-row] {
+  position: relative;
+  padding-left: 34px;
+}
+
+.veles-agg-source-container .row-wrapper[data-veles-agg-row] .veles-agg-source-floating {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+.veles-agg-source-container .row-wrapper[data-veles-agg-row] .veles-agg-source-checkbox {
+  margin: 0;
+}
