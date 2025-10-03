@@ -292,7 +292,16 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                       </td>
                       <td>
                         <div>{item.name}</div>
-                        <div className="panel__description">ID: {item.id}</div>
+                        <div className="panel__description">
+                          ID:{' '}
+                          <a
+                            href={`https://veles.finance/cabinet/backtests/${item.id}`}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          >
+                            {item.id}
+                          </a>
+                        </div>
                       </td>
                       <td>
                         <div>{new Date(item.from).toLocaleDateString()}</div>
@@ -366,11 +375,20 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
               <li key={item.id}>
                 <span className="chip">
                   <strong>{item.name}</strong>
-                  <span>{item.symbol}</span>
+                  <span>
+                    <a
+                      href={`https://veles.finance/cabinet/backtests/${item.id}`}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      style={{ color: 'inherit', textDecoration: 'none' }}
+                    >
+                      ID: {item.id}
+                    </a>
+                    {' · '}
+                    {item.symbol}
+                  </span>
                 </span>
-                <span style={{ marginLeft: 8, color: '#94a3b8' }}>
-                  {formatAmount(item.profitQuote, item.quote)}
-                </span>
+                <span style={{ marginLeft: 8, color: '#94a3b8' }}>{formatAmount(item.profitQuote, item.quote)}</span>
                 {item.netQuote !== null && (
                   <span style={{ marginLeft: 8, color: '#94a3b8' }}>Net: {formatAmount(item.netQuote, item.quote)}</span>
                 )}
