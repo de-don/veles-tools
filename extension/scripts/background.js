@@ -2,10 +2,74 @@ const UI_MESSAGE_SOURCE = 'veles-ui';
 const CONTENT_MESSAGE_SOURCE = 'veles-content';
 const BACKGROUND_MESSAGE_SOURCE = 'veles-background';
 
+const REQUEST_TIMEOUT_MS = 15000;
+const MAX_ATTEMPTS = 3;
+const RECONNECT_INTERVAL_MS = 1500;
+
 const pendingRequests = new Map();
+const requestQueue = [];
+
 let requestDelayMs = 300;
-let requestQueue = [];
 let activeRequest = null;
+
+let lastPing = 0;
+let lastPingResult = { ok: false, error: 'Нет данных о соединении' };
+let isConnected = true;
+let reconnectTimer = null;
+
+const broadcastConnectionStatus = () => {
+  try {
+    chrome.runtime.sendMessage({
+      source: BACKGROUND_MESSAGE_SOURCE,
+      action: 'connection-status-update',
+      payload: {
+        ok: lastPingResult.ok,
+        timestamp: lastPing,
+        error: lastPingResult.error,
+      },
+    });
+  } catch (error) {
+    console.warn('[Veles background] Unable to broadcast connection status', error);
+  }
+};
+
+const clearReconnectTimer = () => {
+  if (reconnectTimer) {
+    clearInterval(reconnectTimer);
+    reconnectTimer = null;
+  }
+};
+
+const ensureReconnectLoop = () => {
+  if (reconnectTimer) {
+    return;
+  }
+  reconnectTimer = setInterval(() => {
+    attemptReconnect().catch((reason) => {
+      console.warn('[Veles background] reconnect attempt failed:', reason);
+    });
+  }, RECONNECT_INTERVAL_MS);
+};
+
+const updateConnectionStatus = (ok, error) => {
+  lastPing = Date.now();
+
+  if (ok) {
+    lastPingResult = { ok: true };
+    isConnected = true;
+    clearReconnectTimer();
+    broadcastConnectionStatus();
+    if (!activeRequest) {
+      processQueue();
+    }
+    return;
+  }
+
+  lastPingResult = { ok: false, error: error ?? 'Нет соединения с вкладкой' };
+  isConnected = false;
+  broadcastConnectionStatus();
+  ensureReconnectLoop();
+};
 
 const generateRequestId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -24,90 +88,229 @@ const findActiveVelesTab = async () => {
   return activeTab?.id ?? null;
 };
 
+const createQueueItem = (requestId, payload, sendResponse, attempts = 0) => ({
+  requestId,
+  payload,
+  sendResponse,
+  attempts,
+});
+
+const resetActiveRequest = () => {
+  if (activeRequest?.timeoutId) {
+    clearTimeout(activeRequest.timeoutId);
+  }
+  activeRequest = null;
+};
+
+const scheduleNext = () => {
+  setTimeout(processQueue, requestDelayMs);
+};
+
+const failRequestImmediately = (sendResponse, requestId, message) => {
+  try {
+    sendResponse({ requestId, ok: false, error: message });
+  } catch (error) {
+    console.warn('[Veles background] unable to send failure response', error);
+  }
+  scheduleNext();
+};
+
+const retryActiveRequest = (message, { incrementAttempt = true } = {}) => {
+  if (!activeRequest) {
+    return;
+  }
+
+  const { requestId, payload, sendResponse, attempts } = activeRequest;
+  pendingRequests.delete(requestId);
+  resetActiveRequest();
+
+  const nextAttempts = incrementAttempt ? attempts + 1 : attempts;
+  if (incrementAttempt && nextAttempts > MAX_ATTEMPTS) {
+    failRequestImmediately(sendResponse, requestId, message);
+    return;
+  }
+
+  requestQueue.unshift(createQueueItem(requestId, payload, sendResponse, nextAttempts));
+  if (message) {
+    updateConnectionStatus(false, message);
+  }
+  scheduleNext();
+};
+
+const finalizeRequest = (requestId, sendResponse, payload) => {
+  resetActiveRequest();
+
+  try {
+    sendResponse({ requestId, ...payload });
+  } catch (error) {
+    console.warn('[Veles background] unable to respond to UI', error);
+  }
+
+  scheduleNext();
+};
+
+const attemptReconnect = async () => {
+  const tabId = await findActiveVelesTab();
+  if (!tabId) {
+    updateConnectionStatus(false, 'Не найдена вкладка veles.finance');
+    return;
+  }
+
+  chrome.tabs.sendMessage(
+    tabId,
+    {
+      source: BACKGROUND_MESSAGE_SOURCE,
+      action: 'ping',
+    },
+    (response) => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) {
+        updateConnectionStatus(false, lastError.message);
+        return;
+      }
+
+      if (response && (response.ok || response.accepted)) {
+        updateConnectionStatus(true);
+      } else {
+        updateConnectionStatus(false, response?.error ?? 'Нет ответа от контента');
+      }
+    }
+  );
+};
+
 const processQueue = () => {
   if (activeRequest || requestQueue.length === 0) {
     return;
   }
 
-  const nextItem = requestQueue.shift();
-  if (!nextItem) {
+  if (!isConnected) {
     return;
   }
 
-  const { tabId, requestId, payload, sendResponse } = nextItem;
+  const queueItem = requestQueue.shift();
+  if (!queueItem) {
+    return;
+  }
 
-  const finalize = (resultPayload) => {
-    try {
-      sendResponse({ requestId, ...resultPayload });
-    } catch (error) {
-      console.warn('[Veles background] Unable to send response to UI', error);
-    } finally {
-      activeRequest = null;
-      setTimeout(processQueue, requestDelayMs);
-    }
-  };
-
-  activeRequest = { ...nextItem, finalize };
-
-  const dispatchToTab = (attempt = 1) => {
-    pendingRequests.set(requestId, (responsePayload) => {
-      pendingRequests.delete(requestId);
-      finalize(responsePayload);
-    });
-
-    chrome.tabs.sendMessage(
-      tabId,
-      {
-        source: BACKGROUND_MESSAGE_SOURCE,
-        action: 'proxy-request',
-        requestId,
-        payload,
-      },
-      (response) => {
-        const lastError = chrome.runtime.lastError;
-        if (lastError) {
-          pendingRequests.delete(requestId);
-
-          if (
-            attempt === 1 &&
-            typeof chrome.scripting !== 'undefined' &&
-            lastError.message?.includes('Receiving end does not exist')
-          ) {
-            chrome.scripting.executeScript(
-              {
-                target: { tabId },
-                files: ['scripts/proxy-bridge.js'],
-              },
-              () => {
-                const injectionError = chrome.runtime.lastError;
-                if (injectionError) {
-                  finalize({ ok: false, error: injectionError.message });
-                  return;
-                }
-
-                dispatchToTab(attempt + 1);
-              }
-            );
-            return;
-          }
-
-          finalize({ ok: false, error: lastError.message });
-          return;
-        }
-
-        if (response && response.accepted === false) {
-          pendingRequests.delete(requestId);
-          finalize({ ok: false, error: response.error ?? 'Контент-скрипт отклонил запрос.' });
-        }
+  findActiveVelesTab()
+    .then((tabId) => {
+      if (!tabId) {
+        requestQueue.unshift(queueItem);
+        updateConnectionStatus(false, 'Не найдена вкладка veles.finance');
+        return;
       }
-    );
+
+      dispatchToTab(tabId, queueItem);
+    })
+    .catch((error) => {
+      requestQueue.unshift(queueItem);
+      updateConnectionStatus(false, error instanceof Error ? error.message : String(error));
+    });
+};
+
+const dispatchToTab = (tabId, queueItem) => {
+  const { requestId, payload, sendResponse, attempts } = queueItem;
+
+  activeRequest = {
+    requestId,
+    payload,
+    sendResponse,
+    attempts,
+    tabId,
+    timeoutId: null,
   };
 
-  dispatchToTab();
+  const timeoutId = setTimeout(() => {
+    retryActiveRequest('Таймаут ответа от вкладки', { incrementAttempt: true });
+  }, REQUEST_TIMEOUT_MS);
+  activeRequest.timeoutId = timeoutId;
+
+  pendingRequests.set(requestId, (responsePayload) => {
+    clearTimeout(timeoutId);
+    pendingRequests.delete(requestId);
+    updateConnectionStatus(true);
+    finalizeRequest(requestId, sendResponse, responsePayload);
+  });
+
+  chrome.tabs.sendMessage(
+    tabId,
+    {
+      source: BACKGROUND_MESSAGE_SOURCE,
+      action: 'proxy-request',
+      requestId,
+      payload,
+    },
+    (response) => {
+      const lastError = chrome.runtime.lastError;
+      if (lastError) {
+        retryActiveRequest(lastError.message, { incrementAttempt: false });
+        return;
+      }
+
+      if (response && response.accepted === false) {
+        retryActiveRequest(response.error ?? 'Контент-скрипт отклонил запрос.', { incrementAttempt: true });
+        return;
+      }
+
+      updateConnectionStatus(true);
+    }
+  );
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message !== 'object') {
+    return false;
+  }
+
+  if (message.source === UI_MESSAGE_SOURCE && message.action === 'ping') {
+    findActiveVelesTab()
+      .then((tabId) => {
+        if (!tabId) {
+          updateConnectionStatus(false, 'Не найдена вкладка veles.finance');
+          sendResponse({ ok: false, error: 'Не найдена вкладка veles.finance' });
+          return;
+        }
+
+        chrome.tabs.sendMessage(
+          tabId,
+          {
+            source: BACKGROUND_MESSAGE_SOURCE,
+            action: 'ping',
+          },
+          (response) => {
+            const lastError = chrome.runtime.lastError;
+            if (lastError) {
+              updateConnectionStatus(false, lastError.message);
+              sendResponse({ ok: false, error: lastError.message });
+              return;
+            }
+
+            if (response && (response.ok || response.accepted)) {
+              updateConnectionStatus(true);
+              sendResponse({ ok: true });
+            } else {
+              const errorText = response?.error ?? 'Нет ответа от контента';
+              updateConnectionStatus(false, errorText);
+              sendResponse({ ok: false, error: errorText });
+            }
+          }
+        );
+      })
+      .catch((error) => {
+        const messageText = error instanceof Error ? error.message : String(error);
+        updateConnectionStatus(false, messageText);
+        sendResponse({ ok: false, error: messageText });
+      });
+
+    return true;
+  }
+
+  if (message.source === UI_MESSAGE_SOURCE && message.action === 'connection-status') {
+    sendResponse({
+      ok: lastPingResult.ok,
+      timestamp: lastPing,
+      error: lastPingResult.error,
+    });
     return false;
   }
 
@@ -131,22 +334,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     const requestId = generateRequestId();
-
-    findActiveVelesTab()
-      .then((tabId) => {
-        if (!tabId) {
-          sendResponse({ ok: false, error: 'Не найдена открытая вкладка veles.finance.' });
-          return;
-        }
-
-        requestQueue.push({ tabId, requestId, payload, sendResponse });
-        processQueue();
-      })
-      .catch((error) => {
-        sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) });
-      });
-
+    requestQueue.push(createQueueItem(requestId, payload, sendResponse));
+    processQueue();
     return true;
+  }
+
+  if (message.source === CONTENT_MESSAGE_SOURCE && message.action === 'ping-response') {
+    if (message.payload?.ok) {
+      updateConnectionStatus(true);
+    } else {
+      updateConnectionStatus(false, message.payload?.error ?? 'Неизвестная ошибка');
+    }
+    return false;
   }
 
   if (message.source === CONTENT_MESSAGE_SOURCE && message.action === 'proxy-response') {
@@ -164,12 +363,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  requestQueue = requestQueue.filter((item) => item.tabId !== tabId);
-
   if (activeRequest && activeRequest.tabId === tabId) {
-    const { requestId, finalize } = activeRequest;
-    pendingRequests.delete(requestId);
-    activeRequest = null;
-    finalize({ ok: false, error: 'Вкладка закрыта.' });
+    retryActiveRequest('Вкладка закрыта.', { incrementAttempt: false });
+  }
+
+  findActiveVelesTab()
+    .then((foundTabId) => {
+      if (!foundTabId) {
+        updateConnectionStatus(false, 'Нет вкладки veles.finance');
+      }
+    })
+    .catch((error) => {
+      updateConnectionStatus(false, error instanceof Error ? error.message : String(error));
+    });
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'loading' || changeInfo.url) {
+    const url = changeInfo.url ?? tab.url;
+    if (url && !url.startsWith('https://veles.finance/')) {
+      if (activeRequest && activeRequest.tabId === tabId) {
+        retryActiveRequest('Вкладка покинула veles.finance', { incrementAttempt: false });
+      }
+      findActiveVelesTab()
+        .then((foundTabId) => {
+          if (!foundTabId) {
+            updateConnectionStatus(false, 'Нет вкладки veles.finance');
+          }
+        })
+        .catch((error) => {
+          updateConnectionStatus(false, error instanceof Error ? error.message : String(error));
+        });
+    }
   }
 });

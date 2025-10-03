@@ -47,23 +47,30 @@
       return;
     }
 
-    if (data.source !== INJECTED_SOURCE || data.action !== 'proxy-response') {
+    if (data.source === INJECTED_SOURCE && data.action === 'proxy-response') {
+      const { requestId, payload } = data;
+      if (!pendingRequestIds.has(requestId)) {
+        return;
+      }
+
+      pendingRequestIds.delete(requestId);
+
+      chrome.runtime.sendMessage({
+        source: CONTENT_SOURCE,
+        action: 'proxy-response',
+        requestId,
+        payload,
+      });
       return;
     }
 
-    const { requestId, payload } = data;
-    if (!pendingRequestIds.has(requestId)) {
-      return;
+    if (data.source === INJECTED_SOURCE && data.action === 'ping-response') {
+      chrome.runtime.sendMessage({
+        source: CONTENT_SOURCE,
+        action: 'ping-response',
+        payload: data.payload,
+      });
     }
-
-    pendingRequestIds.delete(requestId);
-
-    chrome.runtime.sendMessage({
-      source: CONTENT_SOURCE,
-      action: 'proxy-response',
-      requestId,
-      payload,
-    });
   });
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -71,21 +78,31 @@
       return false;
     }
 
-    if (message.source !== BACKGROUND_SOURCE || message.action !== 'proxy-request') {
+    if (message.source === BACKGROUND_SOURCE && message.action === 'proxy-request') {
+      const { requestId, payload } = message;
+      if (!requestId || !payload) {
+        sendResponse({ accepted: false, error: 'Некорректный формат запроса.' });
+        return false;
+      }
+
+      injectPageBridge();
+      pendingRequestIds.add(requestId);
+      forwardToPage(requestId, payload);
+
+      sendResponse({ accepted: true });
       return false;
     }
 
-    const { requestId, payload } = message;
-    if (!requestId || !payload) {
-      sendResponse({ accepted: false, error: 'Некорректный формат запроса.' });
+    if (message.source === BACKGROUND_SOURCE && message.action === 'ping') {
+      injectPageBridge();
+      window.postMessage({
+        source: PAGE_SOURCE,
+        action: 'ping',
+      });
+      sendResponse({ accepted: true });
       return false;
     }
 
-    injectPageBridge();
-    pendingRequestIds.add(requestId);
-    forwardToPage(requestId, payload);
-
-    sendResponse({ accepted: true });
     return false;
   });
 

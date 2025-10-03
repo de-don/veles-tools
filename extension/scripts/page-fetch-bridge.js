@@ -101,6 +101,14 @@
     }
   };
 
+  const handlePing = () => {
+    window.postMessage({
+      source: INJECTED_SOURCE,
+      action: 'ping-response',
+      payload: { ok: true },
+    });
+  };
+
   window.addEventListener('message', (event) => {
     if (event.source !== window) {
       return;
@@ -111,11 +119,14 @@
       return;
     }
 
-    if (data.source !== PAGE_SOURCE || data.action !== 'proxy-request') {
+    if (data.source === PAGE_SOURCE && data.action === 'proxy-request') {
+      handleProxyRequest(data.requestId, data.payload);
       return;
     }
 
-    handleProxyRequest(data.requestId, data.payload);
+    if (data.source === PAGE_SOURCE && data.action === 'ping') {
+      handlePing();
+    }
   });
 
   console.info('[Veles page bridge] инициализирован');

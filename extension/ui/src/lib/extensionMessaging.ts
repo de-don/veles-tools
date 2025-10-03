@@ -19,6 +19,12 @@ export interface ProxyResponsePayload<TBody = unknown> {
   headers?: Record<string, string>;
 }
 
+export interface ConnectionStatusSnapshot {
+  ok: boolean;
+  timestamp: number;
+  error?: string;
+}
+
 export const isExtensionRuntime = (): boolean => {
   return typeof chrome !== 'undefined' && typeof chrome.runtime !== 'undefined' && Boolean(chrome.runtime.id);
 };
@@ -49,6 +55,28 @@ export const proxyHttpRequest = async <TBody = unknown>(
     source: 'veles-ui',
     action: 'proxy-request',
     payload,
+  });
+
+  return response;
+};
+
+export const pingConnection = async (): Promise<{ ok: boolean; error?: string }> => {
+  try {
+    const response = await sendRuntimeMessage<{ ok: boolean; error?: string }>({
+      source: 'veles-ui',
+      action: 'ping',
+    });
+    return response;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: message };
+  }
+};
+
+export const readConnectionStatus = async (): Promise<ConnectionStatusSnapshot> => {
+  const response = await sendRuntimeMessage<ConnectionStatusSnapshot>({
+    source: 'veles-ui',
+    action: 'connection-status',
   });
 
   return response;
