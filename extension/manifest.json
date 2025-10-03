@@ -17,19 +17,6 @@
       "matches": ["https://veles.finance/*"],
       "js": ["scripts/proxy-bridge.js"],
       "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://veles.finance/cabinet/backtests*",
-        "https://veles.finance/cabinet/bot/*"
-      ],
-      "js": [
-        "scripts/bootstrap.js",
-        "scripts/multi-runner.js",
-        "scripts/aggregator.js",
-        "scripts/init.js"
-      ],
-      "css": ["content-styles.css"]
     }
   ],
   "web_accessible_resources": [

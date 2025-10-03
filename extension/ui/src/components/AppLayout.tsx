@@ -47,7 +47,6 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing }: AppLa
         <div className="sidebar__controls">
           <div className={`status status--${connectionStatus.ok ? 'online' : 'offline'}`}>
             <div className="status__row">
-              <div className="status__indicator" aria-hidden />
               <div className="status__details">
                 <div className="status__label">Связь с вкладкой</div>
                 <div className="status__value">
