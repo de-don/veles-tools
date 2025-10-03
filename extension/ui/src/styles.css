@@ -48,7 +48,8 @@ body {
 
 .status {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
   padding: 12px;
   border-radius: 12px;
@@ -77,6 +78,12 @@ body {
   background-color: #dc2626;
 }
 
+.status__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .status__details {
   flex: 1;
   display: flex;
@@ -98,6 +105,10 @@ body {
 .status__meta {
   font-size: 11px;
   color: #94a3b8;
+}
+
+.status__action {
+  width: 100%;
 }
 
 .nav-link {
@@ -130,23 +141,6 @@ body {
   padding: 10px 12px;
 }
 
-.sidebar__control-label {
-  font-size: 12px;
-  color: #475467;
-}
-
-.sidebar__control-input {
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #cbd5f5;
-  font-size: 13px;
-  color: #1f2937;
-}
-
-.sidebar__control-input:focus {
-  outline: 2px solid #1d4ed8;
-  border-color: #1d4ed8;
-}
 
 .app__content {
   flex: 1;
@@ -663,4 +657,178 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.aggregation-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.aggregation-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #f8fafc;
+}
+
+.aggregation-metric__label {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.aggregation-metric__value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.aggregation-metric__value--positive {
+  color: #047857;
+}
+
+.aggregation-metric__value--negative {
+  color: #b91c1c;
+}
+
+.aggregation-metric__value--neutral {
+  color: #334155;
+}
+
+.aggregation-metric__value--muted {
+  color: #475467;
+  font-size: 16px;
+}
+
+.aggregation-metric__sub {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.aggregation-concurrency {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.aggregation-concurrency__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aggregation-concurrency__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.aggregation-concurrency__subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.aggregation-concurrency__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.aggregation-concurrency__hint {
+  font-size: 12px;
+  color: #475467;
+  background-color: #f1f5f9;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.aggregation-concurrency__chart {
+  position: relative;
+  min-height: 220px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background-color: #fff;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aggregation-concurrency__canvas {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+
+.aggregation-concurrency__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+}
+
+.aggregation-table th,
+.aggregation-table td {
+  font-size: 13px;
+}
+
+.aggregation-table__toggle {
+  width: 48px;
+  text-align: center;
+}
+
+.aggregation-table__toggle .checkbox {
+  display: inline-flex;
+  margin: 0 auto;
+}
+
+.aggregation-table td:nth-child(5),
+.aggregation-table td:nth-child(6),
+.aggregation-table td:nth-child(7),
+.aggregation-table td:nth-child(8),
+.aggregation-table td:nth-child(9),
+.aggregation-table td:nth-child(10) {
+  white-space: nowrap;
+}
+
+.aggregation-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.aggregation-status--success {
+  background-color: #dcfce7;
+  color: #047857;
+}
+
+.aggregation-status--error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.aggregation-status--loading {
+  background-color: #e0e7ff;
+  color: #1d4ed8;
+}
+
+.aggregation-status--idle {
+  background-color: #e2e8f0;
+  color: #475467;
 }

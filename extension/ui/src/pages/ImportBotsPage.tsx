@@ -293,7 +293,8 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
           className="input"
           value={inputValue}
           onChange={(event) => setInputValue(event.target.value)}
-          placeholder={'https://veles.finance/share/pvXzq\nhttps://veles.finance/share/q1w2e'}
+          placeholder={`https://veles.finance/share/pvXzq
+https://veles.finance/share/q1w2e`}
           rows={4}
         />
         <div className="panel__actions" style={{ marginTop: 12 }}>

@@ -3,8 +3,6 @@ import type { PropsWithChildren } from 'react';
 
 interface AppLayoutProps extends PropsWithChildren {
   extensionReady: boolean;
-  requestDelay: number;
-  onDelayChange: (value: number) => void;
   connectionStatus: ConnectionStatus;
   onPing: () => void;
 }
@@ -22,7 +20,7 @@ const formatTimestamp = (timestamp: number | null) => {
   return new Date(timestamp).toLocaleTimeString();
 };
 
-const AppLayout = ({ children, extensionReady, requestDelay, onDelayChange, connectionStatus, onPing }: AppLayoutProps) => {
+const AppLayout = ({ children, extensionReady, connectionStatus, onPing }: AppLayoutProps) => {
   return (
     <div className="app">
       <aside className="app__sidebar">
@@ -48,30 +46,20 @@ const AppLayout = ({ children, extensionReady, requestDelay, onDelayChange, conn
         )}
         <div className="sidebar__controls">
           <div className={`status status--${connectionStatus.ok ? 'online' : 'offline'}`}>
-            <div className="status__indicator" aria-hidden />
-            <div className="status__details">
-              <div className="status__label">Связь с вкладкой</div>
-              <div className="status__value">
-                {connectionStatus.ok ? 'активна' : connectionStatus.error ?? 'нет соединения'}
+            <div className="status__row">
+              <div className="status__indicator" aria-hidden />
+              <div className="status__details">
+                <div className="status__label">Связь с вкладкой</div>
+                <div className="status__value">
+                  {connectionStatus.ok ? 'активна' : connectionStatus.error ?? 'нет соединения'}
+                </div>
+                <div className="status__meta">Обновлено: {formatTimestamp(connectionStatus.lastChecked)}</div>
               </div>
-              <div className="status__meta">Обновлено: {formatTimestamp(connectionStatus.lastChecked)}</div>
             </div>
-            <button type="button" className="button button--ghost" onClick={onPing}>
+            <button type="button" className="button button--ghost status__action" onClick={onPing}>
               Обновить
             </button>
           </div>
-          <label className="sidebar__control-label" htmlFor="request-delay">
-            Задержка между запросами (мс)
-          </label>
-          <input
-            id="request-delay"
-            type="number"
-            min={0}
-            step={50}
-            value={requestDelay}
-            onChange={(event) => onDelayChange(Number(event.target.value) || 0)}
-            className="sidebar__control-input"
-          />
         </div>
       </aside>
       <main className="app__content">{children}</main>
