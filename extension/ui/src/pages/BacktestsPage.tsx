@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { fetchBacktests } from '../api/backtests';
+import { fetchBacktests, fetchBacktestCycles, fetchBacktestDetails } from '../api/backtests';
 import type { BacktestStatistics, BacktestStatisticsListResponse } from '../types/backtests';
+import {
+  clearDailyConcurrencyChart,
+  computeBacktestMetrics,
+  drawDailyConcurrencyChart,
+  summarizeAggregations,
+  type AggregationSummary,
+  type BacktestAggregationMetrics,
+} from '../lib/backtestAggregation';
 
 interface BacktestsPageProps {
   extensionReady: boolean;
@@ -70,6 +78,58 @@ const formatPercent = (value: number | null) => {
   return `${percentageFormatter.format(value)}%`;
 };
 
+type AggregationStatus = 'idle' | 'loading' | 'success' | 'error';
+
+interface AggregationItemState {
+  id: number;
+  status: AggregationStatus;
+  included: boolean;
+  metrics?: BacktestAggregationMetrics;
+  error?: string;
+}
+
+interface AggregationState {
+  items: Map<number, AggregationItemState>;
+  running: boolean;
+  total: number;
+  completed: number;
+  lastRunAt: number | null;
+}
+
+const aggregationNumberFormatter = new Intl.NumberFormat('ru-RU', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const aggregationIntegerFormatter = new Intl.NumberFormat('ru-RU', {
+  maximumFractionDigits: 0,
+});
+
+const formatSignedAmount = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    return '—';
+  }
+  if (Math.abs(value) < 1e-9) {
+    return '0.00';
+  }
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${aggregationNumberFormatter.format(value)}`;
+};
+
+const formatAggregationValue = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    return '—';
+  }
+  return aggregationNumberFormatter.format(value);
+};
+
+const formatAggregationInteger = (value: number): string => {
+  if (!Number.isFinite(value)) {
+    return '—';
+  }
+  return aggregationIntegerFormatter.format(value);
+};
+
 const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
@@ -79,6 +139,14 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<SelectionMap>(new Map());
   const selectAllRef = useRef<HTMLInputElement | null>(null);
+  const [aggregationState, setAggregationState] = useState<AggregationState>({
+    items: new Map(),
+    running: false,
+    total: 0,
+    completed: 0,
+    lastRunAt: null,
+  });
+  const concurrencyChartRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     if (!extensionReady) {
@@ -120,6 +188,13 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   useEffect(() => {
     if (!extensionReady) {
       setSelection(new Map());
+      setAggregationState({
+        items: new Map(),
+        running: false,
+        total: 0,
+        completed: 0,
+        lastRunAt: null,
+      });
     }
   }, [extensionReady]);
 
@@ -143,6 +218,39 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
       selectAllRef.current.indeterminate = someCurrentSelected;
     }
   }, [someCurrentSelected, allCurrentSelected]);
+
+  useEffect(() => {
+    setAggregationState((prev) => {
+      const nextItems = new Map<number, AggregationItemState>();
+      selection.forEach((_, id) => {
+        const existing = prev.items.get(id);
+        if (existing) {
+          nextItems.set(id, existing);
+        } else {
+          nextItems.set(id, { id, status: 'idle', included: true });
+        }
+      });
+
+      if (nextItems.size === prev.items.size) {
+        let unchanged = true;
+        nextItems.forEach((_, key) => {
+          if (!prev.items.has(key)) {
+            unchanged = false;
+          }
+        });
+        if (unchanged) {
+          return prev;
+        }
+      }
+
+      return {
+        ...prev,
+        items: nextItems,
+        total: prev.running ? prev.total : 0,
+        completed: prev.running ? Math.min(prev.completed, nextItems.size) : 0,
+      };
+    });
+  }, [selection]);
 
   const toggleSelection = (item: BacktestStatistics) => {
     setSelection((prev) => {
@@ -193,6 +301,223 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
   const clearSelection = () => {
     setSelection(new Map());
+  };
+
+  const aggregationItems = useMemo(() => Array.from(aggregationState.items.values()), [aggregationState.items]);
+
+  const collectedItems = useMemo(
+    () => aggregationItems.filter((item) => item.status === 'success' && item.metrics),
+    [aggregationItems],
+  );
+
+  const includedMetrics = useMemo(
+    () =>
+      collectedItems
+        .filter((item) => item.included)
+        .map((item) => item.metrics as BacktestAggregationMetrics),
+    [collectedItems],
+  );
+
+  const hasFetchedMetrics = collectedItems.length > 0;
+
+  const aggregationSummary = useMemo<AggregationSummary | null>(() => {
+    if (includedMetrics.length === 0) {
+      return null;
+    }
+    return summarizeAggregations(includedMetrics);
+  }, [includedMetrics]);
+
+  const aggregationErrors = useMemo(
+    () => aggregationItems.filter((item) => item.status === 'error' && item.error),
+    [aggregationItems],
+  );
+
+  const aggregationProgress = useMemo(() => {
+    const total = aggregationState.total;
+    const completed = Math.min(aggregationState.completed, total);
+    const percent = total > 0 ? Math.min((completed / total) * 100, 100) : 0;
+    return { total, completed, percent };
+  }, [aggregationState.completed, aggregationState.total]);
+
+  const hasAggregationData = includedMetrics.length > 0;
+
+  const dailyConcurrencyRecords = aggregationSummary?.dailyConcurrency.records ?? [];
+  const dailyConcurrencyStats = aggregationSummary?.dailyConcurrency.stats;
+
+  const concurrencyLimitNote = useMemo(() => {
+    if (!aggregationSummary || aggregationSummary.dailyConcurrency.records.length === 0) {
+      return 'Недостаточно данных для расчёта лимитов.';
+    }
+    const { limits } = aggregationSummary.dailyConcurrency.stats;
+    const options: string[] = [];
+    if (Number.isFinite(limits.p75) && limits.p75 > 0) {
+      options.push(`P75 → ${limits.p75}`);
+    }
+    if (Number.isFinite(limits.p90) && limits.p90 > 0) {
+      options.push(`P90 → ${limits.p90}`);
+    }
+    if (Number.isFinite(limits.p95) && limits.p95 > 0) {
+      options.push(`P95 → ${limits.p95}`);
+    }
+    if (options.length === 0) {
+      return 'Недостаточно данных для расчёта лимитов.';
+    }
+    return `Округлённые варианты лимита: ${options.join(', ')}.`;
+  }, [aggregationSummary]);
+
+  useEffect(() => {
+    const canvas = concurrencyChartRef.current;
+    if (!canvas) {
+      return;
+    }
+    if (!aggregationSummary || aggregationSummary.dailyConcurrency.records.length === 0) {
+      clearDailyConcurrencyChart(canvas);
+      return;
+    }
+    if (typeof window === 'undefined') {
+      return;
+    }
+    drawDailyConcurrencyChart(canvas, aggregationSummary.dailyConcurrency.records);
+  }, [aggregationSummary]);
+
+  const resolveTrendClass = (value: number): string => {
+    if (!Number.isFinite(value) || Math.abs(value) <= 1e-9) {
+      return 'aggregation-metric__value aggregation-metric__value--neutral';
+    }
+    return `aggregation-metric__value ${value > 0 ? 'aggregation-metric__value--positive' : 'aggregation-metric__value--negative'}`;
+  };
+
+  const resolveStatusLabel = (item: AggregationItemState): string => {
+    switch (item.status) {
+      case 'loading':
+        return 'Собирается…';
+      case 'success':
+        return 'Собрано';
+      case 'error':
+        return item.error ? `Ошибка: ${item.error}` : 'Ошибка';
+      default:
+        return 'Ожидает запуска';
+    }
+  };
+
+  const resolveStatusTone = (status: AggregationStatus): string => {
+    if (status === 'success') {
+      return 'aggregation-status aggregation-status--success';
+    }
+    if (status === 'error') {
+      return 'aggregation-status aggregation-status--error';
+    }
+    if (status === 'loading') {
+      return 'aggregation-status aggregation-status--loading';
+    }
+    return 'aggregation-status aggregation-status--idle';
+  };
+
+  const runAggregation = async () => {
+    if (aggregationState.running) {
+      return;
+    }
+    const targets = Array.from(selection.keys());
+    if (targets.length === 0) {
+      return;
+    }
+
+    setAggregationState((prev) => {
+      const nextItems = new Map(prev.items);
+      targets.forEach((id) => {
+        const existing = nextItems.get(id);
+        nextItems.set(id, {
+          id,
+          status: 'loading',
+          included: existing?.included ?? true,
+          metrics: existing?.metrics,
+          error: undefined,
+        });
+      });
+      return {
+        ...prev,
+        items: nextItems,
+        running: true,
+        total: targets.length,
+        completed: 0,
+        lastRunAt: null,
+      };
+    });
+
+    try {
+      for (const id of targets) {
+        try {
+          const details = await fetchBacktestDetails(id);
+          const cycles = await fetchBacktestCycles(id, { from: details.from, to: details.to });
+          const metrics = computeBacktestMetrics(details, cycles);
+          setAggregationState((prev) => {
+            const nextCompleted = Math.min(prev.completed + 1, prev.total || targets.length);
+            const current = prev.items.get(id);
+            if (!current) {
+              return { ...prev, completed: nextCompleted };
+            }
+            const nextItems = new Map(prev.items);
+            nextItems.set(id, {
+              ...current,
+              status: 'success',
+              metrics,
+              error: undefined,
+            });
+            return { ...prev, items: nextItems, completed: nextCompleted };
+          });
+        } catch (requestError) {
+          const message = requestError instanceof Error ? requestError.message : String(requestError);
+          setAggregationState((prev) => {
+            const nextCompleted = Math.min(prev.completed + 1, prev.total || targets.length);
+            const current = prev.items.get(id);
+            if (!current) {
+              return { ...prev, completed: nextCompleted };
+            }
+            const nextItems = new Map(prev.items);
+            nextItems.set(id, {
+              ...current,
+              status: 'error',
+              error: message,
+            });
+            return { ...prev, items: nextItems, completed: nextCompleted };
+          });
+        }
+      }
+    } finally {
+      setAggregationState((prev) => ({
+        ...prev,
+        running: false,
+        lastRunAt: Date.now(),
+        total: targets.length,
+        completed: Math.min(prev.completed, targets.length),
+      }));
+    }
+  };
+
+  const resetAggregation = () => {
+    const nextItems = new Map<number, AggregationItemState>();
+    selection.forEach((_, id) => {
+      nextItems.set(id, { id, status: 'idle', included: true });
+    });
+    setAggregationState({
+      items: nextItems,
+      running: false,
+      total: 0,
+      completed: 0,
+      lastRunAt: null,
+    });
+  };
+
+  const toggleAggregationInclude = (id: number) => {
+    setAggregationState((prev) => {
+      const current = prev.items.get(id);
+      if (!current || current.status !== 'success' || !current.metrics) {
+        return prev;
+      }
+      const nextItems = new Map(prev.items);
+      nextItems.set(id, { ...current, included: !current.included });
+      return { ...prev, items: nextItems };
+    });
   };
 
   return (
@@ -395,6 +720,233 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="panel__header">
+          <div>
+            <h2 className="panel__title">Детальная статистика</h2>
+            <p className="panel__description">
+              Соберите расширенную статистику выбранных бэктестов для анализа агрегированных метрик и одновременных позиций.
+            </p>
+          </div>
+          <div className="panel__actions">
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={resetAggregation}
+              disabled={(aggregationItems.length === 0 && !aggregationState.running) || aggregationState.running}
+            >
+              Очистить статистику
+            </button>
+            <button
+              type="button"
+              className="button"
+              onClick={runAggregation}
+              disabled={!extensionReady || aggregationState.running || selection.size === 0}
+            >
+              {aggregationState.running ? 'Собираем…' : 'Собрать статистику'}
+            </button>
+          </div>
+        </div>
+
+        {aggregationState.running && aggregationProgress.total > 0 && (
+          <div className="run-log">
+            <div className="run-log__progress">
+              <span>
+                Выполнено {aggregationProgress.completed} из {aggregationProgress.total}
+              </span>
+              <div className="progress-bar">
+                <div className="progress-bar__fill" style={{ width: `${aggregationProgress.percent}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {aggregationState.lastRunAt && !aggregationState.running && (
+          <div className="panel__description" style={{ fontSize: 12, marginTop: -4 }}>
+            Последний запуск: {new Date(aggregationState.lastRunAt).toLocaleString()}
+          </div>
+        )}
+
+        {aggregationErrors.length > 0 && (
+          <div className="banner banner--warning">
+            <div>Ошибки при сборе статистики:</div>
+            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+              {aggregationErrors.map((item) => (
+                <li key={item.id}>ID {item.id}: {item.error}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {hasAggregationData ? (
+          <>
+            <div className="aggregation-summary">
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Бэктестов в статистике</div>
+                <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.totalSelected)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Суммарный P&amp;L</div>
+                <div className={resolveTrendClass(aggregationSummary.totalPnl)}>{formatSignedAmount(aggregationSummary.totalPnl)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Avg P&amp;L / сделка</div>
+                <div className={resolveTrendClass(aggregationSummary.avgPnlPerDeal)}>{formatSignedAmount(aggregationSummary.avgPnlPerDeal)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Avg P&amp;L / бэктест</div>
+                <div className={resolveTrendClass(aggregationSummary.avgPnlPerBacktest)}>{formatSignedAmount(aggregationSummary.avgPnlPerBacktest)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Сделки (P/L/Σ)</div>
+                <div className="aggregation-metric__value aggregation-metric__value--muted">
+                  {formatAggregationInteger(aggregationSummary.totalDeals)}
+                  <span className="aggregation-metric__sub">
+                    {' '}P:{formatAggregationInteger(aggregationSummary.totalProfits)} / L:{formatAggregationInteger(aggregationSummary.totalLosses)}
+                  </span>
+                </div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Средняя длительность сделки (дни)</div>
+                <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.avgTradeDurationDays)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Средняя макс. просадка</div>
+                <div className={resolveTrendClass(-Math.abs(aggregationSummary.avgMaxDrawdown))}>{formatAggregationValue(aggregationSummary.avgMaxDrawdown)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Макс. суммарная просадка</div>
+                <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateDrawdown))}>{formatAggregationValue(aggregationSummary.aggregateDrawdown)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Макс. суммарное МПУ</div>
+                <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateMPU))}>{formatAggregationValue(aggregationSummary.aggregateMPU)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Макс. одновременно открытых</div>
+                <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.maxConcurrent)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Среднее одновременно открытых</div>
+                <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.avgConcurrent)}</div>
+              </div>
+              <div className="aggregation-metric">
+                <div className="aggregation-metric__label">Дни без торговли</div>
+                <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.noTradeDays)}</div>
+              </div>
+            </div>
+
+            <div className="aggregation-concurrency">
+              <div className="aggregation-concurrency__header">
+                <h3 className="aggregation-concurrency__title">Активные позиции по дням</h3>
+                <p className="aggregation-concurrency__subtitle">
+                  Распределение дневных пиков помогает подобрать лимит одновременно открытых позиций.
+                </p>
+              </div>
+              <div className="aggregation-concurrency__metrics">
+                <div className="aggregation-metric">
+                  <div className="aggregation-metric__label">Средний дневной пик</div>
+                  <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.meanMax ?? 0)}</div>
+                </div>
+                <div className="aggregation-metric">
+                  <div className="aggregation-metric__label">P75</div>
+                  <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p75 ?? 0)}</div>
+                </div>
+                <div className="aggregation-metric">
+                  <div className="aggregation-metric__label">P90</div>
+                  <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p90 ?? 0)}</div>
+                </div>
+                <div className="aggregation-metric">
+                  <div className="aggregation-metric__label">P95</div>
+                  <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p95 ?? 0)}</div>
+                </div>
+              </div>
+              <div className="aggregation-concurrency__hint">{concurrencyLimitNote}</div>
+              <div className="aggregation-concurrency__chart">
+                <canvas ref={concurrencyChartRef} className="aggregation-concurrency__canvas" />
+                {dailyConcurrencyRecords.length === 0 && (
+                  <div className="aggregation-concurrency__empty">Нет данных для построения графика.</div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="empty-state">
+            {selection.size === 0
+              ? 'Выберите минимум один бэктест, чтобы собрать статистику.'
+              : aggregationState.running
+                ? 'Сбор статистики выполняется…'
+                : hasFetchedMetrics
+                  ? 'Все собранные бэктесты выключены в таблице ниже. Включите нужные строки, чтобы они попали в статистику.'
+                  : 'Соберите статистику, чтобы увидеть сводные метрики.'}
+          </div>
+        )}
+
+        {aggregationItems.length > 0 && (
+          <div className="table-container">
+            <table className="table aggregation-table">
+              <thead>
+                <tr>
+                  <th className="aggregation-table__toggle">В статистике</th>
+                  <th>ID</th>
+                  <th>Название</th>
+                  <th>Пара</th>
+                  <th>P&amp;L</th>
+                  <th>Сделки</th>
+                  <th>Avg длит. (д)</th>
+                  <th>Дни без торговли</th>
+                  <th>Макс. просадка</th>
+                  <th>Макс. МПУ</th>
+                  <th>Статус</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aggregationItems.map((item) => {
+                  const metrics = item.metrics;
+                  const summary = selection.get(item.id);
+                  const canToggle = item.status === 'success' && Boolean(metrics);
+                  const isIncluded = canToggle && item.included;
+                  return (
+                    <tr key={item.id}>
+                      <td className="aggregation-table__toggle">
+                        <input
+                          type="checkbox"
+                          className="checkbox"
+                          checked={isIncluded}
+                          disabled={!canToggle}
+                          onChange={() => toggleAggregationInclude(item.id)}
+                          aria-label={`Включить статистику по бэктесту ${item.id}`}
+                        />
+                      </td>
+                      <td>
+                        <a
+                          href={`https://veles.finance/cabinet/backtests/${item.id}`}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          {item.id}
+                        </a>
+                      </td>
+                      <td>{metrics?.name ?? summary?.name ?? '—'}</td>
+                      <td>{metrics?.symbol ?? summary?.symbol ?? '—'}</td>
+                      <td>{metrics ? formatSignedAmount(metrics.pnl) : '—'}</td>
+                      <td>{metrics ? formatAggregationInteger(metrics.totalDeals) : '—'}</td>
+                      <td>{metrics ? `${formatAggregationValue(metrics.avgTradeDurationDays)} д` : '—'}</td>
+                      <td>{metrics ? `${formatAggregationValue(metrics.downtimeDays)} д` : '—'}</td>
+                      <td>{metrics ? formatAggregationValue(metrics.maxDrawdown) : '—'}</td>
+                      <td>{metrics ? formatAggregationValue(metrics.maxMPU) : '—'}</td>
+                      <td>
+                        <span className={resolveStatusTone(item.status)}>{resolveStatusLabel(item)}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>

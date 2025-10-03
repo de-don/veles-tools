@@ -59,3 +59,48 @@ export interface BacktestsListParams {
   size: number;
   sort?: string;
 }
+
+export interface BacktestStatisticsDetail extends BacktestStatistics {
+  start?: string | null;
+  end?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  date_from?: string | null;
+  date_to?: string | null;
+  range?: {
+    from?: string | null;
+    to?: string | null;
+  } | null;
+  period?: {
+    from?: string | null;
+    to?: string | null;
+    start?: string | null;
+    end?: string | null;
+  } | null;
+}
+
+export interface BacktestOrder {
+  createdAt?: string | null;
+  executedAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface BacktestCycle {
+  id: number;
+  status: string;
+  date: string;
+  duration?: number | null;
+  netQuote?: number | null;
+  profitQuote?: number | null;
+  maeAbsolute?: number | null;
+  orders?: BacktestOrder[] | null;
+}
+
+export interface PaginatedResponse<TItem> {
+  content: TItem[];
+  totalPages: number;
+  totalElements?: number;
+  pageNumber?: number;
+}
