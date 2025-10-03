@@ -3,9 +3,21 @@
   "name": "Veles Multi Backtests",
   "description": "Запуск последовательных бектестов для нескольких валют на veles.finance.",
   "version": "0.1.0",
-  "permissions": ["storage"],
+  "action": {
+    "default_title": "Veles Tools",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": ["https://veles.finance/*"],
+  "background": {
+    "service_worker": "scripts/background.js"
+  },
   "content_scripts": [
+    {
+      "matches": ["https://veles.finance/*"],
+      "js": ["scripts/proxy-bridge.js"],
+      "run_at": "document_start"
+    },
     {
       "matches": [
         "https://veles.finance/cabinet/backtests*",
@@ -18,6 +30,12 @@
         "scripts/init.js"
       ],
       "css": ["content-styles.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["scripts/page-fetch-bridge.js"],
+      "matches": ["https://veles.finance/*"]
     }
   ]
 }
