@@ -1,3 +1,5 @@
+export type BotIdentifier = number | string;
+
 export interface BotsListParams {
   page: number;
   size: number;
@@ -12,7 +14,7 @@ export interface BotsListResponse {
 }
 
 export interface TradingBot {
-  id: number;
+  id: BotIdentifier;
   name: string;
   exchange: string;
   algorithm: string;
@@ -30,12 +32,13 @@ export interface TradingBot {
 }
 
 export interface BotSummary {
-  id: number;
+  id: BotIdentifier;
   name: string;
   exchange: string;
   algorithm: string;
   status: BotStatus;
   substatus: string | null;
+  origin?: 'account' | 'imported';
 }
 
 export interface BotProfitConfig {

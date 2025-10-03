@@ -4,6 +4,8 @@ import AppLayout, { type ConnectionStatus } from './components/AppLayout';
 import HomePage from './pages/HomePage';
 import BotsPage from './pages/BotsPage';
 import BacktestsPage from './pages/BacktestsPage';
+import ImportBotsPage from './pages/ImportBotsPage';
+import { ImportedBotsProvider } from './context/ImportedBotsContext';
 import { isExtensionRuntime, pingConnection, readConnectionStatus, updateRequestDelay } from './lib/extensionMessaging';
 
 const REQUEST_DELAY_STORAGE_KEY = 'veles:request-delay-ms';
@@ -118,19 +120,22 @@ const App = () => {
 
   return (
     <HashRouter>
-      <AppLayout
-        extensionReady={extensionReady}
-        requestDelay={requestDelay}
-        onDelayChange={handleDelayChange}
-        connectionStatus={connectionStatus}
-        onPing={triggerPing}
-      >
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
-          <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
-        </Routes>
-      </AppLayout>
+      <ImportedBotsProvider>
+        <AppLayout
+          extensionReady={extensionReady}
+          requestDelay={requestDelay}
+          onDelayChange={handleDelayChange}
+          connectionStatus={connectionStatus}
+          onPing={triggerPing}
+        >
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
+            <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
+            <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
+          </Routes>
+        </AppLayout>
+      </ImportedBotsProvider>
     </HashRouter>
   );
 };
