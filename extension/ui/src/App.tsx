@@ -49,6 +49,27 @@ const App = () => {
     await refreshConnectionStatus();
   }, [refreshConnectionStatus]);
 
+  const openVelesTab = useCallback(() => {
+    const targetUrl = 'https://veles.finance/cabinet';
+
+    if (!extensionReady || typeof chrome === 'undefined' || !chrome.tabs?.create) {
+      window.open(targetUrl, '_blank', 'noopener');
+      return;
+    }
+
+    try {
+      chrome.tabs.create({ url: targetUrl }, () => {
+        const lastError = chrome.runtime?.lastError;
+        if (lastError) {
+          console.warn('[Veles UI] unable to open veles tab', lastError);
+        }
+      });
+    } catch (error) {
+      console.warn('[Veles UI] unable to open veles tab', error);
+      window.open(targetUrl, '_blank', 'noopener');
+    }
+  }, [extensionReady]);
+
   useEffect(() => {
     refreshConnectionStatus();
   }, [refreshConnectionStatus]);
@@ -95,7 +116,12 @@ const App = () => {
   return (
     <HashRouter>
       <ImportedBotsProvider>
-        <AppLayout extensionReady={extensionReady} connectionStatus={connectionStatus} onPing={triggerPing}>
+        <AppLayout
+          extensionReady={extensionReady}
+          connectionStatus={connectionStatus}
+          onPing={triggerPing}
+          onOpenVeles={openVelesTab}
+        >
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />

@@ -5,6 +5,7 @@ interface AppLayoutProps extends PropsWithChildren {
   extensionReady: boolean;
   connectionStatus: ConnectionStatus;
   onPing: () => void;
+  onOpenVeles: () => void;
 }
 
 export interface ConnectionStatus {
@@ -20,7 +21,7 @@ const formatTimestamp = (timestamp: number | null) => {
   return new Date(timestamp).toLocaleTimeString();
 };
 
-const AppLayout = ({ children, extensionReady, connectionStatus, onPing }: AppLayoutProps) => {
+const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenVeles }: AppLayoutProps) => {
   return (
     <div className="app">
       <aside className="app__sidebar">
@@ -58,6 +59,11 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing }: AppLa
             <button type="button" className="button button--ghost status__action" onClick={onPing}>
               Обновить
             </button>
+            {!connectionStatus.ok && (
+              <button type="button" className="button status__action" onClick={onOpenVeles}>
+                Открыть veles.finance
+              </button>
+            )}
           </div>
         </div>
       </aside>
