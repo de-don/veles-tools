@@ -17,6 +17,72 @@ let lastPingResult = { ok: false, error: 'Нет данных о соедине�
 let isConnected = true;
 let reconnectTimer = null;
 
+const ICON_SIZES = [16, 32];
+const ICON_COLOR_MAP = {
+  active: { r: 34, g: 197, b: 94 },
+  inactive: { r: 148, g: 163, b: 184 },
+};
+
+const iconCache = new Map();
+let currentIconVariant = null;
+
+const createIconImageData = (variant, size) => {
+  const cacheKey = `${variant}-${size}`;
+  if (iconCache.has(cacheKey)) {
+    return iconCache.get(cacheKey);
+  }
+
+  const color = ICON_COLOR_MAP[variant];
+  const pixelCount = size * size;
+  const buffer = new Uint8ClampedArray(pixelCount * 4);
+
+  for (let index = 0; index < pixelCount; index += 1) {
+    const offset = index * 4;
+    buffer[offset] = color.r;
+    buffer[offset + 1] = color.g;
+    buffer[offset + 2] = color.b;
+    buffer[offset + 3] = 255;
+  }
+
+  const imageData = new ImageData(buffer, size, size);
+  iconCache.set(cacheKey, imageData);
+  return imageData;
+};
+
+const setActionIconVariant = (variant) => {
+  if (currentIconVariant === variant) {
+    return;
+  }
+
+  const imageData = {};
+  ICON_SIZES.forEach((size) => {
+    imageData[size] = createIconImageData(variant, size);
+  });
+
+  chrome.action.setIcon({ imageData }, () => {
+    const lastError = chrome.runtime.lastError;
+    if (lastError) {
+      console.warn('[Veles background] unable to update action icon', lastError);
+      return;
+    }
+    currentIconVariant = variant;
+  });
+};
+
+const refreshActionIcon = async () => {
+  let nextVariant = 'inactive';
+  try {
+    const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (activeTab?.url && activeTab.url.startsWith('https://veles.finance/')) {
+      nextVariant = 'active';
+    }
+  } catch (error) {
+    console.warn('[Veles background] failed to query active tab', error);
+  }
+
+  setActionIconVariant(nextVariant);
+};
+
 const broadcastConnectionStatus = () => {
   try {
     chrome.runtime.sendMessage({
@@ -361,6 +427,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return false;
 });
+
+chrome.tabs.onActivated.addListener(() => {
+  refreshActionIcon();
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tab?.active && (typeof changeInfo.url === 'string' || changeInfo.status === 'complete')) {
+    refreshActionIcon();
+  }
+});
+
+chrome.tabs.onRemoved.addListener(() => {
+  refreshActionIcon();
+});
+
+if (chrome.windows?.onFocusChanged) {
+  chrome.windows.onFocusChanged.addListener(() => {
+    refreshActionIcon();
+  });
+}
+
+refreshActionIcon();
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (activeRequest && activeRequest.tabId === tabId) {
