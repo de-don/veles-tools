@@ -1,0 +1,22 @@
+{
+  "name": "veles-backtests-extension",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --config extension/ui/vite.config.ts",
+    "build": "vite build --config extension/ui/vite.config.ts",
+    "preview": "vite preview --config extension/ui/vite.config.ts"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.255",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0"
+  }
+}
