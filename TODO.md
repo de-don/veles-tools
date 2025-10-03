@@ -20,11 +20,14 @@
 
 ### BackTests Stats
 
-- [ ] Implement detailed statistics for backtests
-- [ ] Create visualizations for backtest results
+- [x] Implement detailed statistics for backtests
+- [x] Create visualizations for backtest results
+- [ ] Create MORE visualizations for backtest results
 
 ## Other Features
 
+- [ ] Update main page
+- [ ] Add ROADMAP
 - [ ] Symbols groups
 - [ ] Configurable tables
 - [ ] Donate button
