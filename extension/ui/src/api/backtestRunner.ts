@@ -1,4 +1,5 @@
 import { proxyHttpRequest } from '../lib/extensionMessaging';
+import type { BotIdentifier, BotSettings } from '../types/bots';
 
 const BOTS_ENDPOINT = 'https://veles.finance/api/bots';
 const BACKTESTS_ENDPOINT = 'https://veles.finance/api/backtests/';
@@ -17,7 +18,7 @@ export interface BotStrategyCommissions {
 }
 
 export interface BotStrategy {
-  id: number | null;
+  id: BotIdentifier | null;
   name?: string | null;
   symbol?: string | null;
   symbols?: string[] | null;
@@ -33,6 +34,8 @@ export interface BotStrategy {
   cursor?: string | null;
   includePosition?: boolean | null;
   public?: boolean | null;
+  algorithm?: string | null;
+  settings?: BotSettings | null;
 }
 
 export interface BacktestCreateResponse {
@@ -60,7 +63,7 @@ const cloneStrategy = (strategy: BotStrategy): BotStrategy => {
   return JSON.parse(JSON.stringify(strategy)) as BotStrategy;
 };
 
-export const fetchBotStrategy = async (botId: number): Promise<BotStrategy> => {
+export const fetchBotStrategy = async (botId: BotIdentifier): Promise<BotStrategy> => {
   const response = await proxyHttpRequest<BotStrategy>({
     url: `${BOTS_ENDPOINT}/${botId}`,
     init: {

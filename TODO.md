@@ -16,6 +16,7 @@
 - [ ] Backtests filtering
 - [ ] Backtests sorting
 - [ ] Add caching for backtest data to improve performance
+- [x] Run custom backtests
 
 ### BackTests Stats
 
