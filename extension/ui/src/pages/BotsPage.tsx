@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { fetchBots } from '../api/bots';
 import type { BotSummary, BotsListResponse, TradingBot } from '../types/bots';
+import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
 
 interface BotsPageProps {
   extensionReady: boolean;
@@ -28,6 +29,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<SelectionMap>(new Map());
+  const [activeModal, setActiveModal] = useState<BacktestVariant | null>(null);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -70,6 +72,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   useEffect(() => {
     if (!extensionReady) {
       setSelection(new Map());
+      setActiveModal(null);
     }
   }, [extensionReady]);
 
@@ -77,6 +80,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const bots = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
+  const selectedBotsList = useMemo(() => Array.from(selection.values()), [selection]);
 
   const currentPageSelectedCount = useMemo(() => {
     if (bots.length === 0) {
@@ -143,6 +147,24 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
 
   const clearSelection = () => {
     setSelection(new Map());
+    setActiveModal(null);
+  };
+
+  useEffect(() => {
+    if (totalSelected === 0 && activeModal) {
+      setActiveModal(null);
+    }
+  }, [totalSelected, activeModal]);
+
+  const openModal = (variant: BacktestVariant) => {
+    if (totalSelected === 0) {
+      return;
+    }
+    setActiveModal(variant);
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
   };
 
   return (
@@ -183,6 +205,20 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
             </button>
           </div>
         </div>
+
+        {totalSelected > 0 && (
+          <div className="panel__bulk-actions">
+            <span className="panel__bulk-info">Выбрано {totalSelected} ботов</span>
+            <div className="panel__bulk-buttons">
+              <button type="button" className="button" onClick={() => openModal('single')}>
+                Бэктест
+              </button>
+              <button type="button" className="button button--secondary" onClick={() => openModal('multiCurrency')}>
+                Мультивалютный бэктест
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="table-container">
           <table className="table">
@@ -297,6 +333,10 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
           </ul>
         )}
       </div>
+
+      {activeModal && (
+        <BacktestModal variant={activeModal} selectedBots={selectedBotsList} onClose={closeModal} />
+      )}
     </section>
   );
 };
