@@ -1,0 +1,3887 @@
+{
+  "totalElements": 156,
+  "totalPages": 8,
+  "pageNumber": 0,
+  "content": [
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - AR",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999686,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "AR/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - ARB",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999683,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "ARB/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - ATH",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999678,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "ATH/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - AVAX",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999675,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "AVAX/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - BAT",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999667,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "BAT/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - BICO",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999663,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "BICO/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - BIGTIME",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999662,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "BIGTIME/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - BLUR",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999660,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "BLUR/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - BNT",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999657,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "BNT/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - BRETT",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999656,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "BRETT/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - BSV",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999654,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "BSV/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - CAKE",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999653,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "CAKE/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - CVC",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999643,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "CVC/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - DASH",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999641,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "DASH/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - DGB",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999640,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "DGB/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - DOGE",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999639,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "DOGE/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - DOT",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999638,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "DOT/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - DRIFT",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999636,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "DRIFT/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - DYDX",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999635,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "DYDX/USDT"
+      ]
+    },
+    {
+      "name": "\uD83D\uDCA1 BYBIT EDISON 1.1 - ENA",
+      "exchange": "BYBIT_FUTURES",
+      "algorithm": "LONG",
+      "pullUp": 0.1,
+      "portion": 2,
+      "profit": {
+        "type": "SIGNAL",
+        "currency": "QUOTE",
+        "checkPnl": 0.3,
+        "conditions": [
+          {
+            "type": "INDICATOR",
+            "indicator": "WILLIAMS_R_LEVELS",
+            "interval": "FIVE_MINUTES",
+            "basic": true,
+            "value": null,
+            "operation": null,
+            "closed": true,
+            "reverse": false
+          }
+        ]
+      },
+      "deposit": {
+        "amount": 500,
+        "leverage": 10,
+        "marginType": "CROSS"
+      },
+      "stopLoss": {
+        "indent": 3,
+        "termination": true,
+        "conditionalIndent": null,
+        "conditions": null,
+        "conditionalIndentType": null
+      },
+      "settings": {
+        "type": "SIGNAL",
+        "baseOrder": {
+          "indent": 0,
+          "volume": 10
+        },
+        "orders": [
+          {
+            "indent": 6,
+            "volume": 20,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 30,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          },
+          {
+            "indent": 6,
+            "volume": 40,
+            "conditions": [
+              {
+                "type": "INDICATOR",
+                "indicator": "MFI",
+                "interval": "FIFTEEN_MINUTES",
+                "basic": false,
+                "value": 20,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "ROC",
+                "interval": "FIVE_MINUTES",
+                "basic": false,
+                "value": -2,
+                "operation": "LESS",
+                "closed": true,
+                "reverse": false
+              },
+              {
+                "type": "INDICATOR",
+                "indicator": "WILLIAMS_R_LEVELS",
+                "interval": "FIVE_MINUTES",
+                "basic": true,
+                "value": null,
+                "operation": null,
+                "closed": true,
+                "reverse": false
+              }
+            ]
+          }
+        ],
+        "indentType": "ORDER",
+        "includePosition": true
+      },
+      "conditions": [
+        {
+          "type": "INDICATOR",
+          "indicator": "MFI",
+          "interval": "FIFTEEN_MINUTES",
+          "basic": false,
+          "value": 20,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "ROC",
+          "interval": "FIVE_MINUTES",
+          "basic": false,
+          "value": -2,
+          "operation": "LESS",
+          "closed": true,
+          "reverse": false
+        },
+        {
+          "type": "INDICATOR",
+          "indicator": "WILLIAMS_R_LEVELS",
+          "interval": "FIVE_MINUTES",
+          "basic": true,
+          "value": null,
+          "operation": null,
+          "closed": true,
+          "reverse": false
+        }
+      ],
+      "id": 2999634,
+      "status": "STARTED",
+      "apiKey": 423136,
+      "substatus": "AWAITING_SIGNAL",
+      "symbols": [
+        "ENA/USDT"
+      ]
+    }
+  ]
+}
