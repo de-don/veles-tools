@@ -10,7 +10,7 @@ interface BotsPageProps {
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const DEFAULT_SORT = 'createdAt,desc';
 
-type SelectionMap = Map<number, BotSummary>;
+type SelectionMap = Map<string, BotSummary>;
 
 const createSummary = (bot: TradingBot): BotSummary => ({
   id: bot.id,
@@ -19,6 +19,7 @@ const createSummary = (bot: TradingBot): BotSummary => ({
   algorithm: bot.algorithm,
   status: bot.status,
   substatus: bot.substatus,
+  origin: 'account',
 });
 
 const BotsPage = ({ extensionReady }: BotsPageProps) => {
@@ -86,7 +87,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     if (bots.length === 0) {
       return 0;
     }
-    return bots.filter((bot) => selection.has(bot.id)).length;
+    return bots.filter((bot) => selection.has(String(bot.id))).length;
   }, [bots, selection]);
 
   const allCurrentSelected = bots.length > 0 && currentPageSelectedCount === bots.length;
@@ -99,12 +100,13 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   }, [someCurrentSelected, allCurrentSelected]);
 
   const toggleBotSelection = (bot: TradingBot) => {
+    const key = String(bot.id);
     setSelection((prev) => {
       const next = new Map(prev);
-      if (next.has(bot.id)) {
-        next.delete(bot.id);
+      if (next.has(key)) {
+        next.delete(key);
       } else {
-        next.set(bot.id, createSummary(bot));
+        next.set(key, createSummary(bot));
       }
       return next;
     });
@@ -115,13 +117,13 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
       const next = new Map(prev);
       if (!checked) {
         bots.forEach((bot) => {
-          next.delete(bot.id);
+          next.delete(String(bot.id));
         });
         return next;
       }
 
       bots.forEach((bot) => {
-        next.set(bot.id, createSummary(bot));
+        next.set(String(bot.id), createSummary(bot));
       });
       return next;
     });
@@ -170,7 +172,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   return (
     <section className="page">
       <header className="page__header">
-        <h1 className="page__title">Боты</h1>
+        <h1 className="page__title">Мои боты</h1>
         <p className="page__subtitle">
           Список всех ботов аккаунта veles.finance с пагинацией и возможностью выбора строк.
         </p>
@@ -259,7 +261,8 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
               )}
               {!loading &&
                 bots.map((bot) => {
-                  const isChecked = selection.has(bot.id);
+                  const key = String(bot.id);
+                  const isChecked = selection.has(key);
                   return (
                     <tr key={bot.id}>
                       <td className="table__checkbox">

@@ -9,6 +9,7 @@ import {
   type BotStrategy,
   type SymbolDescriptor,
 } from '../api/backtestRunner';
+import { useImportedBots } from '../context/ImportedBotsContext';
 
 export type BacktestVariant = 'single' | 'multiCurrency';
 
@@ -229,6 +230,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
   const isActiveRef = useRef(true);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const initialTitleRef = useRef<string | null>(null);
+  const { getStrategyById } = useImportedBots();
 
   useEffect(() => {
     isActiveRef.current = true;
@@ -449,14 +451,29 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
             return;
           }
 
-          appendLog(`Получаем стратегию бота ${bot.name} (ID: ${bot.id})...`);
+          let strategy: BotStrategy | null = getStrategyById(bot.id);
 
-          let strategy: BotStrategy;
-          try {
-            strategy = await fetchBotStrategy(bot.id);
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            appendLog(`❌ Ошибка загрузки стратегии ${bot.name}: ${message}`);
+          if (strategy) {
+            appendLog(`Используем локальную конфигурацию для ${bot.name}.`);
+          } else {
+            appendLog(`Получаем стратегию бота ${bot.name} (ID: ${bot.id})...`);
+            try {
+              strategy = await fetchBotStrategy(bot.id);
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              appendLog(`❌ Ошибка загрузки стратегии ${bot.name}: ${message}`);
+              if (payload.variant === 'single') {
+                completed += 1;
+              } else {
+                completed += assets.length;
+              }
+              updateProgress();
+              continue;
+            }
+          }
+
+          if (!strategy) {
+            appendLog(`❌ Стратегия ${bot.name} недоступна.`);
             if (payload.variant === 'single') {
               completed += 1;
             } else {

@@ -32,7 +32,10 @@ const AppLayout = ({ children, extensionReady, requestDelay, onDelayChange, conn
             Главная
           </NavLink>
           <NavLink to="/bots" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
-            Боты
+            Мои боты
+          </NavLink>
+          <NavLink to="/import" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+            Импорт ботов
           </NavLink>
           <NavLink to="/backtests" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Бэктесты
