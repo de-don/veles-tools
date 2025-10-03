@@ -14,6 +14,41 @@
     return result;
   };
 
+  const resolveCsrfToken = () => {
+    try {
+      const meta = document.querySelector('meta[name="_csrf"]');
+      const token = meta?.content?.trim();
+      return token || null;
+    } catch (error) {
+      console.warn('[Veles page bridge] Unable to resolve CSRF token', error);
+      return null;
+    }
+  };
+
+  const ensureHeaders = (init = {}) => {
+    const headers = new Headers(init.headers ?? undefined);
+    if (!headers.has('x-csrf-token')) {
+      const token = resolveCsrfToken();
+      if (token) {
+        headers.set('x-csrf-token', token);
+      }
+    }
+    if (!headers.has('accept')) {
+      headers.set('accept', 'application/json, text/plain, */*');
+    }
+    if (headers.size === 0) {
+      return init;
+    }
+    const plainHeaders = {};
+    headers.forEach((value, key) => {
+      plainHeaders[key] = value;
+    });
+    return {
+      ...init,
+      headers: plainHeaders,
+    };
+  };
+
   const tryParseBody = async (response) => {
     const contentType = response.headers.get('content-type') || '';
     try {
@@ -47,7 +82,7 @@
     }
 
     try {
-      const init = payload.init ? { ...payload.init } : {};
+      const init = ensureHeaders(payload.init ? { ...payload.init } : {});
       const response = await fetch(payload.url, init);
       const body = await tryParseBody(response);
 

@@ -3,6 +3,9 @@ const CONTENT_MESSAGE_SOURCE = 'veles-content';
 const BACKGROUND_MESSAGE_SOURCE = 'veles-background';
 
 const pendingRequests = new Map();
+let requestDelayMs = 300;
+let requestQueue = [];
+let activeRequest = null;
 
 const generateRequestId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -21,8 +24,102 @@ const findActiveVelesTab = async () => {
   return activeTab?.id ?? null;
 };
 
+const processQueue = () => {
+  if (activeRequest || requestQueue.length === 0) {
+    return;
+  }
+
+  const nextItem = requestQueue.shift();
+  if (!nextItem) {
+    return;
+  }
+
+  const { tabId, requestId, payload, sendResponse } = nextItem;
+
+  const finalize = (resultPayload) => {
+    try {
+      sendResponse({ requestId, ...resultPayload });
+    } catch (error) {
+      console.warn('[Veles background] Unable to send response to UI', error);
+    } finally {
+      activeRequest = null;
+      setTimeout(processQueue, requestDelayMs);
+    }
+  };
+
+  activeRequest = { ...nextItem, finalize };
+
+  const dispatchToTab = (attempt = 1) => {
+    pendingRequests.set(requestId, (responsePayload) => {
+      pendingRequests.delete(requestId);
+      finalize(responsePayload);
+    });
+
+    chrome.tabs.sendMessage(
+      tabId,
+      {
+        source: BACKGROUND_MESSAGE_SOURCE,
+        action: 'proxy-request',
+        requestId,
+        payload,
+      },
+      (response) => {
+        const lastError = chrome.runtime.lastError;
+        if (lastError) {
+          pendingRequests.delete(requestId);
+
+          if (
+            attempt === 1 &&
+            typeof chrome.scripting !== 'undefined' &&
+            lastError.message?.includes('Receiving end does not exist')
+          ) {
+            chrome.scripting.executeScript(
+              {
+                target: { tabId },
+                files: ['scripts/proxy-bridge.js'],
+              },
+              () => {
+                const injectionError = chrome.runtime.lastError;
+                if (injectionError) {
+                  finalize({ ok: false, error: injectionError.message });
+                  return;
+                }
+
+                dispatchToTab(attempt + 1);
+              }
+            );
+            return;
+          }
+
+          finalize({ ok: false, error: lastError.message });
+          return;
+        }
+
+        if (response && response.accepted === false) {
+          pendingRequests.delete(requestId);
+          finalize({ ok: false, error: response.error ?? 'Контент-скрипт отклонил запрос.' });
+        }
+      }
+    );
+  };
+
+  dispatchToTab();
+};
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message !== 'object') {
+    return false;
+  }
+
+  if (message.source === UI_MESSAGE_SOURCE && message.action === 'update-delay') {
+    const delayCandidate = Number(message.payload?.delayMs);
+    if (!Number.isFinite(delayCandidate) || delayCandidate < 0) {
+      sendResponse({ ok: false, error: 'Некорректное значение задержки.' });
+      return false;
+    }
+
+    requestDelayMs = delayCandidate;
+    sendResponse({ ok: true, delayMs: requestDelayMs });
     return false;
   }
 
@@ -42,54 +139,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
-        const dispatchRequest = (attempt = 1) => {
-          pendingRequests.set(requestId, sendResponse);
-
-          chrome.tabs.sendMessage(tabId, {
-            source: BACKGROUND_MESSAGE_SOURCE,
-            action: 'proxy-request',
-            requestId,
-            payload,
-          }, (response) => {
-            const lastError = chrome.runtime.lastError;
-            if (lastError) {
-              pendingRequests.delete(requestId);
-
-              if (
-                attempt === 1 &&
-                typeof chrome.scripting !== 'undefined' &&
-                lastError.message?.includes('Receiving end does not exist')
-              ) {
-                chrome.scripting.executeScript(
-                  {
-                    target: { tabId },
-                    files: ['scripts/proxy-bridge.js'],
-                  },
-                  () => {
-                    const injectionError = chrome.runtime.lastError;
-                    if (injectionError) {
-                      sendResponse({ ok: false, error: injectionError.message });
-                      return;
-                    }
-
-                    dispatchRequest(attempt + 1);
-                  }
-                );
-                return;
-              }
-
-              sendResponse({ ok: false, error: lastError.message });
-              return;
-            }
-
-            if (response && response.accepted === false) {
-              pendingRequests.delete(requestId);
-              sendResponse({ ok: false, error: response.error ?? 'Контент-скрипт отклонил запрос.' });
-            }
-          });
-        };
-
-        dispatchRequest();
+        requestQueue.push({ tabId, requestId, payload, sendResponse });
+        processQueue();
       })
       .catch((error) => {
         sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) });
@@ -103,12 +154,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const responder = pendingRequests.get(requestId);
 
     if (responder) {
-      responder({ requestId, ...payload });
-      pendingRequests.delete(requestId);
+      responder(payload);
     }
 
     return false;
   }
 
   return false;
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  requestQueue = requestQueue.filter((item) => item.tabId !== tabId);
+
+  if (activeRequest && activeRequest.tabId === tabId) {
+    const { requestId, finalize } = activeRequest;
+    pendingRequests.delete(requestId);
+    activeRequest = null;
+    finalize({ ok: false, error: 'Вкладка закрыта.' });
+  }
 });
