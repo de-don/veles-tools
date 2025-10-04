@@ -6,9 +6,15 @@ import type {
   PaginatedResponse,
 } from '../types/backtests';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
+import {
+  readCachedBacktestCycles,
+  readCachedBacktestDetail,
+  writeCachedBacktestCycles,
+  writeCachedBacktestDetail,
+} from '../storage/backtestCache';
 
 const BACKTESTS_ENDPOINT = 'https://veles.finance/api/backtests/statistics';
-const DEFAULT_CYCLES_PAGE_SIZE = 200;
+export const DEFAULT_CYCLES_PAGE_SIZE = 200;
 
 const buildQueryString = (params: BacktestsListParams): string => {
   const searchParams = new URLSearchParams();
@@ -44,8 +50,31 @@ export const fetchBacktests = async (params: BacktestsListParams): Promise<Backt
   return body;
 };
 
-export const fetchBacktestDetails = async (id: number): Promise<BacktestStatisticsDetail> => {
+export interface FetchBacktestDetailsOptions {
+  /**
+   * Пропустить чтение и запись в кэш. Полезно при ручном обновлении данных.
+   */
+  ignoreCache?: boolean;
+  /**
+   * Пропустить чтение кэша, но обновить его полученными данными.
+   */
+  forceRefresh?: boolean;
+}
+
+export const fetchBacktestDetails = async (
+  id: number,
+  options: FetchBacktestDetailsOptions = {},
+): Promise<BacktestStatisticsDetail> => {
   const url = `${BACKTESTS_ENDPOINT}/${id}`;
+
+  const { ignoreCache = false, forceRefresh = false } = options;
+  if (!ignoreCache && !forceRefresh) {
+    const cached = await readCachedBacktestDetail(id);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const response = await proxyHttpRequest<BacktestStatisticsDetail>({
     url,
     init: {
@@ -59,11 +88,16 @@ export const fetchBacktestDetails = async (id: number): Promise<BacktestStatisti
     throw new Error(errorMessage);
   }
 
-  if (!response.body) {
+  const { body } = response;
+  if (!body) {
     throw new Error('Пустой ответ сервера.');
   }
 
-  return response.body;
+  if (!ignoreCache) {
+    await writeCachedBacktestDetail(id, body);
+  }
+
+  return body;
 };
 
 export interface BacktestCyclesRequestParams {
@@ -72,12 +106,34 @@ export interface BacktestCyclesRequestParams {
   pageSize?: number;
 }
 
+export interface FetchBacktestCyclesOptions {
+  /**
+   * Пропустить чтение и запись в кэш.
+   */
+  ignoreCache?: boolean;
+  /**
+   * Пропустить чтение кэша, но сохранить актуальные данные.
+   */
+  forceRefresh?: boolean;
+}
+
 export const fetchBacktestCycles = async (
   id: number,
   params: BacktestCyclesRequestParams = {},
+  options: FetchBacktestCyclesOptions = {},
 ): Promise<BacktestCycle[]> => {
-  const { from, to, pageSize = DEFAULT_CYCLES_PAGE_SIZE } = params;
+  const { ignoreCache = false, forceRefresh = false } = options;
+  const from = params.from ?? null;
+  const to = params.to ?? null;
+  const pageSize = Math.max(params.pageSize ?? DEFAULT_CYCLES_PAGE_SIZE, 1);
   const cycles: BacktestCycle[] = [];
+
+  if (!ignoreCache && !forceRefresh) {
+    const cached = await readCachedBacktestCycles(id, { from, to, pageSize });
+    if (cached) {
+      return cached;
+    }
+  }
 
   let page = 0;
   let totalPages = 1;
@@ -123,6 +179,10 @@ export const fetchBacktestCycles = async (
     if (pageContent.length < pageSize) {
       break;
     }
+  }
+
+  if (!ignoreCache) {
+    await writeCachedBacktestCycles(id, { from, to, pageSize }, cycles);
   }
 
   return cycles;

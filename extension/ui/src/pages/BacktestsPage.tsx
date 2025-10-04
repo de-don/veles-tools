@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { fetchBacktests, fetchBacktestCycles, fetchBacktestDetails } from '../api/backtests';
+import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktests, fetchBacktestCycles, fetchBacktestDetails } from '../api/backtests';
 import type { BacktestStatistics, BacktestStatisticsListResponse } from '../types/backtests';
 import {
   clearDailyConcurrencyChart,
@@ -9,6 +9,7 @@ import {
   type AggregationSummary,
   type BacktestAggregationMetrics,
 } from '../lib/backtestAggregation';
+import { readCachedBacktestCycles, readCachedBacktestDetail } from '../storage/backtestCache';
 
 interface BacktestsPageProps {
   extensionReady: boolean;
@@ -27,6 +28,8 @@ interface BacktestSelection {
   quote: string;
   profitQuote: number | null;
   netQuote: number | null;
+  from?: string | null;
+  to?: string | null;
 }
 
 const createSummary = (item: BacktestStatistics): BacktestSelection => ({
@@ -37,6 +40,8 @@ const createSummary = (item: BacktestStatistics): BacktestSelection => ({
   quote: item.quote,
   profitQuote: item.profitQuote,
   netQuote: item.netQuote,
+  from: item.from,
+  to: item.to,
 });
 
 const numberFormatter = new Intl.NumberFormat('ru-RU', {
@@ -304,6 +309,74 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   };
 
   const aggregationItems = useMemo(() => Array.from(aggregationState.items.values()), [aggregationState.items]);
+
+  const pendingCachedEntries = useMemo(() => {
+    const entries: Array<[number, BacktestSelection]> = [];
+    selection.forEach((summary, id) => {
+      const stateItem = aggregationState.items.get(id);
+      if (!stateItem || stateItem.status !== 'idle' || stateItem.metrics) {
+        return;
+      }
+      entries.push([id, summary]);
+    });
+    return entries;
+  }, [selection, aggregationState.items]);
+
+  useEffect(() => {
+    if (pendingCachedEntries.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const preloadFromCache = async () => {
+      for (const [id, summary] of pendingCachedEntries) {
+        if (cancelled) {
+          return;
+        }
+
+        const detail = await readCachedBacktestDetail(id);
+        if (!detail) {
+          continue;
+        }
+
+        const from = summary.from ?? detail.from ?? null;
+        const to = summary.to ?? detail.to ?? null;
+
+        const cycles = await readCachedBacktestCycles(id, { from, to, pageSize: DEFAULT_CYCLES_PAGE_SIZE });
+        if (!cycles || cancelled) {
+          if (cancelled) {
+            return;
+          }
+          continue;
+        }
+
+        const metrics = computeBacktestMetrics(detail, cycles);
+
+        setAggregationState((prev) => {
+          const existing = prev.items.get(id);
+          if (!existing || existing.status !== 'idle' || existing.metrics) {
+            return prev;
+          }
+          const nextItems = new Map(prev.items);
+          nextItems.set(id, {
+            ...existing,
+            status: 'success',
+            included: existing.included ?? true,
+            metrics,
+            error: undefined,
+          });
+          return { ...prev, items: nextItems };
+        });
+      }
+    };
+
+    void preloadFromCache();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingCachedEntries]);
 
   const collectedItems = useMemo(
     () => aggregationItems.filter((item) => item.status === 'success' && item.metrics),
