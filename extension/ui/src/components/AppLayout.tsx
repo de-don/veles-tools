@@ -39,6 +39,9 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           <NavLink to="/backtests" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Бэктесты
           </NavLink>
+          <NavLink to="/settings" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
+            Настройки
+          </NavLink>
         </nav>
         {!extensionReady && (
           <div className="sidebar__hint">

@@ -5,6 +5,7 @@ import HomePage from './pages/HomePage';
 import BotsPage from './pages/BotsPage';
 import BacktestsPage from './pages/BacktestsPage';
 import ImportBotsPage from './pages/ImportBotsPage';
+import SettingsPage from './pages/SettingsPage';
 import { ImportedBotsProvider } from './context/ImportedBotsContext';
 import { isExtensionRuntime, pingConnection, readConnectionStatus, updateRequestDelay } from './lib/extensionMessaging';
 
@@ -127,6 +128,7 @@ const App = () => {
             <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
             <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
             <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </AppLayout>
       </ImportedBotsProvider>
