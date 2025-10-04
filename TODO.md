@@ -17,6 +17,7 @@
 - [ ] Backtests sorting
 - [x] Add caching for backtest data to improve performance
 - [x] Run custom backtests
+- [ ] Load backtest presets (comissions, is public, etc from veles.finance)
 
 ### BackTests Stats
 

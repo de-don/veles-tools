@@ -105,6 +105,10 @@ const parseTimestamp = (value: unknown): number | null => {
   return Number.isFinite(time) ? time : null;
 };
 
+const isFiniteNumber = (value: unknown): value is number => {
+  return typeof value === 'number' && Number.isFinite(value);
+};
+
 const resolveStatsSpan = (stats: BacktestStatisticsDetail): TimeInterval | null => {
   const startCandidates: Array<string | null | undefined> = [
     stats.from,
@@ -129,12 +133,12 @@ const resolveStatsSpan = (stats: BacktestStatisticsDetail): TimeInterval | null 
 
   const start = startCandidates
     .map((candidate) => parseTimestamp(candidate ?? null))
-    .find((value): value is number => Number.isFinite(value));
+    .find(isFiniteNumber);
   const end = endCandidates
     .map((candidate) => parseTimestamp(candidate ?? null))
-    .find((value): value is number => Number.isFinite(value));
+    .find(isFiniteNumber);
 
-  if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+  if (start !== undefined && end !== undefined && end > start) {
     return { start, end };
   }
 

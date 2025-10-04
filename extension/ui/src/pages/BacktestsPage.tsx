@@ -412,8 +412,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     return { total, completed, percent };
   }, [aggregationState.completed, aggregationState.total]);
 
-  const hasAggregationData = includedMetrics.length > 0;
-
   const dailyConcurrencyRecords = aggregationSummary?.dailyConcurrency.records ?? [];
   const dailyConcurrencyStats = aggregationSummary?.dailyConcurrency.stats;
 
@@ -854,7 +852,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
           </div>
         )}
 
-        {hasAggregationData ? (
+        {aggregationSummary ? (
           <>
             <div className="aggregation-summary">
               <div className="aggregation-metric">
