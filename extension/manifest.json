@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Veles Multi Backtests",
-  "description": "Запуск последовательных бектестов для нескольких валют на veles.finance.",
+  "name": "Veles Tools",
+  "description": "Утилиты для удобной работы с  veles.finance.",
   "version": "0.1.0",
   "action": {
     "default_title": "Veles Tools",

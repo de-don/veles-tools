@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import type { PropsWithChildren } from 'react';
+import { APP_NAME, APP_VERSION } from '../config/version';
 
 interface AppLayoutProps extends PropsWithChildren {
   extensionReady: boolean;
@@ -25,7 +26,10 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
   return (
     <div className="app">
       <aside className="app__sidebar">
-        <div className="sidebar__brand">Veles Tools</div>
+        <div className="sidebar__brand">
+          <span>{APP_NAME}</span>
+          <span className="sidebar__version">v{APP_VERSION}</span>
+        </div>
         <nav className="sidebar__nav">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Главная
@@ -49,6 +53,14 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           </div>
         )}
         <div className="sidebar__controls">
+          <a
+            className="button button--ghost sidebar__donate"
+            href="https://buymeacoffee.com/dedon"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            Поддержать проект
+          </a>
           <div className={`status status--${connectionStatus.ok ? 'online' : 'offline'}`}>
             <div className="status__row">
               <div className="status__details">

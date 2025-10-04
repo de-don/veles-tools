@@ -15,7 +15,7 @@
 
 - [ ] Backtests filtering
 - [ ] Backtests sorting
-- [ ] Add caching for backtest data to improve performance
+- [x] Add caching for backtest data to improve performance
 - [x] Run custom backtests
 
 ### BackTests Stats
@@ -26,9 +26,9 @@
 
 ## Other Features
 
-- [ ] Update main page
-- [ ] Add ROADMAP
+- [x] Update main page
+- [x] Add ROADMAP
 - [ ] Symbols groups
 - [ ] Configurable tables
-- [ ] Donate button
+- [x] Donate button
 - [ ] New design (shadcn/ui)
