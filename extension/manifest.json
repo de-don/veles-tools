@@ -23,6 +23,13 @@
     {
       "resources": ["scripts/page-fetch-bridge.js"],
       "matches": ["https://veles.finance/*"]
+    },
+    {
+      "resources": [
+        "ui/dist/index.html",
+        "ui/dist/assets/*"
+      ],
+      "matches": ["<all_urls>"]
     }
   ]
 }

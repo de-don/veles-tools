@@ -85,7 +85,7 @@ const refreshActionIcon = async () => {
 
 const broadcastConnectionStatus = () => {
   try {
-    chrome.runtime.sendMessage({
+    const response = chrome.runtime.sendMessage({
       source: BACKGROUND_MESSAGE_SOURCE,
       action: 'connection-status-update',
       payload: {
@@ -94,6 +94,15 @@ const broadcastConnectionStatus = () => {
         error: lastPingResult.error,
       },
     });
+
+    if (response && typeof response.catch === 'function') {
+      response.catch((error) => {
+        if (error && typeof error.message === 'string' && error.message.includes('Receiving end does not exist')) {
+          return;
+        }
+        console.warn('[Veles background] Unable to broadcast connection status (async)', error);
+      });
+    }
   } catch (error) {
     console.warn('[Veles background] Unable to broadcast connection status', error);
   }
