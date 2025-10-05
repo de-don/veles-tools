@@ -253,7 +253,7 @@ const parseStoredEntries = (raw: string): ImportedBotEntry[] => {
 
     return result;
   } catch (error) {
-    console.warn('[Veles UI] Не удалось прочитать импортированных ботов из storage', error);
+    console.warn('[Veles Tools] Не удалось прочитать импортированных ботов из storage', error);
     return [];
   }
 };
@@ -263,7 +263,7 @@ const persistEntries = (entries: ImportedBotEntry[]) => {
     const payload = JSON.stringify(entries);
     window.localStorage.setItem(STORAGE_KEY, payload);
   } catch (error) {
-    console.warn('[Veles UI] Не удалось сохранить импортированных ботов', error);
+    console.warn('[Veles Tools] Не удалось сохранить импортированных ботов', error);
   }
 };
 
@@ -279,7 +279,7 @@ export const ImportedBotsProvider = ({ children }: PropsWithChildren) => {
       }
       return parseStoredEntries(stored);
     } catch (error) {
-      console.warn('[Veles UI] Ошибка чтения storage импортированных ботов', error);
+      console.warn('[Veles Tools] Ошибка чтения storage импортированных ботов', error);
       return [];
     }
   });

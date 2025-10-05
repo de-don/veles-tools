@@ -12,6 +12,7 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
 }
 
 body {
@@ -21,6 +22,7 @@ body {
 
 #root {
   display: flex;
+  width: 100%;
 }
 
 .app {
@@ -28,6 +30,8 @@ body {
   height: 100%;
   min-height: 100vh;
   min-width: 0;
+  flex: 1 1 auto;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -45,10 +49,22 @@ body {
 
 .sidebar__brand {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 12px;
   font-weight: 700;
   font-size: 18px;
+}
+
+.sidebar__brand-logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.sidebar__brand-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .sidebar__version {
@@ -77,6 +93,25 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.sidebar__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  text-align: left;
+}
+
+.sidebar__meta-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.sidebar__meta-link:hover {
+  color: #1d4ed8;
 }
 
 .status {

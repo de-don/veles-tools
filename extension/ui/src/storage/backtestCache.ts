@@ -96,7 +96,7 @@ export const readCachedBacktestDetail = async (id: number): Promise<BacktestStat
     };
 
     request.onerror = () => {
-      console.warn('[Veles UI] Не удалось прочитать кэш бэктеста', request.error);
+      console.warn('[Veles Tools] Не удалось прочитать кэш бэктеста', request.error);
       resolve(readDetailFromMemory(id));
     };
   });
@@ -126,7 +126,7 @@ export const writeCachedBacktestDetail = async (id: number, detail: BacktestStat
       resolve();
     };
     request.onerror = () => {
-      console.warn('[Veles UI] Не удалось сохранить кэш бэктеста', request.error);
+      console.warn('[Veles Tools] Не удалось сохранить кэш бэктеста', request.error);
       resolve();
     };
   });
@@ -167,7 +167,7 @@ export const readCachedBacktestCycles = async (
     };
 
     request.onerror = () => {
-      console.warn('[Veles UI] Не удалось прочитать кэш циклов бэктеста', request.error);
+      console.warn('[Veles Tools] Не удалось прочитать кэш циклов бэктеста', request.error);
       resolve(readCyclesFromMemory(key));
     };
   });
@@ -206,7 +206,7 @@ export const writeCachedBacktestCycles = async (
       resolve();
     };
     request.onerror = () => {
-      console.warn('[Veles UI] Не удалось сохранить кэш циклов бэктеста', request.error);
+      console.warn('[Veles Tools] Не удалось сохранить кэш циклов бэктеста', request.error);
       resolve();
     };
   });
@@ -225,6 +225,6 @@ export const clearBacktestCache = async (): Promise<void> => {
   try {
     await openIndexedDb(databaseConfig);
   } catch (error) {
-    console.warn('[Veles UI] Не удалось переинициализировать IndexedDB после очистки', error);
+    console.warn('[Veles Tools] Не удалось переинициализировать IndexedDB после очистки', error);
   }
 };
