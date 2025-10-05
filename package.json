@@ -7,7 +7,7 @@
     "build": "vite build --config extension/ui/vite.config.ts",
     "preview": "vite preview --config extension/ui/vite.config.ts",
     "typecheck": "tsc --project extension/ui/tsconfig.json --noEmit",
-    "release": "npx -y -p semantic-release -p @semantic-release/commit-analyzer -p @semantic-release/release-notes-generator -p conventional-changelog-conventionalcommits -p @semantic-release/changelog -p @semantic-release/git -p @semantic-release/github -p @semantic-release/npm semantic-release"
+    "release": "npx -y -p semantic-release -p @semantic-release/commit-analyzer -p @semantic-release/release-notes-generator -p conventional-changelog-conventionalcommits -p @semantic-release/changelog -p @semantic-release/exec -p @semantic-release/git -p @semantic-release/github -p @semantic-release/npm semantic-release"
   },
   "dependencies": {
     "react": "^18.2.0",

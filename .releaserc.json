@@ -22,6 +22,12 @@
       }
     ],
     [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "npm run build && node ./scripts/prepare-extension-release.js ${nextRelease.version}"
+      }
+    ],
+    [
       "@semantic-release/npm",
       {
         "npmPublish": false
@@ -31,10 +37,23 @@
       "@semantic-release/git",
       {
         "assets": [
-          "CHANGELOG.md"
+          "CHANGELOG.md",
+          "package.json",
+          "package-lock.json",
+          "extension/manifest.json"
         ]
       }
     ],
-    "@semantic-release/github"
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "release-artifacts/veles-tools-*.zip",
+            "label": "Veles Tools Extension"
+          }
+        ]
+      }
+    ]
   ]
 }
