@@ -65,11 +65,12 @@ jobs:
     env:
       NPM_CONFIG_FUND: "false"
       NPM_CONFIG_AUDIT: "false"
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Setup Node.js
         uses: actions/setup-node@v4
