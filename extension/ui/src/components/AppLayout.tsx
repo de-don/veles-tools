@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import type { PropsWithChildren } from 'react';
 import { APP_NAME, APP_VERSION } from '../config/version';
+import logo from '../assets/logo.png';
 
 interface AppLayoutProps extends PropsWithChildren {
   extensionReady: boolean;
@@ -30,8 +31,11 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
     <div className="app">
       <aside className="app__sidebar">
         <div className="sidebar__brand">
-          <span>{APP_NAME}</span>
-          <span className="sidebar__version">v{APP_VERSION}</span>
+          <img className="sidebar__brand-logo" src={logo} alt="Veles Tools" />
+          <div className="sidebar__brand-meta">
+            <span>{APP_NAME}</span>
+            <span className="sidebar__version">v{APP_VERSION}</span>
+          </div>
         </div>
         <nav className="sidebar__nav">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
@@ -52,7 +56,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
         </nav>
         {!extensionReady && (
           <div className="sidebar__hint">
-            Расширение не активно. Запросы будут недоступны, пока UI не открыт из расширения.
+            Расширение Veles Tools неактивно. Запросы недоступны, пока интерфейс не открыт из меню расширения.
           </div>
         )}
         <div className="sidebar__controls">

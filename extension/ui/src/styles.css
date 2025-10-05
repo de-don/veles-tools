@@ -49,10 +49,22 @@ body {
 
 .sidebar__brand {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 12px;
   font-weight: 700;
   font-size: 18px;
+}
+
+.sidebar__brand-logo {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.sidebar__brand-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .sidebar__version {

@@ -602,7 +602,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
       {!extensionReady && (
         <div className="banner banner--warning">
-          Расширение не активно. Откройте UI из расширения, чтобы загрузить список бэктестов.
+          Расширение Veles Tools неактивно. Запустите интерфейс из меню расширения, чтобы загрузить список бэктестов.
         </div>
       )}
 

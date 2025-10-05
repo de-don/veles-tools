@@ -33,7 +33,7 @@ export const sendRuntimeMessage = async <TResponse = unknown, TPayload = unknown
   message: RuntimeMessage<TPayload>,
 ): Promise<TResponse> => {
   if (!isExtensionRuntime()) {
-    throw new Error('Расширение не доступно. Запустите UI как часть расширения.');
+    throw new Error('Расширение недоступно. Запустите Veles Tools как часть расширения.');
   }
 
   return new Promise<TResponse>((resolve, reject) => {

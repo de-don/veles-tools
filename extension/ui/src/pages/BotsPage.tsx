@@ -180,7 +180,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
 
       {!extensionReady && (
         <div className="banner banner--warning">
-          Расширение не активно. Откройте UI из расширения, чтобы подгрузить список ботов.
+          Расширение Veles Tools неактивно. Запустите интерфейс из меню расширения, чтобы подгрузить список ботов.
         </div>
       )}
 

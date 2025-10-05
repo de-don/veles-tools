@@ -21,7 +21,7 @@ const App = () => {
     }
 
     updateRequestDelay(requestDelay).catch((error) => {
-      console.warn('[Veles UI] Unable to update request delay in background', error);
+      console.warn('[Veles Tools] Unable to update request delay in background', error);
     });
   }, [extensionReady, requestDelay]);
 
@@ -62,11 +62,11 @@ const App = () => {
       chrome.tabs.create({ url: targetUrl }, () => {
         const lastError = chrome.runtime?.lastError;
         if (lastError) {
-          console.warn('[Veles UI] unable to open veles tab', lastError);
+          console.warn('[Veles Tools] unable to open veles tab', lastError);
         }
       });
     } catch (error) {
-      console.warn('[Veles UI] unable to open veles tab', error);
+      console.warn('[Veles Tools] unable to open veles tab', error);
       window.open(targetUrl, '_blank', 'noopener');
     }
   }, [extensionReady]);
@@ -80,7 +80,7 @@ const App = () => {
       return;
     }
     triggerPing().catch((error) => {
-      console.warn('[Veles UI] ping failed', error);
+      console.warn('[Veles Tools] ping failed', error);
     });
   }, [extensionReady, triggerPing]);
 

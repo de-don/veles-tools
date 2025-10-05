@@ -189,7 +189,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
   const handleImport = useCallback(async () => {
     resetLogs();
     if (!extensionReady) {
-      appendLog('Расширение не активно — импорт невозможен.', 'error');
+      appendLog('Расширение Veles Tools неактивно — импорт невозможен.', 'error');
       return;
     }
 
@@ -280,7 +280,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
 
       {!extensionReady && (
         <div className="banner banner--warning">
-          Расширение не активно. Импорт возможен только при запуске внутри расширения Chrome.
+          Расширение Veles Tools неактивно. Импорт доступен только при запуске внутри интерфейса расширения.
         </div>
       )}
 

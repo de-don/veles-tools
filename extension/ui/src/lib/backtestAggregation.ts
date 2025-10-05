@@ -976,7 +976,7 @@ export const drawDailyConcurrencyChart = (
       }
       return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
     } catch (error) {
-      console.warn('[Veles UI] Unable to format concurrency date label', error);
+      console.warn('[Veles Tools] Unable to format concurrency date label', error);
       return `${dayIndex}`;
     }
   };
