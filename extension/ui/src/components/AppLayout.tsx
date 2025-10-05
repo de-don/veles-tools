@@ -15,6 +15,9 @@ export interface ConnectionStatus {
   error?: string;
 }
 
+const REPOSITORY_URL = 'https://github.com/de-don/veles-tools';
+const AUTHOR_URL = 'https://t.me/dontsov';
+
 const formatTimestamp = (timestamp: number | null) => {
   if (!timestamp) {
     return '—';
@@ -79,6 +82,14 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
                 Открыть veles.finance
               </button>
             )}
+          </div>
+          <div className="sidebar__meta">
+            <a className="sidebar__meta-link" href={REPOSITORY_URL} target="_blank" rel="noreferrer noopener">
+              Исходный код на GitHub
+            </a>
+            <a className="sidebar__meta-link" href={AUTHOR_URL} target="_blank" rel="noreferrer noopener">
+              Автор: @dontsov
+            </a>
           </div>
         </div>
       </aside>
