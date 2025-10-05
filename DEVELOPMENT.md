@@ -3,8 +3,8 @@
 Этот документ описывает локальную настройку окружения, полезные команды и то, как работает автоматизация релизов.
 
 ## Предпосылки
-- Node.js 20 LTS или новее
-- npm 9+
+- Node.js 22 LTS или новее
+- npm 10+
 - Git
 
 Рекомендуется устанавливать зависимости через `npm install` в корне репозитория.
@@ -19,6 +19,9 @@
 - `npm run build` — собирает production-версию UI в `extension/ui/dist`.
 - `npm run preview` — локально проверяет production-сборку.
 - `npm run typecheck` — выполняет `tsc --noEmit` для проверки типов.
+- `npm run test` — запускает Vitest в headless-режиме и останавливается при первой ошибке.
+- `npm run test:watch` — запускает Vitest в режиме наблюдения.
+- `npm run test:coverage` — генерирует отчёт покрытия (text + HTML) через `vitest --coverage`.
 - `npm run release` — запускает Semantic Release (использует `npx` и установит все плагины на лету).
 
 ## Коммит-месседжи
@@ -31,10 +34,11 @@ chore: обновить зависимости ui
 ```
 
 ## GitHub Actions
-Пайплайн описан в `.github/workflows/ci.yml` и выполняет три последовательных шага:
+Пайплайн описан в `.github/workflows/ci.yml` и выполняет четыре последовательных шага:
 1. `typecheck` — проверка типов через `tsc --noEmit`.
-2. `build` — сборка UI и публикация артефакта с содержимым `extension/ui/dist`.
-3. `release` — запускает Semantic Release только при пуше в `main`.
+2. `test` — прогон `npm run test` с Vitest.
+3. `build` — сборка UI и публикация артефакта с содержимым `extension/ui/dist`.
+4. `release` — запускает Semantic Release только при пуше в `main`.
 
 Для установки зависимостей используется `npm ci` с включённым кешем npm (`actions/setup-node`), что ускоряет прогон внутри одного workflow.
 
@@ -57,6 +61,6 @@ npm run release
 Перед запуском убедитесь, что в репозитории нет незакоммиченных изменений — Semantic Release остановится, если рабочая копия грязная.
 
 ## Проверка перед PR/MR
-- Выполните `npm run typecheck` и `npm run build` локально.
+- Выполните `npm run typecheck`, `npm run test` и `npm run build` локально.
 - Убедитесь, что Conventional Commit выполнен и описывает изменения.
 - Пробежитесь по тестовым сценариям из `README.md` («Использование») вручную, если вносились изменения в UI или процессы бэктестов.

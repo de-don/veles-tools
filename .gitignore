@@ -3,3 +3,4 @@
 node_modules
 extension/ui/dist
 release-artifacts/
+**/coverage/**

@@ -114,17 +114,26 @@ export const resolveQuoteCurrency = (strategy: BotStrategy): string | null => {
   return null;
 };
 
+const sanitizeTicker = (value: string): string => {
+  return value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+};
+
 export const composeSymbol = (baseTicker: string, quoteCurrency: string): SymbolDescriptor => {
-  const normalizedBase = baseTicker.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const normalizedBase = sanitizeTicker(baseTicker);
   if (!normalizedBase) {
     throw new Error('Некорректный тикер');
   }
-  const quote = quoteCurrency.toUpperCase();
+
+  const normalizedQuote = sanitizeTicker(quoteCurrency);
+  if (!normalizedQuote) {
+    throw new Error('Некорректный тикер');
+  }
+
   return {
     base: normalizedBase,
-    quote,
-    display: `${normalizedBase}/${quote}`,
-    pairCode: `${normalizedBase}${quote}`,
+    quote: normalizedQuote,
+    display: `${normalizedBase}/${normalizedQuote}`,
+    pairCode: `${normalizedBase}${normalizedQuote}`,
   };
 };
 
