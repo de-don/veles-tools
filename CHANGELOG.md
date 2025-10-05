@@ -1,3 +1,10 @@
+## [1.1.0](https://github.com/de-don/veles-tools/compare/v1.0.0...v1.1.0) (2025-10-05)
+
+### Features
+
+* add links to repo and author ([ade0e41](https://github.com/de-don/veles-tools/commit/ade0e4159454014c0881d234fce32f291baa9ffc))
+* update texts & logo ([7f6acb7](https://github.com/de-don/veles-tools/commit/7f6acb7361390aabd064c57576add8118c2337b1))
+
 ## 1.0.0 (2025-10-05)
 
 ### Features
