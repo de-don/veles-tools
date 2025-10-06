@@ -176,7 +176,7 @@ export const fetchBacktestCycles = async (
     totalPages = Number.isFinite(declaredTotalPages) && declaredTotalPages > 0 ? declaredTotalPages : totalPages;
 
     page += 1;
-    if (pageContent.length < pageSize) {
+    if (pageContent.length === 0) {
       break;
     }
   }

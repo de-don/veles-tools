@@ -512,7 +512,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
       for (const id of targets) {
         try {
           const details = await fetchBacktestDetails(id);
-          const cycles = await fetchBacktestCycles(id, { from: details.from, to: details.to });
+          const cycles = await fetchBacktestCycles(id);
           const metrics = computeBacktestMetrics(details, cycles);
           setAggregationState((prev) => {
             const nextCompleted = Math.min(prev.completed + 1, prev.total || targets.length);
