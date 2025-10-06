@@ -10,6 +10,7 @@ import {
   type SymbolDescriptor,
 } from '../api/backtestRunner';
 import { useImportedBots } from '../context/ImportedBotsContext';
+import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
 
 export type BacktestVariant = 'single' | 'multiCurrency';
 
@@ -220,7 +221,10 @@ const wait = (ms: number) => new Promise<void>((resolve) => {
 });
 
 const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) => {
-  const [formState, setFormState] = useState<BacktestFormState>(() => ({ ...defaultFormState }));
+  const [formState, setFormState] = useState<BacktestFormState>(() => ({
+    ...defaultFormState,
+    assetList: readMultiCurrencyAssetList(),
+  }));
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isRunning, setIsRunning] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -241,9 +245,11 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
   useEffect(() => {
     // Reset form on variant change to avoid leftover fields between different actions.
+    const storedAssetList = variant === 'multiCurrency' ? readMultiCurrencyAssetList() : '';
     setFormState((prev) => ({
       ...defaultFormState,
       nameTemplate: prev.nameTemplate || defaultFormState.nameTemplate,
+      assetList: storedAssetList,
     }));
     setFormErrors({});
     setLogs([]);
@@ -344,6 +350,10 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
       }));
       return;
     }
+    if (name === 'assetList') {
+      writeMultiCurrencyAssetList(value);
+    }
+
     setFormState((prev) => ({
       ...prev,
       [name]: value,
