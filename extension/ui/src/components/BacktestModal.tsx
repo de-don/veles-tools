@@ -254,7 +254,12 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
   }, [variant]);
 
   const title = useMemo(() => variantLabels[variant], [variant]);
-  const canClose = !isRunning;
+  const handleCancel = () => {
+    if (isRunning) {
+      isActiveRef.current = false;
+    }
+    onClose();
+  };
 
   useEffect(() => {
     if (initialTitleRef.current === null) {
@@ -866,8 +871,8 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           {runError && <div className="banner banner--warning">{runError}</div>}
 
           <footer className="modal__footer">
-            <button type="button" className="button button--ghost" onClick={onClose} disabled={!canClose}>
-              {isCompleted ? 'Закрыть' : 'Отмена'}
+            <button type="button" className="button button--ghost" onClick={handleCancel}>
+              {isRunning ? 'Отменить' : isCompleted ? 'Закрыть' : 'Отмена'}
             </button>
             <button type="submit" className="button" disabled={isRunning}>
               {isRunning ? 'Запускаем…' : 'Запустить'}
