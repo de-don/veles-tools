@@ -8,6 +8,7 @@ import type {
   StrategyCondition,
 } from '../types/bots';
 import type { BotStrategy, BotStrategyCommissions, BotStrategyPair } from '../api/backtestRunner';
+import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
 
 export interface ImportedBotEntry {
   id: string;
@@ -259,24 +260,17 @@ const parseStoredEntries = (raw: string): ImportedBotEntry[] => {
 };
 
 const persistEntries = (entries: ImportedBotEntry[]) => {
-  try {
-    const payload = JSON.stringify(entries);
-    window.localStorage.setItem(STORAGE_KEY, payload);
-  } catch (error) {
-    console.warn('[Veles Tools] Не удалось сохранить импортированных ботов', error);
-  }
+  const payload = JSON.stringify(entries);
+  writeStorageValue(STORAGE_KEY, payload);
 };
 
 export const ImportedBotsProvider = ({ children }: PropsWithChildren) => {
   const [bots, setBots] = useState<ImportedBotEntry[]>(() => {
-    if (typeof window === 'undefined') {
+    const stored = readStorageValue(STORAGE_KEY);
+    if (!stored) {
       return [];
     }
     try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (!stored) {
-        return [];
-      }
       return parseStoredEntries(stored);
     } catch (error) {
       console.warn('[Veles Tools] Ошибка чтения storage импортированных ботов', error);
@@ -285,9 +279,6 @@ export const ImportedBotsProvider = ({ children }: PropsWithChildren) => {
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
     persistEntries(bots);
   }, [bots]);
 

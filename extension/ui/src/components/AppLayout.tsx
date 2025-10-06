@@ -18,6 +18,8 @@ export interface ConnectionStatus {
 
 const REPOSITORY_URL = 'https://github.com/de-don/veles-tools';
 const AUTHOR_URL = 'https://t.me/dontsov';
+const CHROME_WEBSTORE_URL =
+  'https://chromewebstore.google.com/detail/veles-tools/hgfhapnhcnncjplmjkbbljhjpcjilbgm';
 
 const formatTimestamp = (timestamp: number | null) => {
   if (!timestamp) {
@@ -88,6 +90,14 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
             )}
           </div>
           <div className="sidebar__meta">
+            <a
+              className="sidebar__meta-link"
+              href={CHROME_WEBSTORE_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              Расширение в Chrome Web Store
+            </a>
             <a className="sidebar__meta-link" href={REPOSITORY_URL} target="_blank" rel="noreferrer noopener">
               Исходный код на GitHub
             </a>
