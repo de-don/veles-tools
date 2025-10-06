@@ -1,3 +1,13 @@
+## [1.2.0](https://github.com/de-don/veles-tools/compare/v1.1.0...v1.2.0) (2025-10-06)
+
+### Features
+
+* **backtests:** save previous currencies list to local storage ([571ceec](https://github.com/de-don/veles-tools/commit/571ceec8d51083194aa1f235fe01615d9a6a236a))
+
+### Bug Fixes
+
+* **backtests:** correct cancel button press in backtests modal ([6fc0c1e](https://github.com/de-don/veles-tools/commit/6fc0c1e59f3a05b8e91cc9751383e1fd4d526d48))
+
 ## [1.1.0](https://github.com/de-don/veles-tools/compare/v1.0.0...v1.1.0) (2025-10-05)
 
 ### Features
