@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktests, fetchBacktestCycles, fetchBacktestDetails } from '../api/backtests';
 import type { BacktestStatistics, BacktestStatisticsListResponse } from '../types/backtests';
 import {
-  clearDailyConcurrencyChart,
   computeBacktestMetrics,
-  drawDailyConcurrencyChart,
   summarizeAggregations,
   type AggregationSummary,
   type BacktestAggregationMetrics,
 } from '../lib/backtestAggregation';
+import { DailyConcurrencyChart } from '../components/charts/DailyConcurrencyChart';
+import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { readCachedBacktestCycles, readCachedBacktestDetail } from '../storage/backtestCache';
 
 interface BacktestsPageProps {
@@ -151,7 +151,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     completed: 0,
     lastRunAt: null,
   });
-  const concurrencyChartRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     if (!extensionReady) {
@@ -415,6 +414,15 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   const dailyConcurrencyRecords = aggregationSummary?.dailyConcurrency.records ?? [];
   const dailyConcurrencyStats = aggregationSummary?.dailyConcurrency.stats;
 
+  const portfolioEquitySeries = aggregationSummary?.portfolioEquity ?? null;
+  const portfolioFinalValue = useMemo(() => {
+    if (!portfolioEquitySeries || portfolioEquitySeries.points.length === 0) {
+      return null;
+    }
+    const lastPoint = portfolioEquitySeries.points[portfolioEquitySeries.points.length - 1];
+    return lastPoint.value;
+  }, [portfolioEquitySeries]);
+
   const concurrencyLimitNote = useMemo(() => {
     if (!aggregationSummary || aggregationSummary.dailyConcurrency.records.length === 0) {
       return 'Недостаточно данных для расчёта лимитов.';
@@ -434,21 +442,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
       return 'Недостаточно данных для расчёта лимитов.';
     }
     return `Округлённые варианты лимита: ${options.join(', ')}.`;
-  }, [aggregationSummary]);
-
-  useEffect(() => {
-    const canvas = concurrencyChartRef.current;
-    if (!canvas) {
-      return;
-    }
-    if (!aggregationSummary || aggregationSummary.dailyConcurrency.records.length === 0) {
-      clearDailyConcurrencyChart(canvas);
-      return;
-    }
-    if (typeof window === 'undefined') {
-      return;
-    }
-    drawDailyConcurrencyChart(canvas, aggregationSummary.dailyConcurrency.records);
   }, [aggregationSummary]);
 
   const resolveTrendClass = (value: number): string => {
@@ -893,10 +886,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                 <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateDrawdown))}>{formatAggregationValue(aggregationSummary.aggregateDrawdown)}</div>
               </div>
               <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Макс. суммарное МПУ</div>
-                <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateMPU))}>{formatAggregationValue(aggregationSummary.aggregateMPU)}</div>
-              </div>
-              <div className="aggregation-metric">
                 <div className="aggregation-metric__label">Макс. одновременно открытых</div>
                 <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.maxConcurrent)}</div>
               </div>
@@ -907,6 +896,33 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
               <div className="aggregation-metric">
                 <div className="aggregation-metric__label">Дни без торговли</div>
                 <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.noTradeDays)}</div>
+              </div>
+            </div>
+
+            <div className="aggregation-equity">
+              <div className="aggregation-equity__header">
+                <h3 className="aggregation-equity__title">Суммарный P&L портфеля</h3>
+                <p className="aggregation-equity__subtitle">
+                  Чёрная линия показывает изменение совокупного результата выбранных бэктестов.
+                </p>
+              </div>
+              <div className="aggregation-equity__metrics">
+                <div className="aggregation-metric">
+                  <div className="aggregation-metric__label">Итоговый P&L</div>
+                  <div className={portfolioFinalValue !== null ? resolveTrendClass(portfolioFinalValue) : 'aggregation-metric__value aggregation-metric__value--muted'}>
+                    {portfolioFinalValue !== null ? formatSignedAmount(portfolioFinalValue) : '—'}
+                  </div>
+                </div>
+              </div>
+              <div className="aggregation-equity__chart">
+                {portfolioEquitySeries && portfolioEquitySeries.points.length > 0 ? (
+                  <PortfolioEquityChart
+                    series={portfolioEquitySeries}
+                    className="aggregation-equity__canvas"
+                  />
+                ) : (
+                  <div className="aggregation-equity__empty">Нет данных для построения графика.</div>
+                )}
               </div>
             </div>
 
@@ -937,8 +953,13 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
               </div>
               <div className="aggregation-concurrency__hint">{concurrencyLimitNote}</div>
               <div className="aggregation-concurrency__chart">
-                <canvas ref={concurrencyChartRef} className="aggregation-concurrency__canvas" />
-                {dailyConcurrencyRecords.length === 0 && (
+                {dailyConcurrencyRecords.length > 0 ? (
+                  <DailyConcurrencyChart
+                    records={dailyConcurrencyRecords}
+                    stats={dailyConcurrencyStats}
+                    className="aggregation-concurrency__canvas"
+                  />
+                ) : (
                   <div className="aggregation-concurrency__empty">Нет данных для построения графика.</div>
                 )}
               </div>
@@ -971,6 +992,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                   <th>Дни без торговли</th>
                   <th>Макс. просадка</th>
                   <th>Макс. МПУ</th>
+                  <th>Макс. МПП</th>
                   <th>Статус</th>
                 </tr>
               </thead>
@@ -1009,6 +1031,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                       <td>{metrics ? `${formatAggregationValue(metrics.downtimeDays)} д` : '—'}</td>
                       <td>{metrics ? formatAggregationValue(metrics.maxDrawdown) : '—'}</td>
                       <td>{metrics ? formatAggregationValue(metrics.maxMPU) : '—'}</td>
+                      <td>{metrics ? formatAggregationValue(metrics.maxMPP) : '—'}</td>
                       <td>
                         <span className={resolveStatusTone(item.status)}>{resolveStatusLabel(item)}</span>
                       </td>
