@@ -6,6 +6,13 @@ const REQUEST_TIMEOUT_MS = 15000;
 const MAX_ATTEMPTS = 3;
 const RECONNECT_INTERVAL_MS = 1500;
 
+const VELES_URL_PATTERNS = [
+  'https://veles.finance/*',
+  'https://*.veles.finance/*',
+  'http://veles.finance/*',
+  'http://*.veles.finance/*',
+];
+
 const pendingRequests = new Map();
 const requestQueue = [];
 
@@ -16,6 +23,54 @@ let lastPing = 0;
 let lastPingResult = { ok: false, error: 'Нет данных о соединении' };
 let isConnected = true;
 let reconnectTimer = null;
+let activeOrigin = null;
+
+const isVelesUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  try {
+    const parsed = new URL(url);
+    return (parsed.protocol === 'https:' || parsed.protocol === 'http:') && parsed.hostname.endsWith('veles.finance');
+  } catch {
+    return false;
+  }
+};
+
+const updateActiveOrigin = (url) => {
+  if (!isVelesUrl(url)) {
+    return;
+  }
+  try {
+    const parsed = new URL(url);
+    activeOrigin = `${parsed.protocol}//${parsed.hostname}`;
+  } catch (error) {
+    console.warn('[Veles background] unable to parse origin from url', url, error);
+  }
+};
+
+const normalizePayloadForOrigin = (payload) => {
+  if (!payload || typeof payload.url !== 'string' || !activeOrigin) {
+    return payload;
+  }
+
+  try {
+    const targetOrigin = new URL(activeOrigin);
+    const requestUrl = new URL(payload.url);
+
+    if (!requestUrl.hostname.endsWith('veles.finance')) {
+      return payload;
+    }
+
+    requestUrl.protocol = targetOrigin.protocol;
+    requestUrl.host = targetOrigin.host;
+
+    return { ...payload, url: requestUrl.toString() };
+  } catch (error) {
+    console.warn('[Veles background] unable to normalize request payload for origin', error);
+    return payload;
+  }
+};
 
 const broadcastConnectionStatus = () => {
   try {
@@ -26,6 +81,7 @@ const broadcastConnectionStatus = () => {
         ok: lastPingResult.ok,
         timestamp: lastPing,
         error: lastPingResult.error,
+        origin: activeOrigin,
       },
     });
 
@@ -88,12 +144,15 @@ const generateRequestId = () => {
 };
 
 const findActiveVelesTab = async () => {
-  const candidates = await chrome.tabs.query({ url: 'https://veles.finance/*' });
+  const candidates = await chrome.tabs.query({ url: VELES_URL_PATTERNS });
   if (!candidates || candidates.length === 0) {
     return null;
   }
 
   const activeTab = candidates.find((tab) => tab.active) ?? candidates[0];
+  if (activeTab?.url) {
+    updateActiveOrigin(activeTab.url);
+  }
   return activeTab?.id ?? null;
 };
 
@@ -220,9 +279,11 @@ const processQueue = () => {
 const dispatchToTab = (tabId, queueItem) => {
   const { requestId, payload, sendResponse, attempts } = queueItem;
 
+  const normalizedPayload = normalizePayloadForOrigin(payload);
+
   activeRequest = {
     requestId,
-    payload,
+    payload: normalizedPayload,
     sendResponse,
     attempts,
     tabId,
@@ -247,7 +308,7 @@ const dispatchToTab = (tabId, queueItem) => {
       source: BACKGROUND_MESSAGE_SOURCE,
       action: 'proxy-request',
       requestId,
-      payload,
+      payload: normalizedPayload,
     },
     (response) => {
       const lastError = chrome.runtime.lastError;
@@ -296,7 +357,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             if (response && (response.ok || response.accepted)) {
               updateConnectionStatus(true);
-              sendResponse({ ok: true });
+              sendResponse({ ok: true, origin: activeOrigin });
             } else {
               const errorText = response?.error ?? 'Нет ответа от контента';
               updateConnectionStatus(false, errorText);
@@ -319,6 +380,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ok: lastPingResult.ok,
       timestamp: lastPing,
       error: lastPingResult.error,
+      origin: activeOrigin,
     });
     return false;
   }
@@ -350,6 +412,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.source === CONTENT_MESSAGE_SOURCE && message.action === 'ping-response') {
     if (message.payload?.ok) {
+      if (message.payload.origin) {
+        updateActiveOrigin(message.payload.origin);
+      }
       updateConnectionStatus(true);
     } else {
       updateConnectionStatus(false, message.payload?.error ?? 'Неизвестная ошибка');
@@ -390,7 +455,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'loading' || changeInfo.url) {
     const url = changeInfo.url ?? tab.url;
-    if (url && !url.startsWith('https://veles.finance/')) {
+    if (url && !isVelesUrl(url)) {
       if (activeRequest && activeRequest.tabId === tabId) {
         retryActiveRequest('Вкладка покинула veles.finance', { incrementAttempt: false });
       }
@@ -403,6 +468,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         .catch((error) => {
           updateConnectionStatus(false, error instanceof Error ? error.message : String(error));
         });
+    } else if (url) {
+      updateActiveOrigin(url);
+      updateConnectionStatus(true);
     }
   }
 });

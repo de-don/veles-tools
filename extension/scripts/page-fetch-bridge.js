@@ -105,7 +105,7 @@
     window.postMessage({
       source: INJECTED_SOURCE,
       action: 'ping-response',
-      payload: { ok: true },
+      payload: { ok: true, origin: window.location.origin },
     });
   };
 

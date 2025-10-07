@@ -29,22 +29,33 @@ const App = () => {
     ok: false,
     lastChecked: null,
     error: 'нет данных',
+    origin: null,
   });
 
   const refreshConnectionStatus = useCallback(async () => {
     if (!extensionReady) {
-      setConnectionStatus({ ok: false, lastChecked: Date.now(), error: 'интерфейс вне расширения' });
+      setConnectionStatus({ ok: false, lastChecked: Date.now(), error: 'интерфейс вне расширения', origin: null });
       return;
     }
 
     const status = await readConnectionStatus();
-    setConnectionStatus({ ok: status.ok, lastChecked: status.timestamp || Date.now(), error: status.error });
+    setConnectionStatus({
+      ok: status.ok,
+      lastChecked: status.timestamp || Date.now(),
+      error: status.error,
+      origin: status.origin ?? null,
+    });
   }, [extensionReady]);
 
   const triggerPing = useCallback(async () => {
     const result = await pingConnection();
     if (!result.ok) {
-      setConnectionStatus({ ok: false, lastChecked: Date.now(), error: result.error ?? 'нет ответа' });
+      setConnectionStatus((prev) => ({
+        ok: false,
+        lastChecked: Date.now(),
+        error: result.error ?? 'нет ответа',
+        origin: prev.origin ?? null,
+      }));
       return;
     }
     await refreshConnectionStatus();
@@ -96,14 +107,18 @@ const App = () => {
         'source' in message &&
         (message as { source?: string }).source === 'veles-background'
       ) {
-        const payload = message as { action?: string; payload?: { ok?: boolean; timestamp?: number; error?: string } };
+        const payload = message as {
+          action?: string;
+          payload?: { ok?: boolean; timestamp?: number; error?: string; origin?: string | null };
+        };
         if (payload.action === 'connection-status-update') {
           const snapshot = payload.payload ?? {};
-          setConnectionStatus({
+          setConnectionStatus((prev) => ({
             ok: Boolean(snapshot.ok),
             lastChecked: snapshot.timestamp ?? Date.now(),
             error: snapshot.error,
-          });
+            origin: snapshot.origin ?? prev.origin ?? null,
+          }));
         }
       }
     };
@@ -113,6 +128,19 @@ const App = () => {
       chrome.runtime.onMessage.removeListener(listener);
     };
   }, [extensionReady]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && connectionStatus.origin) {
+      (window as unknown as { __VELES_ACTIVE_ORIGIN?: string }).__VELES_ACTIVE_ORIGIN = connectionStatus.origin;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('__VELES_ACTIVE_ORIGIN', connectionStatus.origin);
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [connectionStatus.origin]);
 
   return (
     <HashRouter>
