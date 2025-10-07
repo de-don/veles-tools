@@ -1,3 +1,22 @@
+## [1.3.0](https://github.com/de-don/veles-tools/compare/v1.2.0...v1.3.0) (2025-10-07)
+
+### Features
+
+* add support for ru.veles.finance domain ([f14d9f6](https://github.com/de-don/veles-tools/commit/f14d9f60232afa19aca3da7c26d6889e2ab204f0))
+* **api:** centralize API endpoint construction with `buildApiUrl` function ([d7051fc](https://github.com/de-don/veles-tools/commit/d7051fc748a781d52c4c524e388c689de2d32a63))
+* **backtests:** add avgNetPerDay metric ([bc03145](https://github.com/de-don/veles-tools/commit/bc03145655bcddbec54d0fa030e28a0db7e13545))
+* **backtests:** add error logging ([39a777c](https://github.com/de-don/veles-tools/commit/39a777ca7d06fd29db568d6fedad13cec26da117))
+* **backtests:** add info tooltips for metrics ([144b62c](https://github.com/de-don/veles-tools/commit/144b62c13e1a381d28df826ed349ec06777a0bbf))
+* **backtests:** add portfolio equity chart ([f193349](https://github.com/de-don/veles-tools/commit/f193349e6db929310a8a5661a494aaab19b17c09))
+* **backtests:** add tabs for aggregation data and improve UI handling ([f9af790](https://github.com/de-don/veles-tools/commit/f9af790699ec31dc7363b63235645b529fc8f47e))
+* **bots:** add filtering capabilities including API keys, status, and algorithms ([e88703e](https://github.com/de-don/veles-tools/commit/e88703e5853a13c5cc2664392850624f4a4f303e))
+* **pagination:** add 100 option to page size selector ([731307f](https://github.com/de-don/veles-tools/commit/731307ff7e4afa1bee9821011c008edadec89291))
+
+### Bug Fixes
+
+* **backtests:** correct the problem when part of backtest results could be missed ([fa31e42](https://github.com/de-don/veles-tools/commit/fa31e420953cd9ad0c1e9cf0418364afb4b6143f))
+* **backtests:** count all orders, not only finished ([a316fb2](https://github.com/de-don/veles-tools/commit/a316fb2a33c2508628006a31ec64f7f70ea16603))
+
 ## [1.2.0](https://github.com/de-don/veles-tools/compare/v1.1.0...v1.2.0) (2025-10-06)
 
 ### Features
