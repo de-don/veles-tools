@@ -105,6 +105,7 @@ export interface AggregationSummary {
   avgTradeDurationDays: number;
   avgMaxDrawdown: number;
   aggregateDrawdown: number;
+  aggregateMPU: number;
   maxConcurrent: number;
   avgConcurrent: number;
   noTradeDays: number;
@@ -504,6 +505,53 @@ const computeAggregateDrawdown = (metricsList: BacktestAggregationMetrics[]): nu
   }
 
   return maxDrawdown;
+};
+
+const computeAggregateMPU = (metricsList: BacktestAggregationMetrics[]): number => {
+  const events: Array<{ time: number; delta: number; type: 'start' | 'end' }> = [];
+
+  metricsList.forEach((metrics) => {
+    metrics.riskIntervals.forEach((interval) => {
+      const value = Number(interval.value);
+      if (
+        !Number.isFinite(interval.start)
+        || !Number.isFinite(interval.end)
+        || interval.end < interval.start
+        || !Number.isFinite(value)
+        || value <= 0
+      ) {
+        return;
+      }
+      events.push({ time: interval.start, delta: value, type: 'start' });
+      events.push({ time: interval.end, delta: -value, type: 'end' });
+    });
+  });
+
+  if (events.length === 0) {
+    return 0;
+  }
+
+  events.sort((a, b) => {
+    if (a.time === b.time) {
+      if (a.type === b.type) {
+        return 0;
+      }
+      return a.type === 'start' ? -1 : 1;
+    }
+    return a.time - b.time;
+  });
+
+  let current = 0;
+  let max = 0;
+
+  events.forEach((event) => {
+    current += event.delta;
+    if (current > max) {
+      max = current;
+    }
+  });
+
+  return max;
 };
 
 const computePortfolioEquitySeries = (metricsList: BacktestAggregationMetrics[]): PortfolioEquitySeries => {
@@ -930,6 +978,7 @@ export const summarizeAggregations = (metricsList: BacktestAggregationMetrics[])
     : 0;
 
   const aggregateDrawdown = computeAggregateDrawdown(metricsList);
+  const aggregateMPU = computeAggregateMPU(metricsList);
   const concurrency = computeConcurrency(metricsList);
   const noTradeInfo = computeNoTradeInfo(metricsList);
   const dailyConcurrency = computeDailyConcurrency(metricsList);
@@ -946,6 +995,7 @@ export const summarizeAggregations = (metricsList: BacktestAggregationMetrics[])
     avgTradeDurationDays,
     avgMaxDrawdown,
     aggregateDrawdown,
+    aggregateMPU,
     maxConcurrent: concurrency.max,
     avgConcurrent: concurrency.average,
     noTradeDays: noTradeInfo.noTradeDays,

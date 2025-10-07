@@ -898,6 +898,13 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                     </div>
                     <div className="aggregation-metric">
                       <div className="aggregation-metric__label">
+                        Макс. суммарное МПУ
+                        <InfoTooltip text="Максимальная одновременная просадка (MAE) по всем бэктестам, учитывая пересечения сделок." />
+                      </div>
+                      <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateMPU))}>{formatAggregationValue(aggregationSummary.aggregateMPU)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
                         Макс. одновременно открытых
                         <InfoTooltip text="Пиковое количество одновременных позиций в любой день по всем бэктестам." />
                       </div>
