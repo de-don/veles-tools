@@ -7,7 +7,7 @@ interface BotsPageProps {
   extensionReady: boolean;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_SORT = 'createdAt,desc';
 
 type SelectionMap = Map<string, BotSummary>;
