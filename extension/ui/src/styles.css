@@ -859,6 +859,25 @@ body {
   margin-top: 0;
 }
 
+.info-tooltip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-size: 12px;
+  cursor: help;
+  user-select: none;
+}
+
+.info-tooltip:hover {
+  background-color: #bae6fd;
+}
+
 .aggregation-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
