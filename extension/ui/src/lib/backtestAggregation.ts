@@ -11,11 +11,25 @@ export interface RiskInterval extends TimeInterval {
   value: number;
 }
 
+interface CycleInterval {
+  cycle: BacktestCycle;
+  interval: TimeInterval;
+}
+
 export interface EquityEvent {
   time: number;
   delta: number;
   cumulative: number;
   drawdown: number;
+}
+
+export interface AggregationTrade {
+  id: number;
+  start: number;
+  end: number;
+  net: number;
+  mfe: number;
+  mae: number;
 }
 
 export interface BacktestAggregationMetrics {
@@ -28,8 +42,10 @@ export interface BacktestAggregationMetrics {
   totalDeals: number;
   avgTradeDurationDays: number;
   totalTradeDurationSec: number;
+  avgNetPerDay: number;
   maxDrawdown: number;
   maxMPU: number;
+  maxMPP: number;
   downtimeDays: number;
   spanStart: number | null;
   spanEnd: number | null;
@@ -38,6 +54,7 @@ export interface BacktestAggregationMetrics {
   concurrencyIntervals: TimeInterval[];
   riskIntervals: RiskInterval[];
   activeDayIndices: number[];
+  trades: AggregationTrade[];
 }
 
 export interface DailyConcurrencyRecord {
@@ -46,6 +63,17 @@ export interface DailyConcurrencyRecord {
   activeDurationMs: number;
   maxCount: number;
   avgActiveCount: number;
+}
+
+export interface PortfolioEquityPoint {
+  time: number;
+  value: number;
+}
+
+export interface PortfolioEquitySeries {
+  points: PortfolioEquityPoint[];
+  minValue: number;
+  maxValue: number;
 }
 
 export interface DailyConcurrencyStats {
@@ -73,14 +101,15 @@ export interface AggregationSummary {
   totalDeals: number;
   avgPnlPerDeal: number;
   avgPnlPerBacktest: number;
+  avgNetPerDay: number;
   avgTradeDurationDays: number;
   avgMaxDrawdown: number;
   aggregateDrawdown: number;
-  aggregateMPU: number;
   maxConcurrent: number;
   avgConcurrent: number;
   noTradeDays: number;
   dailyConcurrency: DailyConcurrencyResult;
+  portfolioEquity: PortfolioEquitySeries;
 }
 
 const toNumber = (value: unknown): number => {
@@ -182,11 +211,22 @@ const resolveCycleInterval = (cycle: BacktestCycle): TimeInterval | null => {
   return { start, end: Number(end) };
 };
 
-const computeIntervals = (cycles: BacktestCycle[]): TimeInterval[] => {
+const collectCycleIntervals = (cycles: BacktestCycle[]): CycleInterval[] => {
   return cycles
-    .filter(isFinishedCycle)
-    .map((cycle) => resolveCycleInterval(cycle))
-    .filter((interval): interval is TimeInterval => Boolean(interval))
+    .map((cycle) => {
+      const interval = resolveCycleInterval(cycle);
+      if (!interval) {
+        return null;
+      }
+      return { cycle, interval };
+    })
+    .filter((entry): entry is CycleInterval => Boolean(entry));
+};
+
+const computeIntervals = (cycleIntervals: CycleInterval[]): TimeInterval[] => {
+  return cycleIntervals
+    .map((entry) => entry.interval)
+    .filter((interval) => Number.isFinite(interval.start) && Number.isFinite(interval.end) && interval.end >= interval.start)
     .sort((a, b) => (a.start - b.start) || (a.end - b.end));
 };
 
@@ -227,17 +267,13 @@ const computeDrawdownTimeline = (cycles: BacktestCycle[]): { maxDrawdown: number
   return { maxDrawdown, events: enriched };
 };
 
-const buildRiskIntervals = (cycles: BacktestCycle[]): { riskIntervals: RiskInterval[]; maxRisk: number } => {
+const buildRiskIntervals = (cycleIntervals: CycleInterval[]): { riskIntervals: RiskInterval[]; maxRisk: number } => {
   const riskIntervals: RiskInterval[] = [];
   let maxRisk = 0;
 
-  cycles.filter(isFinishedCycle).forEach((cycle) => {
+  cycleIntervals.forEach(({ cycle, interval }) => {
     const value = Math.abs(toNumber(cycle.maeAbsolute ?? 0));
     if (!Number.isFinite(value) || value <= 0) {
-      return;
-    }
-    const interval = resolveCycleInterval(cycle);
-    if (!interval) {
       return;
     }
     riskIntervals.push({ ...interval, value });
@@ -326,10 +362,38 @@ export const computeBacktestMetrics = (
   const avgDurationSec = Math.max(0, toNumber(stats.avgDuration ?? 0)) || 0;
   const totalTradeDurationSec = avgDurationSec * totalDeals;
   const avgTradeDurationDays = totalDeals > 0 ? totalTradeDurationSec / totalDeals / 86400 : 0;
+  const avgNetPerDay = toNumber(stats.netQuotePerDay ?? 0) || 0;
+
+  const cycleIntervals = collectCycleIntervals(cycles);
+  const finishedCycleIntervals = cycleIntervals.filter(({ cycle }) => isFinishedCycle(cycle));
+  const trades: AggregationTrade[] = [];
+  let maxMPP = 0;
+
+  cycleIntervals.forEach(({ cycle }) => {
+    const mfe = Math.max(0, toNumber(cycle.mfeAbsolute ?? 0));
+    if (mfe > maxMPP) {
+      maxMPP = mfe;
+    }
+  });
+
+  finishedCycleIntervals.forEach(({ cycle, interval }) => {
+    const net = toNumber(cycle.netQuote ?? cycle.profitQuote ?? 0);
+    const mfe = Math.max(0, toNumber(cycle.mfeAbsolute ?? 0));
+    const mae = Math.max(0, toNumber(cycle.maeAbsolute ?? 0));
+    const sanitizedNet = Number.isFinite(net) ? net : 0;
+    trades.push({
+      id: cycle.id,
+      start: interval.start,
+      end: interval.end,
+      net: sanitizedNet,
+      mfe,
+      mae,
+    });
+  });
 
   const drawdownTimeline = computeDrawdownTimeline(cycles);
-  const concurrencyIntervals = computeIntervals(cycles);
-  const riskInfo = buildRiskIntervals(cycles);
+  const concurrencyIntervals = computeIntervals(cycleIntervals);
+  const riskInfo = buildRiskIntervals(cycleIntervals);
   const coverage = computeCoverage(concurrencyIntervals);
   const statsSpan = resolveStatsSpan(stats);
 
@@ -356,11 +420,8 @@ export const computeBacktestMetrics = (
     markActiveRange(activeDaySet, interval.start, interval.end);
   });
 
-  cycles.filter(isFinishedCycle).forEach((cycle) => {
-    const interval = resolveCycleInterval(cycle);
-    if (interval) {
-      markActiveRange(activeDaySet, interval.start, interval.end);
-    }
+  cycleIntervals.forEach(({ cycle, interval }) => {
+    markActiveRange(activeDaySet, interval.start, interval.end);
     if (Array.isArray(cycle.orders)) {
       cycle.orders.forEach((order) => {
         const timestamp = parseTimestamp(order.executedAt ?? order.createdAt ?? order.updatedAt ?? null);
@@ -389,8 +450,10 @@ export const computeBacktestMetrics = (
     totalDeals,
     avgTradeDurationDays,
     totalTradeDurationSec,
+    avgNetPerDay,
     maxDrawdown: drawdownTimeline.maxDrawdown,
     maxMPU: riskInfo.maxRisk,
+    maxMPP,
     downtimeDays,
     spanStart: Number.isFinite(spanStart) ? spanStart : null,
     spanEnd: Number.isFinite(spanEnd) ? spanEnd : null,
@@ -399,6 +462,7 @@ export const computeBacktestMetrics = (
     concurrencyIntervals,
     riskIntervals: riskInfo.riskIntervals,
     activeDayIndices,
+    trades,
   };
 };
 
@@ -442,49 +506,81 @@ const computeAggregateDrawdown = (metricsList: BacktestAggregationMetrics[]): nu
   return maxDrawdown;
 };
 
-const computeAggregateMPU = (metricsList: BacktestAggregationMetrics[]): number => {
-  const events: Array<{ time: number; delta: number; type: 'start' | 'end' }> = [];
+const computePortfolioEquitySeries = (metricsList: BacktestAggregationMetrics[]): PortfolioEquitySeries => {
+  const trades = metricsList
+    .flatMap((metrics) => metrics.trades)
+    .map((trade) => ({
+      start: Number(trade.start),
+      end: Number(trade.end),
+      net: Number(trade.net) || 0,
+    }))
+    .filter((trade) => Number.isFinite(trade.end));
+
+  const spanCandidates: number[] = [];
   metricsList.forEach((metrics) => {
-    metrics.riskIntervals.forEach((interval) => {
-      const value = Number(interval.value);
-      if (
-        !Number.isFinite(interval.start)
-        || !Number.isFinite(interval.end)
-        || interval.end < interval.start
-        || !Number.isFinite(value)
-        || value <= 0
-      ) {
-        return;
+    if (Number.isFinite(metrics.spanStart)) {
+      spanCandidates.push(Number(metrics.spanStart));
+    }
+  });
+
+  trades.forEach((trade) => {
+    if (Number.isFinite(trade.start)) {
+      spanCandidates.push(Number(trade.start));
+    }
+    if (Number.isFinite(trade.end)) {
+      spanCandidates.push(Number(trade.end));
+    }
+  });
+
+  const points: PortfolioEquityPoint[] = [];
+  const initialTime = spanCandidates.length > 0 ? Math.min(...spanCandidates) : Number.NaN;
+
+  if (!Number.isFinite(initialTime) && trades.length === 0) {
+    return { points: [], minValue: 0, maxValue: 0 };
+  }
+
+  if (Number.isFinite(initialTime)) {
+    points.push({
+      time: Number(initialTime),
+      value: 0,
+    });
+  }
+
+  if (trades.length === 0) {
+    return { points, minValue: 0, maxValue: 0 };
+  }
+
+  trades.sort((a, b) => {
+    if (a.end === b.end) {
+      if (a.start === b.start) {
+        return 0;
       }
-      events.push({ time: interval.start, delta: value, type: 'start' });
-      events.push({ time: interval.end, delta: -value, type: 'end' });
+      if (!Number.isFinite(a.start)) {
+        return 1;
+      }
+      if (!Number.isFinite(b.start)) {
+        return -1;
+      }
+      return Number(a.start) - Number(b.start);
+    }
+    return Number(a.end) - Number(b.end);
+  });
+
+  let cumulative = 0;
+
+  trades.forEach((trade) => {
+    cumulative += trade.net;
+    points.push({
+      time: Number(trade.end),
+      value: cumulative,
     });
   });
 
-  if (events.length === 0) {
-    return 0;
-  }
+  const values = points.map((point) => point.value);
+  const minValue = values.length > 0 ? Math.min(...values) : 0;
+  const maxValue = values.length > 0 ? Math.max(...values) : 0;
 
-  events.sort((a, b) => {
-    if (a.time === b.time) {
-      if (a.type === b.type) {
-        return 0;
-      }
-      return a.type === 'start' ? -1 : 1;
-    }
-    return a.time - b.time;
-  });
-
-  let current = 0;
-  let max = 0;
-  events.forEach((event) => {
-    current += event.delta;
-    if (current > max) {
-      max = current;
-    }
-  });
-
-  return max;
+  return { points, minValue, maxValue };
 };
 
 const computeNoTradeInfo = (metricsList: BacktestAggregationMetrics[]): { totalDays: number; noTradeDays: number } => {
@@ -823,20 +919,21 @@ export const summarizeAggregations = (metricsList: BacktestAggregationMetrics[])
   const totalLosses = metricsList.reduce((acc, metrics) => acc + (Number(metrics.lossesCount) || 0), 0);
   const totalDeals = metricsList.reduce((acc, metrics) => acc + (Number(metrics.totalDeals) || 0), 0);
   const totalTradeDurationSec = metricsList.reduce((acc, metrics) => acc + (Number(metrics.totalTradeDurationSec) || 0), 0);
+  const totalAvgNetPerDay = metricsList.reduce((acc, metrics) => acc + (Number(metrics.avgNetPerDay) || 0), 0);
 
   const avgPnlPerDeal = totalDeals > 0 ? totalPnl / totalDeals : 0;
   const avgPnlPerBacktest = totalSelected > 0 ? totalPnl / totalSelected : 0;
+  const avgNetPerDay = totalSelected > 0 ? totalAvgNetPerDay / totalSelected : 0;
   const avgTradeDurationDays = totalDeals > 0 ? totalTradeDurationSec / totalDeals / 86400 : 0;
   const avgMaxDrawdown = totalSelected > 0
     ? metricsList.reduce((acc, metrics) => acc + (Number(metrics.maxDrawdown) || 0), 0) / totalSelected
     : 0;
 
   const aggregateDrawdown = computeAggregateDrawdown(metricsList);
-  const aggregateMPU = computeAggregateMPU(metricsList);
   const concurrency = computeConcurrency(metricsList);
   const noTradeInfo = computeNoTradeInfo(metricsList);
   const dailyConcurrency = computeDailyConcurrency(metricsList);
-
+  const portfolioEquity = computePortfolioEquitySeries(metricsList);
   return {
     totalSelected,
     totalPnl,
@@ -845,162 +942,14 @@ export const summarizeAggregations = (metricsList: BacktestAggregationMetrics[])
     totalDeals,
     avgPnlPerDeal,
     avgPnlPerBacktest,
+    avgNetPerDay,
     avgTradeDurationDays,
     avgMaxDrawdown,
     aggregateDrawdown,
-    aggregateMPU,
     maxConcurrent: concurrency.max,
     avgConcurrent: concurrency.average,
     noTradeDays: noTradeInfo.noTradeDays,
     dailyConcurrency,
+    portfolioEquity,
   };
-};
-
-export const drawDailyConcurrencyChart = (
-  canvas: HTMLCanvasElement,
-  records: DailyConcurrencyRecord[],
-): void => {
-  const context = canvas.getContext('2d');
-  if (!context) {
-    return;
-  }
-
-  const rect = canvas.getBoundingClientRect();
-  const cssWidth = rect.width || canvas.clientWidth || 0;
-  const cssHeight = rect.height || canvas.clientHeight || 0;
-  if (cssWidth <= 0 || cssHeight <= 0) {
-    return;
-  }
-
-  const dpr = window.devicePixelRatio || 1;
-  const width = Math.max(1, Math.round(cssWidth * dpr));
-  const height = Math.max(1, Math.round(cssHeight * dpr));
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-  }
-
-  context.setTransform(1, 0, 0, 1, 0, 0);
-  context.clearRect(0, 0, width, height);
-  if (dpr !== 1) {
-    context.scale(dpr, dpr);
-  }
-
-  const drawWidth = width / dpr;
-  const drawHeight = height / dpr;
-  const chartLeft = 48;
-  const chartRight = drawWidth - 16;
-  const chartTop = 16;
-  const chartBottom = drawHeight - 32;
-  const chartWidth = Math.max(chartRight - chartLeft, 0);
-  const chartHeight = Math.max(chartBottom - chartTop, 0);
-
-  const values = records.map((record) => Number(record.maxCount) || 0);
-  const maxValue = values.length > 0 ? Math.max(...values) : 0;
-  const drawBaselineOnly = values.length === 0 || chartWidth <= 0 || chartHeight <= 0;
-
-  context.strokeStyle = 'rgba(148, 163, 184, 0.55)';
-  context.lineWidth = 1.2;
-  context.beginPath();
-  context.moveTo(chartLeft, chartTop);
-  context.lineTo(chartLeft, chartBottom);
-  context.lineTo(chartRight, chartBottom);
-  context.stroke();
-
-  context.font = '11px sans-serif';
-  context.fillStyle = 'rgba(100, 116, 139, 0.85)';
-  context.textAlign = 'right';
-  context.textBaseline = 'middle';
-
-  if (drawBaselineOnly) {
-    context.fillText('0', chartLeft - 8, chartBottom);
-    return;
-  }
-
-  const effectiveMax = maxValue > 0 ? maxValue : 1;
-  const horizontalSteps = 4;
-  context.strokeStyle = 'rgba(148, 163, 184, 0.35)';
-  context.lineWidth = 1;
-  context.setLineDash([4, 4]);
-  for (let step = 0; step <= horizontalSteps; step += 1) {
-    const ratio = step / horizontalSteps;
-    const y = chartBottom - chartHeight * ratio;
-    context.beginPath();
-    context.moveTo(chartLeft, y);
-    context.lineTo(chartRight, y);
-    context.stroke();
-    const labelValue = effectiveMax * ratio;
-    const label = labelValue >= 10 ? labelValue.toFixed(0) : labelValue.toFixed(1);
-    context.fillText(label, chartLeft - 8, y);
-  }
-  context.setLineDash([]);
-
-  const barWidth = chartWidth / values.length;
-  const scaleY = chartHeight / effectiveMax;
-  context.fillStyle = 'rgba(99, 102, 241, 0.7)';
-
-  records.forEach((record, index) => {
-    const numericValue = Math.max(Number(record.maxCount) || 0, 0);
-    if (numericValue <= 0) {
-      return;
-    }
-    const barHeight = numericValue * scaleY;
-    const baseX = chartLeft + index * barWidth;
-    const bodyWidth = Math.max(Math.min(barWidth * 0.6, 28), Math.min(barWidth, 4));
-    const barX = baseX + (barWidth - bodyWidth) / 2;
-    const barY = chartBottom - barHeight;
-    context.fillRect(barX, barY, bodyWidth, barHeight);
-  });
-
-  context.fillStyle = 'rgba(71, 85, 105, 0.9)';
-  context.textAlign = 'center';
-  context.textBaseline = 'top';
-
-  const labelSlots = Math.min(8, records.length);
-  const labelStep = Math.max(1, Math.floor(records.length / labelSlots));
-  const labeledIndices = new Set<number>();
-  for (let index = 0; index < records.length; index += labelStep) {
-    labeledIndices.add(index);
-  }
-  labeledIndices.add(records.length - 1);
-
-  const formatDayLabel = (dayIndex: number): string => {
-    if (!Number.isFinite(dayIndex)) {
-      return '';
-    }
-    try {
-      const date = new Date(dayIndex * MS_IN_DAY);
-      const timestamp = date.getTime();
-      if (!Number.isFinite(timestamp)) {
-        return '';
-      }
-      return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric' });
-    } catch (error) {
-      console.warn('[Veles Tools] Unable to format concurrency date label', error);
-      return `${dayIndex}`;
-    }
-  };
-
-  labeledIndices.forEach((index) => {
-    const record = records[index];
-    if (!record) {
-      return;
-    }
-    const centerX = chartLeft + (index + 0.5) * barWidth;
-    const label = formatDayLabel(record.dayIndex);
-    if (label) {
-      context.fillText(label, centerX, chartBottom + 6);
-    }
-  });
-};
-
-export const clearDailyConcurrencyChart = (canvas: HTMLCanvasElement): void => {
-  const context = canvas.getContext('2d');
-  if (!context) {
-    return;
-  }
-  const width = canvas.width || 0;
-  const height = canvas.height || 0;
-  context.setTransform(1, 0, 0, 1, 0, 0);
-  context.clearRect(0, 0, width, height);
 };

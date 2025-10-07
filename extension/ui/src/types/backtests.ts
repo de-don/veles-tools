@@ -94,6 +94,7 @@ export interface BacktestCycle {
   duration?: number | null;
   netQuote?: number | null;
   profitQuote?: number | null;
+  mfeAbsolute?: number | null;
   maeAbsolute?: number | null;
   orders?: BacktestOrder[] | null;
 }

@@ -6,6 +6,8 @@ import type {
   PaginatedResponse,
 } from '../types/backtests';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
+import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import { buildApiUrl } from './baseUrl';
 import {
   readCachedBacktestCycles,
   readCachedBacktestDetail,
@@ -13,7 +15,7 @@ import {
   writeCachedBacktestDetail,
 } from '../storage/backtestCache';
 
-const BACKTESTS_ENDPOINT = 'https://veles.finance/api/backtests/statistics';
+const BACKTESTS_ENDPOINT = buildApiUrl('/api/backtests/statistics');
 export const DEFAULT_CYCLES_PAGE_SIZE = 200;
 
 const buildQueryString = (params: BacktestsListParams): string => {
@@ -38,7 +40,7 @@ export const fetchBacktests = async (params: BacktestsListParams): Promise<Backt
   });
 
   if (!response.ok) {
-    const errorMessage = response.error ?? `HTTP ${response.status ?? 0}`;
+    const errorMessage = resolveProxyErrorMessage(response);
     throw new Error(errorMessage);
   }
 
@@ -84,7 +86,7 @@ export const fetchBacktestDetails = async (
   });
 
   if (!response.ok) {
-    const errorMessage = response.error ?? `HTTP ${response.status ?? 0}`;
+    const errorMessage = resolveProxyErrorMessage(response);
     throw new Error(errorMessage);
   }
 
@@ -160,7 +162,7 @@ export const fetchBacktestCycles = async (
     });
 
     if (!response.ok) {
-      const errorMessage = response.error ?? `HTTP ${response.status ?? 0}`;
+      const errorMessage = resolveProxyErrorMessage(response);
       throw new Error(errorMessage);
     }
 
@@ -176,7 +178,7 @@ export const fetchBacktestCycles = async (
     totalPages = Number.isFinite(declaredTotalPages) && declaredTotalPages > 0 ? declaredTotalPages : totalPages;
 
     page += 1;
-    if (pageContent.length < pageSize) {
+    if (pageContent.length === 0) {
       break;
     }
   }

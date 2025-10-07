@@ -72,6 +72,7 @@ const buildCycle = (
   duration: 0,
   netQuote: 0,
   profitQuote: 0,
+  mfeAbsolute: 0,
   maeAbsolute: 0,
   orders,
   ...overrides,
@@ -86,6 +87,7 @@ describe('computeBacktestMetrics', () => {
       base: 'AAA',
       quote: 'BBB',
       netQuote: 150,
+      netQuotePerDay: 25,
       profits: 2,
       losses: 1,
       totalDeals: 3,
@@ -101,6 +103,7 @@ describe('computeBacktestMetrics', () => {
           date: '2024-01-03T00:00:00Z',
           duration: 7200,
           netQuote: 100,
+          mfeAbsolute: 120,
           maeAbsolute: 25,
         },
         [{ executedAt: '2024-01-02T22:30:00Z' }],
@@ -110,6 +113,7 @@ describe('computeBacktestMetrics', () => {
         date: '2024-01-05T00:00:00Z',
         duration: 3600,
         netQuote: -40,
+        mfeAbsolute: 10,
         maeAbsolute: 0,
       }),
       buildCycle({
@@ -117,6 +121,7 @@ describe('computeBacktestMetrics', () => {
         date: '2024-01-07T06:00:00Z',
         duration: 1800,
         netQuote: 20,
+        mfeAbsolute: 35,
         maeAbsolute: 45,
       }),
       buildCycle({
@@ -137,14 +142,16 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.totalDeals).toBe(3);
     expect(metrics.totalTradeDurationSec).toBe(10800);
     expect(metrics.avgTradeDurationDays).toBeCloseTo(0.04166, 4);
+    expect(metrics.avgNetPerDay).toBe(25);
     expect(metrics.maxDrawdown).toBe(40);
     expect(metrics.maxMPU).toBe(45);
-    expect(metrics.concurrencyIntervals).toHaveLength(3);
+    expect(metrics.maxMPP).toBe(120);
+    expect(metrics.concurrencyIntervals).toHaveLength(4);
     expect(metrics.concurrencyIntervals[0].start).toBe(new Date('2024-01-02T22:00:00Z').getTime());
     expect(metrics.concurrencyIntervals[0].end).toBe(new Date('2024-01-03T00:00:00Z').getTime());
     expect(metrics.equityEvents).toHaveLength(3);
-    expect(metrics.activeDurationMs).toBe(12_600_000);
-    expect(metrics.downtimeDays).toBeCloseTo(8.85, 2);
+    expect(metrics.activeDurationMs).toBe(16_200_000);
+    expect(metrics.downtimeDays).toBeCloseTo(8.8125, 4);
     expect(metrics.spanStart).toBe(new Date('2024-01-01T00:00:00Z').getTime());
     expect(metrics.spanEnd).toBe(new Date('2024-01-10T00:00:00Z').getTime());
 
@@ -152,6 +159,9 @@ describe('computeBacktestMetrics', () => {
     const jan7Index = Math.floor(new Date('2024-01-07T00:00:00Z').getTime() / MS_IN_DAY);
     expect(metrics.activeDayIndices).toContain(jan2Index);
     expect(metrics.activeDayIndices).toContain(jan7Index);
+    expect(metrics.trades).toHaveLength(3);
+    expect(metrics.trades[0]).toMatchObject({ net: 100, mfe: 120, mae: 25 });
+    expect(metrics.trades[1]).toMatchObject({ net: -40, mfe: 10, mae: 0 });
   });
 });
 
@@ -162,6 +172,7 @@ describe('summarizeAggregations', () => {
         id: 101,
         name: 'Strategy Alpha',
         netQuote: 150,
+        netQuotePerDay: 12.5,
         profits: 2,
         losses: 1,
         totalDeals: 3,
@@ -175,6 +186,7 @@ describe('summarizeAggregations', () => {
           date: '2024-01-03T00:00:00Z',
           duration: 7200,
           netQuote: 100,
+          mfeAbsolute: 150,
           maeAbsolute: 25,
         }),
         buildCycle({
@@ -182,12 +194,14 @@ describe('summarizeAggregations', () => {
           date: '2024-01-05T00:00:00Z',
           duration: 3600,
           netQuote: -40,
+          mfeAbsolute: 30,
         }),
         buildCycle({
           id: 3,
           date: '2024-01-07T06:00:00Z',
           duration: 1800,
           netQuote: 20,
+          mfeAbsolute: 60,
           maeAbsolute: 45,
         }),
       ],
@@ -198,6 +212,7 @@ describe('summarizeAggregations', () => {
         id: 202,
         name: 'Strategy Beta',
         netQuote: -50,
+        netQuotePerDay: -3,
         profits: 1,
         losses: 2,
         totalDeals: 3,
@@ -211,6 +226,7 @@ describe('summarizeAggregations', () => {
           date: '2024-01-03T01:30:00Z',
           duration: 7200,
           netQuote: 20,
+          mfeAbsolute: 40,
           maeAbsolute: 15,
         }),
         buildCycle({
@@ -218,6 +234,7 @@ describe('summarizeAggregations', () => {
           date: '2024-01-04T08:00:00Z',
           duration: 7200,
           netQuote: -70,
+          mfeAbsolute: 20,
           maeAbsolute: 35,
           orders: [{ executedAt: '2024-01-04T05:30:00Z' }],
         }),
@@ -233,6 +250,7 @@ describe('summarizeAggregations', () => {
     expect(summary.totalDeals).toBe(metricsA.totalDeals + metricsB.totalDeals);
     expect(summary.avgPnlPerDeal).toBeCloseTo(summary.totalPnl / summary.totalDeals, 10);
     expect(summary.avgPnlPerBacktest).toBeCloseTo(summary.totalPnl / summary.totalSelected, 10);
+    expect(summary.avgNetPerDay).toBeCloseTo((metricsA.avgNetPerDay + metricsB.avgNetPerDay) / summary.totalSelected, 10);
     expect(summary.avgTradeDurationDays).toBeCloseTo(
       (metricsA.totalTradeDurationSec + metricsB.totalTradeDurationSec)
         / summary.totalDeals
@@ -241,12 +259,41 @@ describe('summarizeAggregations', () => {
     );
     expect(summary.avgMaxDrawdown).toBeCloseTo((metricsA.maxDrawdown + metricsB.maxDrawdown) / 2, 6);
     expect(summary.aggregateDrawdown).toBeGreaterThanOrEqual(Math.max(metricsA.maxDrawdown, metricsB.maxDrawdown));
-    expect(summary.aggregateMPU).toBeGreaterThanOrEqual(Math.max(metricsA.maxMPU, metricsB.maxMPU));
     expect(summary.maxConcurrent).toBeGreaterThanOrEqual(2);
     expect(summary.avgConcurrent).toBeGreaterThan(0);
     expect(summary.noTradeDays).toBeGreaterThan(0);
 
     const jan3DayIndex = Math.floor(new Date('2024-01-03T00:00:00Z').getTime() / MS_IN_DAY);
     expect(summary.dailyConcurrency.records.some((record) => record.dayIndex === jan3DayIndex)).toBe(true);
+
+    const allTrades = [...metricsA.trades, ...metricsB.trades]
+      .filter((trade) => Number.isFinite(trade.end))
+      .sort((a, b) => {
+        if (a.end === b.end) {
+          if (a.start === b.start) {
+            return a.id - b.id;
+          }
+          if (!Number.isFinite(a.start)) {
+            return 1;
+          }
+          if (!Number.isFinite(b.start)) {
+            return -1;
+          }
+          return Number(a.start) - Number(b.start);
+        }
+        return Number(a.end) - Number(b.end);
+      });
+
+    expect(summary.portfolioEquity.points.length).toBe(allTrades.length + 1);
+    expect(summary.portfolioEquity.points[0].value).toBe(0);
+
+    let rollingValue = 0;
+    allTrades.forEach((trade, index) => {
+      const point = summary.portfolioEquity.points[index + 1];
+      rollingValue += trade.net;
+      expect(point.value).toBeCloseTo(rollingValue, 6);
+    });
+
+    expect(summary.portfolioEquity.maxValue).toBeGreaterThanOrEqual(summary.portfolioEquity.minValue);
   });
 });

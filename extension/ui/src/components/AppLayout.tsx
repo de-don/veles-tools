@@ -14,6 +14,7 @@ export interface ConnectionStatus {
   ok: boolean;
   lastChecked: number | null;
   error?: string;
+  origin?: string | null;
 }
 
 const REPOSITORY_URL = 'https://github.com/de-don/veles-tools';
@@ -77,7 +78,12 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
                 <div className="status__value">
                   {connectionStatus.ok ? 'активна' : connectionStatus.error ?? 'нет соединения'}
                 </div>
-                <div className="status__meta">Обновлено: {formatTimestamp(connectionStatus.lastChecked)}</div>
+                <div className="status__meta">
+                  Обновлено: {formatTimestamp(connectionStatus.lastChecked)}
+                  {connectionStatus.origin && (
+                    <span style={{ display: 'block' }}>Домен: {connectionStatus.origin}</span>
+                  )}
+                </div>
               </div>
             </div>
             <button type="button" className="button button--ghost status__action" onClick={onPing}>

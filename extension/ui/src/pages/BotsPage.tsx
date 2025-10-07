@@ -1,14 +1,65 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { fetchBots } from '../api/bots';
-import type { BotSummary, BotsListResponse, TradingBot } from '../types/bots';
+import { fetchApiKeys } from '../api/apiKeys';
+import type {
+  BotAlgorithm,
+  BotStatus,
+  BotSummary,
+  BotsListFilters,
+  BotsListResponse,
+  TradingBot,
+} from '../types/bots';
+import { BOT_STATUS_VALUES } from '../types/bots';
+import type { ApiKey } from '../types/apiKeys';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
 
 interface BotsPageProps {
   extensionReady: boolean;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_SORT = 'createdAt,desc';
+
+const SORT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'createdAt,desc', label: 'Дата создания ↓' },
+  { value: 'createdAt,asc', label: 'Дата создания ↑' },
+  { value: 'updatedAt,desc', label: 'Дата обновления ↓' },
+  { value: 'updatedAt,asc', label: 'Дата обновления ↑' },
+  { value: 'name,asc', label: 'Название A→Я' },
+  { value: 'name,desc', label: 'Название Я→A' },
+];
+
+const STATUS_OPTIONS: readonly BotStatus[] = BOT_STATUS_VALUES;
+
+const ALGORITHM_OPTIONS: BotAlgorithm[] = ['LONG', 'SHORT'];
+
+const formatStatusLabel = (status: BotStatus): string => {
+  return status
+    .toLowerCase()
+    .split('_')
+    .map((chunk) => (chunk ? `${chunk[0].toUpperCase()}${chunk.slice(1)}` : ''))
+    .join(' ')
+    .trim();
+};
+
+const formatAlgorithmLabel = (algorithm: BotAlgorithm): string => {
+  if (algorithm === 'LONG') {
+    return 'Лонг';
+  }
+  if (algorithm === 'SHORT') {
+    return 'Шорт';
+  }
+  return algorithm;
+};
+
+const formatExchangeLabel = (exchange: string): string => {
+  return exchange
+    .toLowerCase()
+    .split('_')
+    .map((chunk) => (chunk ? `${chunk[0].toUpperCase()}${chunk.slice(1)}` : ''))
+    .join(' ')
+    .trim();
+};
 
 type SelectionMap = Map<string, BotSummary>;
 
@@ -25,13 +76,22 @@ const createSummary = (bot: TradingBot): BotSummary => ({
 const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
-  const sort = DEFAULT_SORT;
+  const [sort, setSort] = useState(DEFAULT_SORT);
   const [data, setData] = useState<BotsListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<SelectionMap>(new Map());
   const [activeModal, setActiveModal] = useState<BacktestVariant | null>(null);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
+  const [nameFilter, setNameFilter] = useState('');
+  const [apiKeyFilter, setApiKeyFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<BotStatus | ''>('');
+  const [algorithmFilter, setAlgorithmFilter] = useState<BotAlgorithm | ''>('');
+  const [appliedFilters, setAppliedFilters] = useState<BotsListFilters>({});
+  const [filtersError, setFiltersError] = useState<string | null>(null);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [apiKeysLoading, setApiKeysLoading] = useState(false);
+  const [apiKeysError, setApiKeysError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!extensionReady) {
@@ -45,7 +105,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     setLoading(true);
     setError(null);
 
-    fetchBots({ page, size: pageSize, sort })
+    fetchBots({ page, size: pageSize, sort, filters: appliedFilters })
       .then((response) => {
         if (!isActive) {
           return;
@@ -68,7 +128,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     return () => {
       isActive = false;
     };
-  }, [extensionReady, page, pageSize, sort]);
+  }, [extensionReady, page, pageSize, sort, appliedFilters]);
 
   useEffect(() => {
     if (!extensionReady) {
@@ -77,11 +137,76 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     }
   }, [extensionReady]);
 
+  useEffect(() => {
+    if (!extensionReady) {
+      setApiKeys([]);
+      setApiKeysError(null);
+      setApiKeysLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    setApiKeysLoading(true);
+    setApiKeysError(null);
+
+    fetchApiKeys({ size: 100 })
+      .then((keys) => {
+        if (!isActive) {
+          return;
+        }
+        setApiKeys(keys);
+      })
+      .catch((requestError: unknown) => {
+        if (!isActive) {
+          return;
+        }
+        const message = requestError instanceof Error ? requestError.message : String(requestError);
+        setApiKeysError(message);
+      })
+      .finally(() => {
+        if (isActive) {
+          setApiKeysLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [extensionReady]);
+
+  useEffect(() => {
+    setSelection(new Map());
+    setActiveModal(null);
+  }, [appliedFilters]);
+
   const totalSelected = selection.size;
   const bots = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
-  const totalElements = data?.totalElements ?? 0;
   const selectedBotsList = useMemo(() => Array.from(selection.values()), [selection]);
+  const apiKeyOptions = useMemo(
+    () =>
+      apiKeys.map((key) => ({
+        value: String(key.id),
+        label: key.name
+          ? `${key.name} · ${formatExchangeLabel(key.exchange)}`
+          : `#${key.id}`,
+      })),
+    [apiKeys],
+  );
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      appliedFilters.name ||
+        appliedFilters.apiKey ||
+        (appliedFilters.statuses && appliedFilters.statuses.length > 0) ||
+        (appliedFilters.algorithms && appliedFilters.algorithms.length > 0),
+    );
+  }, [appliedFilters]);
+  const hasFilterDraft =
+    nameFilter.trim().length > 0 ||
+    apiKeyFilter !== '' ||
+    Boolean(statusFilter) ||
+    Boolean(algorithmFilter);
+  const isResetDisabled = !hasActiveFilters && !hasFilterDraft;
 
   const currentPageSelectedCount = useMemo(() => {
     if (bots.length === 0) {
@@ -147,9 +272,53 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     setPage(0);
   };
 
-  const clearSelection = () => {
-    setSelection(new Map());
-    setActiveModal(null);
+  const handleSortChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSort(event.target.value);
+    setPage(0);
+  };
+
+  const handleFiltersApply = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const nextFilters: BotsListFilters = {};
+    const normalizedName = nameFilter.trim();
+    if (normalizedName) {
+      nextFilters.name = normalizedName;
+    }
+
+    if (apiKeyFilter) {
+      const apiKeyValue = Number.parseInt(apiKeyFilter, 10);
+      if (!Number.isSafeInteger(apiKeyValue) || apiKeyValue <= 0) {
+        setFiltersError('Некорректный выбор API-ключа.');
+        return;
+      }
+
+      nextFilters.apiKey = apiKeyValue;
+    }
+
+    setFiltersError(null);
+    if (statusFilter) {
+      nextFilters.statuses = [statusFilter];
+    }
+
+    if (algorithmFilter) {
+      nextFilters.algorithms = [algorithmFilter];
+    }
+
+    setError(null);
+    setAppliedFilters(nextFilters);
+    setPage(0);
+  };
+
+  const handleFiltersReset = () => {
+    setNameFilter('');
+    setApiKeyFilter('');
+    setStatusFilter('');
+    setAlgorithmFilter('');
+    setAppliedFilters({});
+    setFiltersError(null);
+    setError(null);
+    setPage(0);
   };
 
   useEffect(() => {
@@ -185,28 +354,117 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
       )}
 
       <div className="panel">
-        <div className="panel__header">
-          <div className="panel__meta">
-            <span className="badge">Всего: {totalElements}</span>
-            <span className="badge">Выбрано: {totalSelected}</span>
-            <span className="badge">Сортировка: {sort.replace(',', ' ')}</span>
+        {hasActiveFilters && (
+          <div className="panel__filters-state">
+            <span className="badge">Фильтры: активны</span>
           </div>
-          <div className="panel__actions">
-            <label>
-              <span style={{ marginRight: 6 }}>На странице:</span>
-              <select className="select" value={pageSize} onChange={handlePageSizeChange}>
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="button button--ghost" onClick={clearSelection} disabled={totalSelected === 0}>
-              Сбросить выбор
+        )}
+
+        <form className="panel__filters" onSubmit={handleFiltersApply}>
+          <div className="filter-field">
+            <label htmlFor="bots-sort">Сортировка</label>
+            <select
+              id="bots-sort"
+              className="select"
+              value={sort}
+              onChange={handleSortChange}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-field">
+            <label htmlFor="bots-filter-name">Название</label>
+            <input
+              id="bots-filter-name"
+              className="input"
+              type="text"
+              placeholder="Например, BTC"
+              value={nameFilter}
+              onChange={(event) => {
+                setNameFilter(event.target.value);
+                setFiltersError(null);
+              }}
+              autoComplete="off"
+            />
+          </div>
+          <div className="filter-field">
+            <label htmlFor="bots-filter-api-key">API-ключ</label>
+            <select
+              id="bots-filter-api-key"
+              className="select"
+              value={apiKeyFilter}
+              onChange={(event) => {
+                setApiKeyFilter(event.target.value);
+                setFiltersError(null);
+              }}
+              disabled={apiKeysLoading}
+            >
+              <option value="">Все ключи</option>
+              {apiKeyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {apiKeysLoading && <span className="form-hint">Загружаем ключи…</span>}
+            {apiKeysError && <span className="form-error">{apiKeysError}</span>}
+          </div>
+          <div className="filter-field">
+            <label htmlFor="bots-filter-status">Статус</label>
+            <select
+              id="bots-filter-status"
+              className="select"
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value as BotStatus | '');
+                setFiltersError(null);
+              }}
+            >
+              <option value="">Все статусы</option>
+              {STATUS_OPTIONS.map((status) => (
+                <option key={status} value={status}>
+                  {formatStatusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="filter-field">
+            <label htmlFor="bots-filter-algorithm">Тип</label>
+            <select
+              id="bots-filter-algorithm"
+              className="select"
+              value={algorithmFilter}
+              onChange={(event) => {
+                setAlgorithmFilter(event.target.value as BotAlgorithm | '');
+                setFiltersError(null);
+              }}
+            >
+              <option value="">Все</option>
+              {ALGORITHM_OPTIONS.map((algorithm) => (
+                <option key={algorithm} value={algorithm}>
+                  {formatAlgorithmLabel(algorithm)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="panel__filters-actions">
+            <button type="submit" className="button">
+              Применить
+            </button>
+            <button type="button" className="button button--ghost" onClick={handleFiltersReset} disabled={isResetDisabled}>
+              Сбросить фильтры
             </button>
           </div>
-        </div>
+        </form>
+        {filtersError && (
+          <div className="form-error" style={{ marginTop: 8 }}>
+            {filtersError}
+          </div>
+        )}
 
         {totalSelected > 0 && (
           <div className="panel__bulk-actions">
@@ -293,8 +551,20 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         </div>
 
         <div className="pagination">
-          <div>Страница {page + 1} из {Math.max(totalPages, 1)}</div>
+          <div className="pagination__info">Страница {page + 1} из {Math.max(totalPages, 1)}</div>
           <div className="pagination__controls">
+            <div className="pagination__page-size">
+              <label className="pagination__page-size-label" htmlFor="bots-page-size">
+                На странице:
+              </label>
+              <select id="bots-page-size" className="select" value={pageSize} onChange={handlePageSizeChange}>
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button type="button" className="button button--ghost" onClick={() => handlePageChange('prev')} disabled={page === 0 || loading}>
               Назад
             </button>

@@ -2,20 +2,22 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktests, fetchBacktestCycles, fetchBacktestDetails } from '../api/backtests';
 import type { BacktestStatistics, BacktestStatisticsListResponse } from '../types/backtests';
 import {
-  clearDailyConcurrencyChart,
   computeBacktestMetrics,
-  drawDailyConcurrencyChart,
   summarizeAggregations,
   type AggregationSummary,
   type BacktestAggregationMetrics,
 } from '../lib/backtestAggregation';
+import { DailyConcurrencyChart } from '../components/charts/DailyConcurrencyChart';
+import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
+import { InfoTooltip } from '../components/ui/InfoTooltip';
+import { Tabs, type TabItem } from '../components/ui/Tabs';
 import { readCachedBacktestCycles, readCachedBacktestDetail } from '../storage/backtestCache';
 
 interface BacktestsPageProps {
   extensionReady: boolean;
 }
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50];
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_SORT = 'date,desc';
 
 type SelectionMap = Map<number, BacktestSelection>;
@@ -43,6 +45,14 @@ const createSummary = (item: BacktestStatistics): BacktestSelection => ({
   from: item.from,
   to: item.to,
 });
+
+const logBacktestsError = (context: string, error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (typeof console !== 'undefined' && typeof console.error === 'function') {
+    console.error(`[Backtests] ${context}: ${message}`, error);
+  }
+  return message;
+};
 
 const numberFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
@@ -151,7 +161,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     completed: 0,
     lastRunAt: null,
   });
-  const concurrencyChartRef = useRef<HTMLCanvasElement | null>(null);
+  const [activeAggregationTab, setActiveAggregationTab] = useState<string>('metrics');
 
   useEffect(() => {
     if (!extensionReady) {
@@ -176,7 +186,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         if (!isActive) {
           return;
         }
-        const message = requestError instanceof Error ? requestError.message : String(requestError);
+        const message = logBacktestsError('Не удалось загрузить список бэктестов', requestError);
         setError(message);
       })
       .finally(() => {
@@ -204,7 +214,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   }, [extensionReady]);
 
   const items = data?.content ?? [];
-  const totalElements = data?.totalElements ?? 0;
   const totalPages = data?.totalPages ?? 0;
   const totalSelected = selection.size;
 
@@ -302,10 +311,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     const value = Number(event.target.value) || PAGE_SIZE_OPTIONS[0];
     setPageSize(value);
     setPage(0);
-  };
-
-  const clearSelection = () => {
-    setSelection(new Map());
   };
 
   const aggregationItems = useMemo(() => Array.from(aggregationState.items.values()), [aggregationState.items]);
@@ -415,41 +420,14 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   const dailyConcurrencyRecords = aggregationSummary?.dailyConcurrency.records ?? [];
   const dailyConcurrencyStats = aggregationSummary?.dailyConcurrency.stats;
 
-  const concurrencyLimitNote = useMemo(() => {
-    if (!aggregationSummary || aggregationSummary.dailyConcurrency.records.length === 0) {
-      return 'Недостаточно данных для расчёта лимитов.';
+  const portfolioEquitySeries = aggregationSummary?.portfolioEquity ?? null;
+  const portfolioFinalValue = useMemo(() => {
+    if (!portfolioEquitySeries || portfolioEquitySeries.points.length === 0) {
+      return null;
     }
-    const { limits } = aggregationSummary.dailyConcurrency.stats;
-    const options: string[] = [];
-    if (Number.isFinite(limits.p75) && limits.p75 > 0) {
-      options.push(`P75 → ${limits.p75}`);
-    }
-    if (Number.isFinite(limits.p90) && limits.p90 > 0) {
-      options.push(`P90 → ${limits.p90}`);
-    }
-    if (Number.isFinite(limits.p95) && limits.p95 > 0) {
-      options.push(`P95 → ${limits.p95}`);
-    }
-    if (options.length === 0) {
-      return 'Недостаточно данных для расчёта лимитов.';
-    }
-    return `Округлённые варианты лимита: ${options.join(', ')}.`;
-  }, [aggregationSummary]);
-
-  useEffect(() => {
-    const canvas = concurrencyChartRef.current;
-    if (!canvas) {
-      return;
-    }
-    if (!aggregationSummary || aggregationSummary.dailyConcurrency.records.length === 0) {
-      clearDailyConcurrencyChart(canvas);
-      return;
-    }
-    if (typeof window === 'undefined') {
-      return;
-    }
-    drawDailyConcurrencyChart(canvas, aggregationSummary.dailyConcurrency.records);
-  }, [aggregationSummary]);
+    const lastPoint = portfolioEquitySeries.points[portfolioEquitySeries.points.length - 1];
+    return lastPoint.value;
+  }, [portfolioEquitySeries]);
 
   const resolveTrendClass = (value: number): string => {
     if (!Number.isFinite(value) || Math.abs(value) <= 1e-9) {
@@ -519,7 +497,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
       for (const id of targets) {
         try {
           const details = await fetchBacktestDetails(id);
-          const cycles = await fetchBacktestCycles(id, { from: details.from, to: details.to });
+          const cycles = await fetchBacktestCycles(id);
           const metrics = computeBacktestMetrics(details, cycles);
           setAggregationState((prev) => {
             const nextCompleted = Math.min(prev.completed + 1, prev.total || targets.length);
@@ -537,7 +515,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
             return { ...prev, items: nextItems, completed: nextCompleted };
           });
         } catch (requestError) {
-          const message = requestError instanceof Error ? requestError.message : String(requestError);
+          const message = logBacktestsError(`Не удалось собрать статистику бэктеста ${id}`, requestError);
           setAggregationState((prev) => {
             const nextCompleted = Math.min(prev.completed + 1, prev.total || targets.length);
             const current = prev.items.get(id);
@@ -607,29 +585,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
       )}
 
       <div className="panel">
-        <div className="panel__header">
-          <div className="panel__meta">
-            <span className="badge">Всего: {totalElements}</span>
-            <span className="badge">Выбрано: {totalSelected}</span>
-            <span className="badge">Сортировка: {DEFAULT_SORT.replace(',', ' ')}</span>
-          </div>
-          <div className="panel__actions">
-            <label>
-              <span style={{ marginRight: 6 }}>На странице:</span>
-              <select className="select" value={pageSize} onChange={handlePageSizeChange}>
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="button button--ghost" onClick={clearSelection} disabled={totalSelected === 0}>
-              Сбросить выбор
-            </button>
-          </div>
-        </div>
-
         <div className="table-container">
           <table className="table">
             <thead>
@@ -737,10 +692,20 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         </div>
 
         <div className="pagination">
-          <div>
-            Страница {page + 1} из {Math.max(totalPages, 1)}
-          </div>
+          <div className="pagination__info">Страница {page + 1} из {Math.max(totalPages, 1)}</div>
           <div className="pagination__controls">
+            <div className="pagination__page-size">
+              <label className="pagination__page-size-label" htmlFor="backtests-page-size">
+                На странице:
+              </label>
+              <select id="backtests-page-size" className="select" value={pageSize} onChange={handlePageSizeChange}>
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button type="button" className="button button--ghost" onClick={() => handlePageChange('prev')} disabled={page === 0 || loading}>
               Назад
             </button>
@@ -853,97 +818,200 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         )}
 
         {aggregationSummary ? (
-          <>
-            <div className="aggregation-summary">
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Бэктестов в статистике</div>
-                <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.totalSelected)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Суммарный P&amp;L</div>
-                <div className={resolveTrendClass(aggregationSummary.totalPnl)}>{formatSignedAmount(aggregationSummary.totalPnl)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Avg P&amp;L / сделка</div>
-                <div className={resolveTrendClass(aggregationSummary.avgPnlPerDeal)}>{formatSignedAmount(aggregationSummary.avgPnlPerDeal)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Avg P&amp;L / бэктест</div>
-                <div className={resolveTrendClass(aggregationSummary.avgPnlPerBacktest)}>{formatSignedAmount(aggregationSummary.avgPnlPerBacktest)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Сделки (P/L/Σ)</div>
-                <div className="aggregation-metric__value aggregation-metric__value--muted">
-                  {formatAggregationInteger(aggregationSummary.totalDeals)}
-                  <span className="aggregation-metric__sub">
-                    {' '}P:{formatAggregationInteger(aggregationSummary.totalProfits)} / L:{formatAggregationInteger(aggregationSummary.totalLosses)}
-                  </span>
-                </div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Средняя длительность сделки (дни)</div>
-                <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.avgTradeDurationDays)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Средняя макс. просадка</div>
-                <div className={resolveTrendClass(-Math.abs(aggregationSummary.avgMaxDrawdown))}>{formatAggregationValue(aggregationSummary.avgMaxDrawdown)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Макс. суммарная просадка</div>
-                <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateDrawdown))}>{formatAggregationValue(aggregationSummary.aggregateDrawdown)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Макс. суммарное МПУ</div>
-                <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateMPU))}>{formatAggregationValue(aggregationSummary.aggregateMPU)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Макс. одновременно открытых</div>
-                <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.maxConcurrent)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Среднее одновременно открытых</div>
-                <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.avgConcurrent)}</div>
-              </div>
-              <div className="aggregation-metric">
-                <div className="aggregation-metric__label">Дни без торговли</div>
-                <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.noTradeDays)}</div>
-              </div>
-            </div>
-
-            <div className="aggregation-concurrency">
-              <div className="aggregation-concurrency__header">
-                <h3 className="aggregation-concurrency__title">Активные позиции по дням</h3>
-                <p className="aggregation-concurrency__subtitle">
-                  Распределение дневных пиков помогает подобрать лимит одновременно открытых позиций.
-                </p>
-              </div>
-              <div className="aggregation-concurrency__metrics">
-                <div className="aggregation-metric">
-                  <div className="aggregation-metric__label">Средний дневной пик</div>
-                  <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.meanMax ?? 0)}</div>
-                </div>
-                <div className="aggregation-metric">
-                  <div className="aggregation-metric__label">P75</div>
-                  <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p75 ?? 0)}</div>
-                </div>
-                <div className="aggregation-metric">
-                  <div className="aggregation-metric__label">P90</div>
-                  <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p90 ?? 0)}</div>
-                </div>
-                <div className="aggregation-metric">
-                  <div className="aggregation-metric__label">P95</div>
-                  <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p95 ?? 0)}</div>
-                </div>
-              </div>
-              <div className="aggregation-concurrency__hint">{concurrencyLimitNote}</div>
-              <div className="aggregation-concurrency__chart">
-                <canvas ref={concurrencyChartRef} className="aggregation-concurrency__canvas" />
-                {dailyConcurrencyRecords.length === 0 && (
-                  <div className="aggregation-concurrency__empty">Нет данных для построения графика.</div>
-                )}
-              </div>
-            </div>
-          </>
+          <Tabs
+            className="aggregation-tabs"
+            activeTabId={activeAggregationTab}
+            onTabChange={setActiveAggregationTab}
+            items={[
+              {
+                id: 'metrics',
+                label: 'Показатели',
+                    content: (
+                  <div className="aggregation-summary">
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Бэктестов в статистике
+                        <InfoTooltip text="Количество бэктестов, включённых в расчёт агрегированных показателей." />
+                      </div>
+                      <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.totalSelected)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Суммарный P&amp;L
+                        <InfoTooltip text="Совокупный результат всех включённых бэктестов в выбранной валюте." />
+                      </div>
+                      <div className={resolveTrendClass(aggregationSummary.totalPnl)}>{formatSignedAmount(aggregationSummary.totalPnl)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Avg P&amp;L / сделка
+                        <InfoTooltip text="Средний результат одной сделки по всем включённым бэктестам." />
+                      </div>
+                      <div className={resolveTrendClass(aggregationSummary.avgPnlPerDeal)}>{formatSignedAmount(aggregationSummary.avgPnlPerDeal)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Avg P&amp;L / бэктест
+                        <InfoTooltip text="Средний итог на один бэктест в агрегированной выборке." />
+                      </div>
+                      <div className={resolveTrendClass(aggregationSummary.avgPnlPerBacktest)}>{formatSignedAmount(aggregationSummary.avgPnlPerBacktest)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Средняя эффективность (Net/день)
+                        <InfoTooltip text="Средний дневной результат по всем бэктестам, включённым в агрегированную статистику." />
+                      </div>
+                      <div className={resolveTrendClass(aggregationSummary.avgNetPerDay)}>{formatSignedAmount(aggregationSummary.avgNetPerDay)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Сделки (P/L/Σ)
+                        <InfoTooltip text="Количество сделок и распределение по прибыльным, убыточным и нейтральным операциям." />
+                      </div>
+                      <div className="aggregation-metric__value aggregation-metric__value--muted">
+                        {formatAggregationInteger(aggregationSummary.totalDeals)}
+                        <span className="aggregation-metric__sub">
+                          {' '}P:{formatAggregationInteger(aggregationSummary.totalProfits)} / L:{formatAggregationInteger(aggregationSummary.totalLosses)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Средняя длительность сделки (дни)
+                        <InfoTooltip text="Средняя продолжительность сделок в днях среди включённых бэктестов." />
+                      </div>
+                      <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.avgTradeDurationDays)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Средняя макс. просадка
+                        <InfoTooltip text="Средняя максимальная просадка по каждому бэктесту; отрицательные значения указывают глубину падения." />
+                      </div>
+                      <div className={resolveTrendClass(-Math.abs(aggregationSummary.avgMaxDrawdown))}>{formatAggregationValue(aggregationSummary.avgMaxDrawdown)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Макс. суммарная просадка
+                        <InfoTooltip text="Максимальное падение совокупного портфеля, составленного из всех включённых бэктестов." />
+                      </div>
+                      <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateDrawdown))}>{formatAggregationValue(aggregationSummary.aggregateDrawdown)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Макс. одновременно открытых
+                        <InfoTooltip text="Пиковое количество одновременных позиций в любой день по всем бэктестам." />
+                      </div>
+                      <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.maxConcurrent)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Среднее одновременно открытых
+                        <InfoTooltip text="Среднее число одновременных позиций за весь период наблюдений." />
+                      </div>
+                      <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.avgConcurrent)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
+                        Дни без торговли
+                        <InfoTooltip text="Количество дней без сделок в совокупном календаре выбранных бэктестов." />
+                      </div>
+                      <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.noTradeDays)}</div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: 'portfolio-equity',
+                label: 'P&L портфеля',
+                content: (
+                  <div className="aggregation-equity">
+                    <div className="aggregation-equity__header">
+                      <h3 className="aggregation-equity__title">Суммарный P&L портфеля</h3>
+                      <p className="aggregation-equity__subtitle">
+                        Чёрная линия показывает изменение совокупного результата выбранных бэктестов.
+                      </p>
+                    </div>
+                    <div className="aggregation-equity__metrics">
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Итоговый P&L
+                          <InfoTooltip text="Значение последней точки кривой портфельного P&L на основе выбранных бэктестов." />
+                        </div>
+                        <div className={portfolioFinalValue !== null ? resolveTrendClass(portfolioFinalValue) : 'aggregation-metric__value aggregation-metric__value--muted'}>
+                          {portfolioFinalValue !== null ? formatSignedAmount(portfolioFinalValue) : '—'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="aggregation-equity__chart">
+                      {portfolioEquitySeries && portfolioEquitySeries.points.length > 0 ? (
+                        <PortfolioEquityChart
+                          series={portfolioEquitySeries}
+                          className="aggregation-equity__canvas"
+                        />
+                      ) : (
+                        <div className="aggregation-equity__empty">Нет данных для построения графика.</div>
+                      )}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: 'daily-concurrency',
+                label: 'Активные позиции',
+                content: (
+                  <div className="aggregation-concurrency">
+                    <div className="aggregation-concurrency__header">
+                      <h3 className="aggregation-concurrency__title">Активные позиции по дням</h3>
+                      <p className="aggregation-concurrency__subtitle">
+                        Распределение дневных пиков помогает подобрать лимит одновременно открытых позиций.
+                      </p>
+                    </div>
+                    <div className="aggregation-concurrency__metrics">
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Средний дневной пик
+                          <InfoTooltip text="Среднее значение дневного максимума активных позиций по совокупности бэктестов." />
+                        </div>
+                        <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.meanMax ?? 0)}</div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          P75
+                          <InfoTooltip text="75-й перцентиль дневных максимумов активных позиций." />
+                        </div>
+                        <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p75 ?? 0)}</div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          P90
+                          <InfoTooltip text="90-й перцентиль дневных максимумов активных позиций." />
+                        </div>
+                        <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p90 ?? 0)}</div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          P95
+                          <InfoTooltip text="95-й перцентиль дневных максимумов активных позиций." />
+                        </div>
+                        <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p95 ?? 0)}</div>
+                      </div>
+                    </div>
+                    <div className="aggregation-concurrency__chart">
+                      {dailyConcurrencyRecords.length > 0 ? (
+                        <DailyConcurrencyChart
+                          records={dailyConcurrencyRecords}
+                          stats={dailyConcurrencyStats}
+                          className="aggregation-concurrency__canvas"
+                        />
+                      ) : (
+                        <div className="aggregation-concurrency__empty">Нет данных для построения графика.</div>
+                      )}
+                    </div>
+                  </div>
+                ),
+              },
+            ] satisfies TabItem[]}
+          />
         ) : (
           <div className="empty-state">
             {selection.size === 0
@@ -966,11 +1034,13 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                   <th>Название</th>
                   <th>Пара</th>
                   <th>P&amp;L</th>
+                  <th>Net / день</th>
                   <th>Сделки</th>
                   <th>Avg длит. (д)</th>
                   <th>Дни без торговли</th>
                   <th>Макс. просадка</th>
                   <th>Макс. МПУ</th>
+                  <th>Макс. МПП</th>
                   <th>Статус</th>
                 </tr>
               </thead>
@@ -1004,11 +1074,13 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                       <td>{metrics?.name ?? summary?.name ?? '—'}</td>
                       <td>{metrics?.symbol ?? summary?.symbol ?? '—'}</td>
                       <td>{metrics ? formatSignedAmount(metrics.pnl) : '—'}</td>
+                      <td>{metrics ? formatSignedAmount(metrics.avgNetPerDay) : '—'}</td>
                       <td>{metrics ? formatAggregationInteger(metrics.totalDeals) : '—'}</td>
                       <td>{metrics ? `${formatAggregationValue(metrics.avgTradeDurationDays)} д` : '—'}</td>
                       <td>{metrics ? `${formatAggregationValue(metrics.downtimeDays)} д` : '—'}</td>
                       <td>{metrics ? formatAggregationValue(metrics.maxDrawdown) : '—'}</td>
                       <td>{metrics ? formatAggregationValue(metrics.maxMPU) : '—'}</td>
+                      <td>{metrics ? formatAggregationValue(metrics.maxMPP) : '—'}</td>
                       <td>
                         <span className={resolveStatusTone(item.status)}>{resolveStatusLabel(item)}</span>
                       </td>

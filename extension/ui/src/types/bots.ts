@@ -1,9 +1,27 @@
 export type BotIdentifier = number | string;
 
+export type BotAlgorithm = 'LONG' | 'SHORT' | string;
+
+export const BOT_STATUS_VALUES = [
+  'RUNNING',
+  'AWAITING_SIGNAL',
+  'TERMINATED',
+  'AWAITING_TERMINATION',
+  'FAILED',
+] as const;
+
+export interface BotsListFilters {
+  name?: string;
+  apiKey?: number;
+  statuses?: BotStatus[];
+  algorithms?: BotAlgorithm[];
+}
+
 export interface BotsListParams {
   page: number;
   size: number;
   sort?: string;
+  filters?: BotsListFilters;
 }
 
 export interface BotsListResponse {
@@ -17,7 +35,7 @@ export interface TradingBot {
   id: BotIdentifier;
   name: string;
   exchange: string;
-  algorithm: string;
+  algorithm: BotAlgorithm;
   pullUp: number | null;
   portion: number | null;
   profit: BotProfitConfig | null;
@@ -35,7 +53,7 @@ export interface BotSummary {
   id: BotIdentifier;
   name: string;
   exchange: string;
-  algorithm: string;
+  algorithm: BotAlgorithm;
   status: BotStatus;
   substatus: string | null;
   origin?: 'account' | 'imported';
@@ -87,12 +105,4 @@ export interface StrategyCondition {
   reverse: boolean | null;
 }
 
-export type BotStatus =
-  | 'STARTED'
-  | 'STOPPED'
-  | 'PAUSED'
-  | 'AWAITING_SIGNAL'
-  | 'AWAITING_ORDER'
-  | 'AWAITING_RESULTS'
-  | 'DRAFT'
-  | string;
+export type BotStatus = (typeof BOT_STATUS_VALUES)[number];

@@ -32,11 +32,3 @@
 * implement extension UI ([956cef5](https://github.com/de-don/veles-tools/commit/956cef5606f2225a620c0816d2c3a79315f99ba1))
 * open veles tab when not opened ([5a2e673](https://github.com/de-don/veles-tools/commit/5a2e673592a99b56338ed43a218557997b8ac96a))
 * release & docs ([3c954c0](https://github.com/de-don/veles-tools/commit/3c954c0c0a0151c3b3a47c23c03286159c852b3c))
-
-# Changelog
-
-Автоматически поддерживается при помощи Semantic Release. Актуальная история релизов публикуется на GitHub Releases и синхронизируется с этим файлом при выпуске новой версии.
-
-## [Unreleased]
-
-- Изменения будут добавлены при первом релизе, сформированном CI/CD.
