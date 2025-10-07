@@ -1,8 +1,9 @@
 import type { BotStatus, BotsListFilters, BotsListParams, BotsListResponse } from '../types/bots';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import { buildApiUrl } from './baseUrl';
 
-const BOTS_ENDPOINT = 'https://veles.finance/api/bots';
+const BOTS_ENDPOINT = buildApiUrl('/api/bots');
 
 interface BotsFilterRequestPayload {
   tags?: string[];

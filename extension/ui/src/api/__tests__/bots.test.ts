@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchBots } from '../bots';
 import type { BotsListResponse } from '../../types/bots';
 import { proxyHttpRequest } from '../../lib/extensionMessaging';
+import { buildApiUrl } from '../baseUrl';
 
 vi.mock('../../lib/extensionMessaging', () => ({
   proxyHttpRequest: vi.fn(),
@@ -43,7 +44,7 @@ describe('fetchBots', () => {
     const request = mockedProxy.mock.calls[0]?.[0];
     expect(request).toBeDefined();
     const url = new URL(request?.url ?? '');
-    expect(url.origin + url.pathname).toBe('https://veles.finance/api/bots');
+    expect(url.origin + url.pathname).toBe(buildApiUrl('/api/bots'));
     expect(url.searchParams.get('page')).toBe('2');
     expect(url.searchParams.get('size')).toBe('25');
     expect(url.searchParams.get('sort')).toBe('createdAt,desc');

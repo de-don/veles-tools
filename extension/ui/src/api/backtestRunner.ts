@@ -1,9 +1,10 @@
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
 import type { BotIdentifier, BotSettings } from '../types/bots';
+import { buildApiUrl } from './baseUrl';
 
-const BOTS_ENDPOINT = 'https://veles.finance/api/bots';
-const BACKTESTS_ENDPOINT = 'https://veles.finance/api/backtests/';
+const BOTS_ENDPOINT = buildApiUrl('/api/bots');
+const BACKTESTS_ENDPOINT = `${buildApiUrl('/api/backtests')}/`;
 
 export interface BotStrategyPair {
   exchange?: string | null;

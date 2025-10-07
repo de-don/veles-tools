@@ -1,8 +1,9 @@
 import type { ApiKey, ApiKeysListParams, ApiKeysListResponse } from '../types/apiKeys';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import { buildApiUrl } from './baseUrl';
 
-const API_KEYS_ENDPOINT = 'https://veles.finance/api/api-keys';
+const API_KEYS_ENDPOINT = buildApiUrl('/api/api-keys');
 
 const buildQueryString = (params?: ApiKeysListParams): string => {
   const searchParams = new URLSearchParams();

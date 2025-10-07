@@ -7,6 +7,7 @@ import type {
 } from '../types/backtests';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import { buildApiUrl } from './baseUrl';
 import {
   readCachedBacktestCycles,
   readCachedBacktestDetail,
@@ -14,7 +15,7 @@ import {
   writeCachedBacktestDetail,
 } from '../storage/backtestCache';
 
-const BACKTESTS_ENDPOINT = 'https://veles.finance/api/backtests/statistics';
+const BACKTESTS_ENDPOINT = buildApiUrl('/api/backtests/statistics');
 export const DEFAULT_CYCLES_PAGE_SIZE = 200;
 
 const buildQueryString = (params: BacktestsListParams): string => {

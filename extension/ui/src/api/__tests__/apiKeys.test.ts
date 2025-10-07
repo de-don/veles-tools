@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchApiKeys } from '../apiKeys';
 import type { ApiKeysListResponse } from '../../types/apiKeys';
 import { proxyHttpRequest } from '../../lib/extensionMessaging';
+import { buildApiUrl } from '../baseUrl';
 
 vi.mock('../../lib/extensionMessaging', () => ({
   proxyHttpRequest: vi.fn(),
@@ -38,7 +39,10 @@ describe('fetchApiKeys', () => {
     expect(mockedProxy).toHaveBeenCalledTimes(1);
     const request = mockedProxy.mock.calls[0]?.[0];
     expect(request).toBeDefined();
-    expect(request?.url).toBe('https://veles.finance/api/api-keys?page=0&size=100');
+    const url = new URL(request?.url ?? '');
+    expect(url.origin + url.pathname).toBe(buildApiUrl('/api/api-keys'));
+    expect(url.searchParams.get('page')).toBe('0');
+    expect(url.searchParams.get('size')).toBe('100');
     expect(request?.init?.method).toBe('GET');
     expect(request?.init?.credentials).toBe('include');
     expect(request?.init?.headers).toEqual({
