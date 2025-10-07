@@ -1,9 +1,6 @@
 # TODO
 
-
-## CI/CD
-
-- [ ] Set up continuous integration (CI) for automated testing
+- [ ] Different colors for -10%, -20% etc in Backtest results
 
 ## Bots
 
@@ -13,6 +10,7 @@
 
 ## BackTests
 
+- [ ] Load all backtests and sort/filter them locally
 - [ ] Backtests filtering
 - [ ] Backtests sorting
 - [ ] Load backtest presets (comissions, is public, etc from veles.finance)
