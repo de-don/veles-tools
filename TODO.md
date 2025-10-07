@@ -1,12 +1,11 @@
 # TODO
 
 - [ ] Different colors for -10%, -20% etc in Backtest results
+- [ ] API domain should be the same as in tab (veles.finance, ru.veles.finance)
 
 ## Bots
 
 - [ ] Bots groups
-- [ ] Bots filtering
-- [ ] Bots sorting
 
 ## BackTests
 

@@ -206,7 +206,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   }, [extensionReady]);
 
   const items = data?.content ?? [];
-  const totalElements = data?.totalElements ?? 0;
   const totalPages = data?.totalPages ?? 0;
   const totalSelected = selection.size;
 
@@ -304,10 +303,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     const value = Number(event.target.value) || PAGE_SIZE_OPTIONS[0];
     setPageSize(value);
     setPage(0);
-  };
-
-  const clearSelection = () => {
-    setSelection(new Map());
   };
 
   const aggregationItems = useMemo(() => Array.from(aggregationState.items.values()), [aggregationState.items]);
@@ -582,29 +577,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
       )}
 
       <div className="panel">
-        <div className="panel__header">
-          <div className="panel__meta">
-            <span className="badge">Всего: {totalElements}</span>
-            <span className="badge">Выбрано: {totalSelected}</span>
-            <span className="badge">Сортировка: {DEFAULT_SORT.replace(',', ' ')}</span>
-          </div>
-          <div className="panel__actions">
-            <label>
-              <span style={{ marginRight: 6 }}>На странице:</span>
-              <select className="select" value={pageSize} onChange={handlePageSizeChange}>
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="button button--ghost" onClick={clearSelection} disabled={totalSelected === 0}>
-              Сбросить выбор
-            </button>
-          </div>
-        </div>
-
         <div className="table-container">
           <table className="table">
             <thead>
@@ -712,10 +684,20 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         </div>
 
         <div className="pagination">
-          <div>
-            Страница {page + 1} из {Math.max(totalPages, 1)}
-          </div>
+          <div className="pagination__info">Страница {page + 1} из {Math.max(totalPages, 1)}</div>
           <div className="pagination__controls">
+            <div className="pagination__page-size">
+              <label className="pagination__page-size-label" htmlFor="backtests-page-size">
+                На странице:
+              </label>
+              <select id="backtests-page-size" className="select" value={pageSize} onChange={handlePageSizeChange}>
+                {PAGE_SIZE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button type="button" className="button button--ghost" onClick={() => handlePageChange('prev')} disabled={page === 0 || loading}>
               Назад
             </button>

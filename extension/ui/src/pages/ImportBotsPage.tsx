@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
 import { fetchBotStrategy, type BotStrategy } from '../api/backtestRunner';
 import { useImportedBots, type ImportedBotEntry } from '../context/ImportedBotsContext';
-import type { BotSummary } from '../types/bots';
+import { BOT_STATUS_VALUES, type BotStatus, type BotSummary } from '../types/bots';
 
 interface ImportBotsPageProps {
   extensionReady: boolean;
@@ -43,6 +43,25 @@ const inferenceSymbols = (strategy: BotStrategy): string => {
     return `${strategy.pair.from}/${strategy.pair.to}`;
   }
   return '—';
+};
+
+const normalizeStatusValue = (value: string | null | undefined): BotStatus => {
+  if (typeof value !== 'string') {
+    return 'FAILED';
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 'FAILED';
+  }
+
+  const upperCased = trimmed.toUpperCase();
+  const match = BOT_STATUS_VALUES.find((status) => status === upperCased);
+  if (match) {
+    return match;
+  }
+
+  return 'FAILED';
 };
 
 const normalizeAliasCandidate = (candidate: string): string | null => {
@@ -104,8 +123,17 @@ const parseAliasInput = (raw: string): string[] => {
 const buildImportedEntry = (alias: string, strategy: BotStrategy): ImportedBotEntry => {
   const name = typeof strategy.name === 'string' && strategy.name.trim().length > 0 ? strategy.name.trim() : `Бот ${alias}`;
   const exchange = typeof strategy.exchange === 'string' && strategy.exchange.trim().length > 0 ? strategy.exchange.trim() : '—';
-  const status = typeof strategy.status === 'string' && strategy.status.trim().length > 0 ? strategy.status.trim() : 'UNKNOWN';
-  const substatus = typeof strategy.substatus === 'string' && strategy.substatus.trim().length > 0 ? strategy.substatus.trim() : null;
+  const rawStatus = typeof strategy.status === 'string' ? strategy.status.trim() : null;
+  const status = normalizeStatusValue(rawStatus);
+  const substatus = (() => {
+    if (typeof strategy.substatus === 'string' && strategy.substatus.trim().length > 0) {
+      return strategy.substatus.trim();
+    }
+    if (rawStatus && status !== rawStatus.toUpperCase()) {
+      return rawStatus;
+    }
+    return null;
+  })();
   const summary: BotSummary = {
     id: alias,
     name,
