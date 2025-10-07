@@ -11,6 +11,11 @@ export interface RiskInterval extends TimeInterval {
   value: number;
 }
 
+interface CycleInterval {
+  cycle: BacktestCycle;
+  interval: TimeInterval;
+}
+
 export interface EquityEvent {
   time: number;
   delta: number;
@@ -206,11 +211,22 @@ const resolveCycleInterval = (cycle: BacktestCycle): TimeInterval | null => {
   return { start, end: Number(end) };
 };
 
-const computeIntervals = (cycles: BacktestCycle[]): TimeInterval[] => {
+const collectCycleIntervals = (cycles: BacktestCycle[]): CycleInterval[] => {
   return cycles
-    .filter(isFinishedCycle)
-    .map((cycle) => resolveCycleInterval(cycle))
-    .filter((interval): interval is TimeInterval => Boolean(interval))
+    .map((cycle) => {
+      const interval = resolveCycleInterval(cycle);
+      if (!interval) {
+        return null;
+      }
+      return { cycle, interval };
+    })
+    .filter((entry): entry is CycleInterval => Boolean(entry));
+};
+
+const computeIntervals = (cycleIntervals: CycleInterval[]): TimeInterval[] => {
+  return cycleIntervals
+    .map((entry) => entry.interval)
+    .filter((interval) => Number.isFinite(interval.start) && Number.isFinite(interval.end) && interval.end >= interval.start)
     .sort((a, b) => (a.start - b.start) || (a.end - b.end));
 };
 
@@ -251,17 +267,13 @@ const computeDrawdownTimeline = (cycles: BacktestCycle[]): { maxDrawdown: number
   return { maxDrawdown, events: enriched };
 };
 
-const buildRiskIntervals = (cycles: BacktestCycle[]): { riskIntervals: RiskInterval[]; maxRisk: number } => {
+const buildRiskIntervals = (cycleIntervals: CycleInterval[]): { riskIntervals: RiskInterval[]; maxRisk: number } => {
   const riskIntervals: RiskInterval[] = [];
   let maxRisk = 0;
 
-  cycles.filter(isFinishedCycle).forEach((cycle) => {
+  cycleIntervals.forEach(({ cycle, interval }) => {
     const value = Math.abs(toNumber(cycle.maeAbsolute ?? 0));
     if (!Number.isFinite(value) || value <= 0) {
-      return;
-    }
-    const interval = resolveCycleInterval(cycle);
-    if (!interval) {
       return;
     }
     riskIntervals.push({ ...interval, value });
@@ -352,15 +364,19 @@ export const computeBacktestMetrics = (
   const avgTradeDurationDays = totalDeals > 0 ? totalTradeDurationSec / totalDeals / 86400 : 0;
   const avgNetPerDay = toNumber(stats.netQuotePerDay ?? 0) || 0;
 
-  const finishedCycles = cycles.filter(isFinishedCycle);
+  const cycleIntervals = collectCycleIntervals(cycles);
+  const finishedCycleIntervals = cycleIntervals.filter(({ cycle }) => isFinishedCycle(cycle));
   const trades: AggregationTrade[] = [];
   let maxMPP = 0;
 
-  finishedCycles.forEach((cycle) => {
-    const interval = resolveCycleInterval(cycle);
-    if (!interval) {
-      return;
+  cycleIntervals.forEach(({ cycle }) => {
+    const mfe = Math.max(0, toNumber(cycle.mfeAbsolute ?? 0));
+    if (mfe > maxMPP) {
+      maxMPP = mfe;
     }
+  });
+
+  finishedCycleIntervals.forEach(({ cycle, interval }) => {
     const net = toNumber(cycle.netQuote ?? cycle.profitQuote ?? 0);
     const mfe = Math.max(0, toNumber(cycle.mfeAbsolute ?? 0));
     const mae = Math.max(0, toNumber(cycle.maeAbsolute ?? 0));
@@ -373,14 +389,11 @@ export const computeBacktestMetrics = (
       mfe,
       mae,
     });
-    if (mfe > maxMPP) {
-      maxMPP = mfe;
-    }
   });
 
   const drawdownTimeline = computeDrawdownTimeline(cycles);
-  const concurrencyIntervals = computeIntervals(cycles);
-  const riskInfo = buildRiskIntervals(cycles);
+  const concurrencyIntervals = computeIntervals(cycleIntervals);
+  const riskInfo = buildRiskIntervals(cycleIntervals);
   const coverage = computeCoverage(concurrencyIntervals);
   const statsSpan = resolveStatsSpan(stats);
 
@@ -407,11 +420,8 @@ export const computeBacktestMetrics = (
     markActiveRange(activeDaySet, interval.start, interval.end);
   });
 
-  finishedCycles.forEach((cycle) => {
-    const interval = resolveCycleInterval(cycle);
-    if (interval) {
-      markActiveRange(activeDaySet, interval.start, interval.end);
-    }
+  cycleIntervals.forEach(({ cycle, interval }) => {
+    markActiveRange(activeDaySet, interval.start, interval.end);
     if (Array.isArray(cycle.orders)) {
       cycle.orders.forEach((order) => {
         const timestamp = parseTimestamp(order.executedAt ?? order.createdAt ?? order.updatedAt ?? null);

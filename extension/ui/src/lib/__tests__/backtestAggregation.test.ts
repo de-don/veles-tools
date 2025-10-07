@@ -146,12 +146,12 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.maxDrawdown).toBe(40);
     expect(metrics.maxMPU).toBe(45);
     expect(metrics.maxMPP).toBe(120);
-    expect(metrics.concurrencyIntervals).toHaveLength(3);
+    expect(metrics.concurrencyIntervals).toHaveLength(4);
     expect(metrics.concurrencyIntervals[0].start).toBe(new Date('2024-01-02T22:00:00Z').getTime());
     expect(metrics.concurrencyIntervals[0].end).toBe(new Date('2024-01-03T00:00:00Z').getTime());
     expect(metrics.equityEvents).toHaveLength(3);
-    expect(metrics.activeDurationMs).toBe(12_600_000);
-    expect(metrics.downtimeDays).toBeCloseTo(8.85, 2);
+    expect(metrics.activeDurationMs).toBe(16_200_000);
+    expect(metrics.downtimeDays).toBeCloseTo(8.8125, 4);
     expect(metrics.spanStart).toBe(new Date('2024-01-01T00:00:00Z').getTime());
     expect(metrics.spanEnd).toBe(new Date('2024-01-10T00:00:00Z').getTime());
 
