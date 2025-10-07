@@ -82,20 +82,46 @@ export interface BacktestStatisticsDetail extends BacktestStatistics {
 }
 
 export interface BacktestOrder {
+  category?: string | null;
+  side?: string | null;
+  type?: string | null;
+  position?: number | null;
+  quantity?: number | null;
+  price?: number | null;
+  status?: string | null;
   createdAt?: string | null;
   executedAt?: string | null;
   updatedAt?: string | null;
+  commissionAmount?: number | null;
+  commissionAsset?: string | null;
 }
 
 export interface BacktestCycle {
   id: number;
   status: string;
+  substatus?: string | null;
+  exchange?: string | null;
+  symbol?: string | null;
+  base?: string | null;
+  quote?: string | null;
   date: string;
   duration?: number | null;
   netQuote?: number | null;
+  netBase?: number | null;
   profitQuote?: number | null;
+  profitBase?: number | null;
+  pnl?: number | null;
   mfeAbsolute?: number | null;
   maeAbsolute?: number | null;
+  mfePercent?: number | null;
+  maePercent?: number | null;
+  grid?: number | null;
+  executedGrid?: number | null;
+  profits?: number | null;
+  executedProfits?: number | null;
+  volume?: number | null;
+  commissionBase?: number | null;
+  commissionQuote?: number | null;
   orders?: BacktestOrder[] | null;
 }
 

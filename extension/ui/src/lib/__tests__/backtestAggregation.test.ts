@@ -259,6 +259,7 @@ describe('summarizeAggregations', () => {
     );
     expect(summary.avgMaxDrawdown).toBeCloseTo((metricsA.maxDrawdown + metricsB.maxDrawdown) / 2, 6);
     expect(summary.aggregateDrawdown).toBeGreaterThanOrEqual(Math.max(metricsA.maxDrawdown, metricsB.maxDrawdown));
+    expect(summary.aggregateMPU).toBeGreaterThanOrEqual(Math.max(metricsA.maxMPU, metricsB.maxMPU));
     expect(summary.maxConcurrent).toBeGreaterThanOrEqual(2);
     expect(summary.avgConcurrent).toBeGreaterThan(0);
     expect(summary.noTradeDays).toBeGreaterThan(0);
@@ -295,5 +296,61 @@ describe('summarizeAggregations', () => {
     });
 
     expect(summary.portfolioEquity.maxValue).toBeGreaterThanOrEqual(summary.portfolioEquity.minValue);
+  });
+
+  it('computes aggregate MPU across overlapping risk intervals', () => {
+    const metricsA = computeBacktestMetrics(
+      buildDetail({
+        id: 301,
+        netQuote: 0,
+        netQuotePerDay: 0,
+        totalDeals: 1,
+        profits: 0,
+        losses: 1,
+        avgDuration: 7200,
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-01-03T00:00:00Z',
+      }),
+      [
+        buildCycle({
+          id: 1,
+          date: '2024-01-02T01:00:00Z',
+          duration: 7200,
+          netQuote: 0,
+          profitQuote: 0,
+          pnl: -5,
+          maeAbsolute: -10,
+        }),
+      ],
+    );
+
+    const metricsB = computeBacktestMetrics(
+      buildDetail({
+        id: 302,
+        netQuote: 0,
+        netQuotePerDay: 0,
+        totalDeals: 1,
+        profits: 0,
+        losses: 1,
+        avgDuration: 7200,
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-01-03T00:00:00Z',
+      }),
+      [
+        buildCycle({
+          id: 2,
+          date: '2024-01-02T01:30:00Z',
+          duration: 7200,
+          netQuote: 0,
+          profitQuote: 0,
+          pnl: -7,
+          maeAbsolute: -20,
+        }),
+      ],
+    );
+
+    const summary = summarizeAggregations([metricsA, metricsB]);
+
+    expect(summary.aggregateMPU).toBeCloseTo(30);
   });
 });
