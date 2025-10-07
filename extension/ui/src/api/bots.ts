@@ -1,5 +1,6 @@
 import type { BotStatus, BotsListFilters, BotsListParams, BotsListResponse } from '../types/bots';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
+import { resolveProxyErrorMessage } from '../lib/httpErrors';
 
 const BOTS_ENDPOINT = 'https://veles.finance/api/bots';
 
@@ -65,7 +66,7 @@ export const fetchBots = async (params: BotsListParams): Promise<BotsListRespons
   });
 
   if (!response.ok) {
-    const errorMessage = response.error ?? `HTTP ${response.status ?? 0}`;
+    const errorMessage = resolveProxyErrorMessage(response);
     throw new Error(errorMessage);
   }
 

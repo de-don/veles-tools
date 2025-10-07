@@ -6,6 +6,7 @@ import type {
   PaginatedResponse,
 } from '../types/backtests';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
+import { resolveProxyErrorMessage } from '../lib/httpErrors';
 import {
   readCachedBacktestCycles,
   readCachedBacktestDetail,
@@ -38,7 +39,7 @@ export const fetchBacktests = async (params: BacktestsListParams): Promise<Backt
   });
 
   if (!response.ok) {
-    const errorMessage = response.error ?? `HTTP ${response.status ?? 0}`;
+    const errorMessage = resolveProxyErrorMessage(response);
     throw new Error(errorMessage);
   }
 
@@ -84,7 +85,7 @@ export const fetchBacktestDetails = async (
   });
 
   if (!response.ok) {
-    const errorMessage = response.error ?? `HTTP ${response.status ?? 0}`;
+    const errorMessage = resolveProxyErrorMessage(response);
     throw new Error(errorMessage);
   }
 
@@ -160,7 +161,7 @@ export const fetchBacktestCycles = async (
     });
 
     if (!response.ok) {
-      const errorMessage = response.error ?? `HTTP ${response.status ?? 0}`;
+      const errorMessage = resolveProxyErrorMessage(response);
       throw new Error(errorMessage);
     }
 

@@ -1,5 +1,6 @@
 import type { ApiKey, ApiKeysListParams, ApiKeysListResponse } from '../types/apiKeys';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
+import { resolveProxyErrorMessage } from '../lib/httpErrors';
 
 const API_KEYS_ENDPOINT = 'https://veles.finance/api/api-keys';
 
@@ -26,7 +27,7 @@ export const fetchApiKeys = async (params?: ApiKeysListParams): Promise<ApiKey[]
   });
 
   if (!response.ok) {
-    const message = response.error ?? `HTTP ${response.status ?? 0}`;
+    const message = resolveProxyErrorMessage(response);
     throw new Error(message);
   }
 

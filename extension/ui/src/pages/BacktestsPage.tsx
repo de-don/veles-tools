@@ -46,6 +46,14 @@ const createSummary = (item: BacktestStatistics): BacktestSelection => ({
   to: item.to,
 });
 
+const logBacktestsError = (context: string, error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (typeof console !== 'undefined' && typeof console.error === 'function') {
+    console.error(`[Backtests] ${context}: ${message}`, error);
+  }
+  return message;
+};
+
 const numberFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
 });
@@ -178,7 +186,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         if (!isActive) {
           return;
         }
-        const message = requestError instanceof Error ? requestError.message : String(requestError);
+        const message = logBacktestsError('Не удалось загрузить список бэктестов', requestError);
         setError(message);
       })
       .finally(() => {
@@ -507,7 +515,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
             return { ...prev, items: nextItems, completed: nextCompleted };
           });
         } catch (requestError) {
-          const message = requestError instanceof Error ? requestError.message : String(requestError);
+          const message = logBacktestsError(`Не удалось собрать статистику бэктеста ${id}`, requestError);
           setAggregationState((prev) => {
             const nextCompleted = Math.min(prev.completed + 1, prev.total || targets.length);
             const current = prev.items.get(id);
