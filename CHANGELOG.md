@@ -1,3 +1,9 @@
+## [1.3.1](https://github.com/de-don/veles-tools/compare/v1.3.0...v1.3.1) (2025-10-07)
+
+### Bug Fixes
+
+* **backtests:** rollback aggregate MPU metric removal ([baec423](https://github.com/de-don/veles-tools/commit/baec4239b25c56ab7c93df6e4b3bf143eb601159))
+
 ## [1.3.0](https://github.com/de-don/veles-tools/compare/v1.2.0...v1.3.0) (2025-10-07)
 
 ### Features
