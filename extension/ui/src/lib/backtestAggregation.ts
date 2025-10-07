@@ -37,6 +37,7 @@ export interface BacktestAggregationMetrics {
   totalDeals: number;
   avgTradeDurationDays: number;
   totalTradeDurationSec: number;
+  avgNetPerDay: number;
   maxDrawdown: number;
   maxMPU: number;
   maxMPP: number;
@@ -95,6 +96,7 @@ export interface AggregationSummary {
   totalDeals: number;
   avgPnlPerDeal: number;
   avgPnlPerBacktest: number;
+  avgNetPerDay: number;
   avgTradeDurationDays: number;
   avgMaxDrawdown: number;
   aggregateDrawdown: number;
@@ -348,6 +350,7 @@ export const computeBacktestMetrics = (
   const avgDurationSec = Math.max(0, toNumber(stats.avgDuration ?? 0)) || 0;
   const totalTradeDurationSec = avgDurationSec * totalDeals;
   const avgTradeDurationDays = totalDeals > 0 ? totalTradeDurationSec / totalDeals / 86400 : 0;
+  const avgNetPerDay = toNumber(stats.netQuotePerDay ?? 0) || 0;
 
   const finishedCycles = cycles.filter(isFinishedCycle);
   const trades: AggregationTrade[] = [];
@@ -437,6 +440,7 @@ export const computeBacktestMetrics = (
     totalDeals,
     avgTradeDurationDays,
     totalTradeDurationSec,
+    avgNetPerDay,
     maxDrawdown: drawdownTimeline.maxDrawdown,
     maxMPU: riskInfo.maxRisk,
     maxMPP,
@@ -905,9 +909,11 @@ export const summarizeAggregations = (metricsList: BacktestAggregationMetrics[])
   const totalLosses = metricsList.reduce((acc, metrics) => acc + (Number(metrics.lossesCount) || 0), 0);
   const totalDeals = metricsList.reduce((acc, metrics) => acc + (Number(metrics.totalDeals) || 0), 0);
   const totalTradeDurationSec = metricsList.reduce((acc, metrics) => acc + (Number(metrics.totalTradeDurationSec) || 0), 0);
+  const totalAvgNetPerDay = metricsList.reduce((acc, metrics) => acc + (Number(metrics.avgNetPerDay) || 0), 0);
 
   const avgPnlPerDeal = totalDeals > 0 ? totalPnl / totalDeals : 0;
   const avgPnlPerBacktest = totalSelected > 0 ? totalPnl / totalSelected : 0;
+  const avgNetPerDay = totalSelected > 0 ? totalAvgNetPerDay / totalSelected : 0;
   const avgTradeDurationDays = totalDeals > 0 ? totalTradeDurationSec / totalDeals / 86400 : 0;
   const avgMaxDrawdown = totalSelected > 0
     ? metricsList.reduce((acc, metrics) => acc + (Number(metrics.maxDrawdown) || 0), 0) / totalSelected
@@ -926,6 +932,7 @@ export const summarizeAggregations = (metricsList: BacktestAggregationMetrics[])
     totalDeals,
     avgPnlPerDeal,
     avgPnlPerBacktest,
+    avgNetPerDay,
     avgTradeDurationDays,
     avgMaxDrawdown,
     aggregateDrawdown,

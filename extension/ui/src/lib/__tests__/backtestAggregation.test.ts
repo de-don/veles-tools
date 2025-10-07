@@ -87,6 +87,7 @@ describe('computeBacktestMetrics', () => {
       base: 'AAA',
       quote: 'BBB',
       netQuote: 150,
+      netQuotePerDay: 25,
       profits: 2,
       losses: 1,
       totalDeals: 3,
@@ -141,6 +142,7 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.totalDeals).toBe(3);
     expect(metrics.totalTradeDurationSec).toBe(10800);
     expect(metrics.avgTradeDurationDays).toBeCloseTo(0.04166, 4);
+    expect(metrics.avgNetPerDay).toBe(25);
     expect(metrics.maxDrawdown).toBe(40);
     expect(metrics.maxMPU).toBe(45);
     expect(metrics.maxMPP).toBe(120);
@@ -170,6 +172,7 @@ describe('summarizeAggregations', () => {
         id: 101,
         name: 'Strategy Alpha',
         netQuote: 150,
+        netQuotePerDay: 12.5,
         profits: 2,
         losses: 1,
         totalDeals: 3,
@@ -209,6 +212,7 @@ describe('summarizeAggregations', () => {
         id: 202,
         name: 'Strategy Beta',
         netQuote: -50,
+        netQuotePerDay: -3,
         profits: 1,
         losses: 2,
         totalDeals: 3,
@@ -246,6 +250,7 @@ describe('summarizeAggregations', () => {
     expect(summary.totalDeals).toBe(metricsA.totalDeals + metricsB.totalDeals);
     expect(summary.avgPnlPerDeal).toBeCloseTo(summary.totalPnl / summary.totalDeals, 10);
     expect(summary.avgPnlPerBacktest).toBeCloseTo(summary.totalPnl / summary.totalSelected, 10);
+    expect(summary.avgNetPerDay).toBeCloseTo((metricsA.avgNetPerDay + metricsB.avgNetPerDay) / summary.totalSelected, 10);
     expect(summary.avgTradeDurationDays).toBeCloseTo(
       (metricsA.totalTradeDurationSec + metricsB.totalTradeDurationSec)
         / summary.totalDeals

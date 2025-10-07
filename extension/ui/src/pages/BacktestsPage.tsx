@@ -858,6 +858,13 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                     </div>
                     <div className="aggregation-metric">
                       <div className="aggregation-metric__label">
+                        Средняя эффективность (Net/день)
+                        <InfoTooltip text="Средний дневной результат по всем бэктестам, включённым в агрегированную статистику." />
+                      </div>
+                      <div className={resolveTrendClass(aggregationSummary.avgNetPerDay)}>{formatSignedAmount(aggregationSummary.avgNetPerDay)}</div>
+                    </div>
+                    <div className="aggregation-metric">
+                      <div className="aggregation-metric__label">
                         Сделки (P/L/Σ)
                         <InfoTooltip text="Количество сделок и распределение по прибыльным, убыточным и нейтральным операциям." />
                       </div>
@@ -1027,6 +1034,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                   <th>Название</th>
                   <th>Пара</th>
                   <th>P&amp;L</th>
+                  <th>Net / день</th>
                   <th>Сделки</th>
                   <th>Avg длит. (д)</th>
                   <th>Дни без торговли</th>
@@ -1066,6 +1074,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                       <td>{metrics?.name ?? summary?.name ?? '—'}</td>
                       <td>{metrics?.symbol ?? summary?.symbol ?? '—'}</td>
                       <td>{metrics ? formatSignedAmount(metrics.pnl) : '—'}</td>
+                      <td>{metrics ? formatSignedAmount(metrics.avgNetPerDay) : '—'}</td>
                       <td>{metrics ? formatAggregationInteger(metrics.totalDeals) : '—'}</td>
                       <td>{metrics ? `${formatAggregationValue(metrics.avgTradeDurationDays)} д` : '—'}</td>
                       <td>{metrics ? `${formatAggregationValue(metrics.downtimeDays)} д` : '—'}</td>
