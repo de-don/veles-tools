@@ -15,6 +15,7 @@
 - [ ] Load backtest presets (comissions, is public, etc from veles.finance)
 - [x] Show error details in backtest log
 - [ ] Retry backtest if 429 error
+- [ ] Favorite backtests
 
 ### BackTests Stats
 
@@ -25,3 +26,9 @@
 - [ ] Symbols groups
 - [ ] Configurable tables
 - [ ] New design (shadcn/ui)
+
+
+## FAQ
+
+- [ ] How to update extension
+- [ ] Why some stats is 0

@@ -53,6 +53,12 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           <NavLink to="/backtests" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Бэктесты
           </NavLink>
+          <NavLink
+            to="/active-deals"
+            className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}
+          >
+            Активные сделки
+          </NavLink>
           <NavLink to="/settings" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Настройки
           </NavLink>
