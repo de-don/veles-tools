@@ -78,6 +78,43 @@ const buildCycle = (
   ...overrides,
 });
 
+const buildMetricsWithRiskWindow = ({
+  id,
+  start,
+  end,
+  mae,
+}: {
+  id: number;
+  start: string;
+  end: string;
+  mae: number;
+}) => {
+  const startMs = new Date(start).getTime();
+  const endMs = new Date(end).getTime();
+  const rawDurationSec = (endMs - startMs) / 1000;
+  const durationSec = Number.isFinite(rawDurationSec) && rawDurationSec > 0 ? rawDurationSec : 0;
+
+  return computeBacktestMetrics(
+    buildDetail({
+      id,
+      from: start,
+      to: end,
+      totalDeals: 1,
+      losses: 1,
+      avgDuration: durationSec,
+    }),
+    [
+      buildCycle({
+        id,
+        date: end,
+        duration: durationSec,
+        maeAbsolute: mae,
+        mfeAbsolute: mae,
+      }),
+    ],
+  );
+};
+
 
 describe('computeBacktestMetrics', () => {
   it('aggregates statistics and cycles into consistent metrics', () => {
@@ -404,6 +441,99 @@ describe('summarizeAggregations', () => {
     });
 
     expect(summary.portfolioEquity.maxValue).toBeGreaterThanOrEqual(summary.portfolioEquity.minValue);
+  });
+
+  it('returns the highest individual MPU when risk intervals do not overlap', () => {
+    const metricsA = buildMetricsWithRiskWindow({
+      id: 401,
+      start: '2024-02-01T00:00:00Z',
+      end: '2024-02-01T02:00:00Z',
+      mae: 20,
+    });
+
+    const metricsB = buildMetricsWithRiskWindow({
+      id: 402,
+      start: '2024-02-01T03:00:00Z',
+      end: '2024-02-01T05:00:00Z',
+      mae: 55,
+    });
+
+    const metricsC = buildMetricsWithRiskWindow({
+      id: 403,
+      start: '2024-02-01T06:30:00Z',
+      end: '2024-02-01T07:30:00Z',
+      mae: 40,
+    });
+
+    const summary = summarizeAggregations([metricsA, metricsB, metricsC]);
+
+    expect(summary.aggregateMPU).toBe(55);
+  });
+
+  it('sums concurrent risk spikes including instantaneous windows', () => {
+    const metricsA = buildMetricsWithRiskWindow({
+      id: 451,
+      start: '2024-03-01T00:00:00Z',
+      end: '2024-03-01T02:00:00Z',
+      mae: 12,
+    });
+
+    const metricsB = buildMetricsWithRiskWindow({
+      id: 452,
+      start: '2024-03-01T00:00:00Z',
+      end: '2024-03-01T01:00:00Z',
+      mae: 18,
+    });
+
+    const metricsC = buildMetricsWithRiskWindow({
+      id: 453,
+      start: '2024-03-01T01:30:00Z',
+      end: '2024-03-01T01:30:00Z',
+      mae: 10,
+    });
+
+    const metricsD = buildMetricsWithRiskWindow({
+      id: 454,
+      start: '2024-03-01T01:00:00Z',
+      end: '2024-03-01T01:00:00Z',
+      mae: 8,
+    });
+
+    const summary = summarizeAggregations([metricsA, metricsB, metricsC, metricsD]);
+
+    expect(summary.aggregateMPU).toBe(38);
+  });
+
+  it('ignores cycles without risk contribution when computing aggregate MPU', () => {
+    const metricsA = buildMetricsWithRiskWindow({
+      id: 481,
+      start: '2024-04-10T00:00:00Z',
+      end: '2024-04-10T03:00:00Z',
+      mae: 25,
+    });
+
+    const zeroRiskMetrics = computeBacktestMetrics(
+      buildDetail({
+        id: 482,
+        from: '2024-04-11T00:00:00Z',
+        to: '2024-04-11T01:00:00Z',
+        totalDeals: 1,
+        losses: 1,
+        avgDuration: 3600,
+      }),
+      [
+        buildCycle({
+          id: 482,
+          date: '2024-04-11T01:00:00Z',
+          duration: 3600,
+          maeAbsolute: 0,
+        }),
+      ],
+    );
+
+    const summary = summarizeAggregations([metricsA, zeroRiskMetrics]);
+
+    expect(summary.aggregateMPU).toBe(25);
   });
 
   it('computes aggregate MPU across overlapping risk intervals', () => {
