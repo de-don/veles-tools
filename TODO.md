@@ -30,5 +30,5 @@
 
 ## FAQ
 
-- [ ] How to update extension
-- [ ] Why some stats is 0
+- [x] How to update extension
+- [x] Why some stats is 0

@@ -892,14 +892,14 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                     <div className="aggregation-metric">
                       <div className="aggregation-metric__label">
                         Макс. суммарная просадка
-                        <InfoTooltip text="Максимальное падение совокупного портфеля, составленного из всех включённых бэктестов." />
+                        <InfoTooltip text="Максимальное падение совокупного портфеля, составленного из всех включённых бэктестов. Это максимальный зафиксированный убыток от вашего портфеля в какой то момент бектеста. Например при срабатывании нескольких стопов подряд." />
                       </div>
                       <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateDrawdown))}>{formatAggregationValue(aggregationSummary.aggregateDrawdown)}</div>
                     </div>
                     <div className="aggregation-metric">
                       <div className="aggregation-metric__label">
                         Макс. суммарное МПУ
-                        <InfoTooltip text="Максимальная одновременная просадка (MAE) по всем бэктестам, учитывая пересечения сделок." />
+                        <InfoTooltip text="Максимальная одновременная просадка по всем бэктестам, учитывая пересечения сделок. Такое значение нереализованного P&L вы бы увидели в самый худший день за период бектестов" />
                       </div>
                       <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateMPU))}>{formatAggregationValue(aggregationSummary.aggregateMPU)}</div>
                     </div>
