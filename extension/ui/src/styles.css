@@ -1043,37 +1043,43 @@ body {
   color: #94a3b8;
 }
 
-.aggregation-equity {
+.aggregation-equity,
+.aggregation-risk {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-top: 20px;
 }
 
-.aggregation-equity__header {
+.aggregation-equity__header,
+.aggregation-risk__header {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.aggregation-equity__title {
+.aggregation-equity__title,
+.aggregation-risk__title {
   margin: 0;
   font-size: 18px;
 }
 
-.aggregation-equity__subtitle {
+.aggregation-equity__subtitle,
+.aggregation-risk__subtitle {
   margin: 0;
   color: #64748b;
   font-size: 13px;
 }
 
-.aggregation-equity__metrics {
+.aggregation-equity__metrics,
+.aggregation-risk__metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
 }
 
-.aggregation-equity__chart {
+.aggregation-equity__chart,
+.aggregation-risk__chart {
   position: relative;
   min-height: 240px;
   border: 1px solid #e2e8f0;
@@ -1085,7 +1091,8 @@ body {
   justify-content: center;
 }
 
-.aggregation-equity__canvas {
+.aggregation-equity__canvas,
+.aggregation-risk__canvas {
   width: 100%;
   height: 200px;
   display: block;
@@ -1130,7 +1137,8 @@ body {
   outline-offset: 2px;
 }
 
-.aggregation-equity__empty {
+.aggregation-equity__empty,
+.aggregation-risk__empty {
   position: absolute;
   inset: 0;
   display: flex;

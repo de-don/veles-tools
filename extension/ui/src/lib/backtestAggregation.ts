@@ -77,6 +77,16 @@ export interface PortfolioEquitySeries {
   maxValue: number;
 }
 
+export interface AggregateRiskPoint {
+  time: number;
+  value: number;
+}
+
+export interface AggregateRiskSeries {
+  points: AggregateRiskPoint[];
+  maxValue: number;
+}
+
 export interface DailyConcurrencyStats {
   meanMax: number;
   p75: number;
@@ -112,6 +122,7 @@ export interface AggregationSummary {
   noTradeDays: number;
   dailyConcurrency: DailyConcurrencyResult;
   portfolioEquity: PortfolioEquitySeries;
+  aggregateRiskSeries: AggregateRiskSeries;
 }
 
 const toNumber = (value: unknown): number => {
@@ -509,30 +520,9 @@ const computeAggregateDrawdown = (metricsList: BacktestAggregationMetrics[]): nu
   return maxDrawdown;
 };
 
-const computeAggregateMPU = (metricsList: BacktestAggregationMetrics[]): number => {
-  const events: Array<{ time: number; delta: number; type: 'start' | 'end' }> = [];
+type RiskEvent = { time: number; delta: number; type: 'start' | 'end' };
 
-  metricsList.forEach((metrics) => {
-    metrics.riskIntervals.forEach((interval) => {
-      const value = Number(interval.value);
-      if (
-        !Number.isFinite(interval.start)
-        || !Number.isFinite(interval.end)
-        || interval.end < interval.start
-        || !Number.isFinite(value)
-        || value <= 0
-      ) {
-        return;
-      }
-      events.push({ time: interval.start, delta: value, type: 'start' });
-      events.push({ time: interval.end, delta: -value, type: 'end' });
-    });
-  });
-
-  if (events.length === 0) {
-    return 0;
-  }
-
+const sortRiskEvents = (events: RiskEvent[]) => {
   events.sort((a, b) => {
     if (a.time === b.time) {
       if (a.type === b.type) {
@@ -542,18 +532,100 @@ const computeAggregateMPU = (metricsList: BacktestAggregationMetrics[]): number 
     }
     return a.time - b.time;
   });
+};
 
+const computeRiskSeriesFromEvents = (events: RiskEvent[], fallbackMax = 0): AggregateRiskSeries => {
+  if (events.length === 0) {
+    return {
+      points: [],
+      maxValue: Math.max(0, fallbackMax),
+    } satisfies AggregateRiskSeries;
+  }
+
+  sortRiskEvents(events);
+
+  const points: AggregateRiskPoint[] = [];
   let current = 0;
   let max = 0;
+  let index = 0;
+  let lastTime = events[0].time;
 
-  events.forEach((event) => {
-    current += event.delta;
+  const pushPoint = (time: number, value: number) => {
+    if (!Number.isFinite(time)) {
+      return;
+    }
+    const last = points[points.length - 1];
+    if (last && last.time === time && Math.abs(last.value - value) < 1e-9) {
+      return;
+    }
+    points.push({ time, value });
+  };
+
+  pushPoint(lastTime, 0);
+
+  while (index < events.length) {
+    const time = events[index].time;
+    if (time > lastTime) {
+      pushPoint(time, current);
+      lastTime = time;
+    }
+
+    pushPoint(time, current);
+
+    let deltaSum = 0;
+    while (index < events.length && events[index].time === time) {
+      deltaSum += events[index].delta;
+      index += 1;
+    }
+
+    current = Math.max(0, current + deltaSum);
     if (current > max) {
       max = current;
     }
+
+    pushPoint(time, current);
+  }
+
+  return {
+    points,
+    maxValue: max,
+  } satisfies AggregateRiskSeries;
+};
+
+const buildRiskEventsFromMetrics = (metricsList: BacktestAggregationMetrics[]): RiskEvent[] => {
+  const events: RiskEvent[] = [];
+
+  metricsList.forEach((metrics) => {
+    metrics.riskIntervals.forEach((interval) => {
+      const start = Number(interval.start);
+      const end = Number(interval.end);
+      const value = Number(interval.value);
+      if (
+        !Number.isFinite(start)
+        || !Number.isFinite(end)
+        || end < start
+        || !Number.isFinite(value)
+        || value <= 0
+      ) {
+        return;
+      }
+      events.push({ time: start, delta: value, type: 'start' });
+      events.push({ time: end, delta: -value, type: 'end' });
+    });
   });
 
-  return max;
+  return events;
+};
+
+const computeAggregateRiskSeriesFromMetrics = (
+  metricsList: BacktestAggregationMetrics[],
+): AggregateRiskSeries => {
+  const events = buildRiskEventsFromMetrics(metricsList);
+  return computeRiskSeriesFromEvents(events, 0);
+};
+
+const computeAggregateMPU = (metricsList: BacktestAggregationMetrics[]): number => {
+  return computeAggregateRiskSeriesFromMetrics(metricsList).maxValue;
 };
 
 const computePortfolioEquitySeries = (metricsList: BacktestAggregationMetrics[]): PortfolioEquitySeries => {
@@ -1151,60 +1223,37 @@ const computeAggregateDrawdownFromTrades = (trades: NormalizedTrade[]): number =
   return computeMaxDrawdownFromTrades(trades);
 };
 
+const buildRiskEventsFromTrades = (trades: NormalizedTrade[]): RiskEvent[] => {
+  const events: RiskEvent[] = [];
+
+  trades.forEach((trade) => {
+    const start = Number(trade.start);
+    const end = Number(trade.end);
+    const mae = Math.max(0, Number(trade.mae));
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start || mae <= 0) {
+      return;
+    }
+    events.push({ time: start, delta: mae, type: 'start' });
+    events.push({ time: end, delta: -mae, type: 'end' });
+  });
+
+  return events;
+};
+
+const computeAggregateRiskSeriesFromTrades = (
+  trades: NormalizedTrade[],
+  metricsList: BacktestAggregationMetrics[],
+): AggregateRiskSeries => {
+  const events = buildRiskEventsFromTrades(trades);
+  const fallback = metricsList.reduce((acc, metrics) => (metrics.maxMPU > acc ? metrics.maxMPU : acc), 0);
+  return computeRiskSeriesFromEvents(events, fallback);
+};
+
 const computeAggregateMPUFromTrades = (
   trades: NormalizedTrade[],
   metricsList: BacktestAggregationMetrics[],
 ): number => {
-  const events: Array<{ time: number; delta: number; type: 'start' | 'end' }> = [];
-
-  trades.forEach((trade) => {
-    if (
-      !Number.isFinite(trade.start)
-      || !Number.isFinite(trade.end)
-      || trade.end < trade.start
-      || !Number.isFinite(trade.mae)
-    ) {
-      return;
-    }
-    const value = Math.max(0, Number(trade.mae));
-    if (value <= 0) {
-      return;
-    }
-    events.push({ time: trade.start, delta: value, type: 'start' });
-    events.push({ time: trade.end, delta: -value, type: 'end' });
-  });
-
-  if (events.length === 0) {
-    let fallback = 0;
-    metricsList.forEach((metrics) => {
-      if (metrics.maxMPU > fallback) {
-        fallback = metrics.maxMPU;
-      }
-    });
-    return fallback;
-  }
-
-  events.sort((a, b) => {
-    if (a.time === b.time) {
-      if (a.type === b.type) {
-        return 0;
-      }
-      return a.type === 'start' ? -1 : 1;
-    }
-    return a.time - b.time;
-  });
-
-  let current = 0;
-  let max = 0;
-
-  events.forEach((event) => {
-    current += event.delta;
-    if (current > max) {
-      max = current;
-    }
-  });
-
-  return max;
+  return computeAggregateRiskSeriesFromTrades(trades, metricsList).maxValue;
 };
 
 const computeConcurrencyFromTrades = (trades: NormalizedTrade[]): ConcurrencyResult => {
@@ -1350,7 +1399,8 @@ const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): Aggre
     : 0;
 
   const aggregateDrawdown = computeAggregateDrawdown(metricsList);
-  const aggregateMPU = computeAggregateMPU(metricsList);
+  const aggregateRiskSeries = computeAggregateRiskSeriesFromMetrics(metricsList);
+  const aggregateMPU = aggregateRiskSeries.maxValue;
   const concurrency = computeConcurrency(metricsList);
   const noTradeInfo = computeNoTradeInfo(metricsList);
   const dailyConcurrency = computeDailyConcurrency(metricsList);
@@ -1373,6 +1423,7 @@ const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): Aggre
     noTradeDays: noTradeInfo.noTradeDays,
     dailyConcurrency,
     portfolioEquity,
+    aggregateRiskSeries,
   };
 };
 
@@ -1414,7 +1465,8 @@ const summarizeWithConcurrencyLimit = (
     : 0;
 
   const aggregateDrawdown = computeAggregateDrawdownFromTrades(acceptedTrades);
-  const aggregateMPU = computeAggregateMPUFromTrades(acceptedTrades, metricsList);
+  const aggregateRiskSeries = computeAggregateRiskSeriesFromTrades(acceptedTrades, metricsList);
+  const aggregateMPU = aggregateRiskSeries.maxValue;
   const concurrency = computeConcurrencyFromTrades(acceptedTrades);
   const avgNetPerDay = concurrency.totalSpanMs > 0 ? totalPnl / (concurrency.totalSpanMs / MS_IN_DAY) : 0;
   const noTradeInfo = computeNoTradeInfoFromTrades(acceptedTrades);
@@ -1439,6 +1491,7 @@ const summarizeWithConcurrencyLimit = (
     noTradeDays: noTradeInfo.noTradeDays,
     dailyConcurrency,
     portfolioEquity,
+    aggregateRiskSeries,
   };
 };
 

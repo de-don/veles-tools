@@ -297,6 +297,7 @@ describe('summarizeAggregations', () => {
     expect(summary.avgTradeDurationDays).toBe(0);
     expect(summary.avgMaxDrawdown).toBe(0);
     expect(summary.aggregateDrawdown).toBe(0);
+    expect(summary.aggregateMPU).toBe(0);
     expect(summary.maxConcurrent).toBe(0);
     expect(summary.avgConcurrent).toBe(0);
     expect(summary.noTradeDays).toBe(0);
@@ -309,6 +310,7 @@ describe('summarizeAggregations', () => {
       limits: { p75: 0, p90: 0, p95: 0 },
     });
     expect(summary.portfolioEquity).toEqual({ points: [], minValue: 0, maxValue: 0 });
+    expect(summary.aggregateRiskSeries).toEqual({ points: [], maxValue: 0 });
   });
 
   it('aggregates multiple backtests into portfolio-level metrics', () => {
@@ -405,6 +407,8 @@ describe('summarizeAggregations', () => {
     expect(summary.avgMaxDrawdown).toBeCloseTo((metricsA.maxDrawdown + metricsB.maxDrawdown) / 2, 6);
     expect(summary.aggregateDrawdown).toBeGreaterThanOrEqual(Math.max(metricsA.maxDrawdown, metricsB.maxDrawdown));
     expect(summary.aggregateMPU).toBeGreaterThanOrEqual(Math.max(metricsA.maxMPU, metricsB.maxMPU));
+    expect(summary.aggregateRiskSeries.maxValue).toBe(summary.aggregateMPU);
+    expect(summary.aggregateRiskSeries.points.length).toBeGreaterThan(0);
     expect(summary.maxConcurrent).toBeGreaterThanOrEqual(2);
     expect(summary.avgConcurrent).toBeGreaterThan(0);
     expect(summary.noTradeDays).toBeGreaterThan(0);
@@ -468,6 +472,7 @@ describe('summarizeAggregations', () => {
     const summary = summarizeAggregations([metricsA, metricsB, metricsC]);
 
     expect(summary.aggregateMPU).toBe(55);
+    expect(summary.aggregateRiskSeries.maxValue).toBe(55);
   });
 
   it('sums concurrent risk spikes including instantaneous windows', () => {
@@ -502,6 +507,7 @@ describe('summarizeAggregations', () => {
     const summary = summarizeAggregations([metricsA, metricsB, metricsC, metricsD]);
 
     expect(summary.aggregateMPU).toBe(38);
+    expect(summary.aggregateRiskSeries.maxValue).toBe(38);
   });
 
   it('ignores cycles without risk contribution when computing aggregate MPU', () => {
@@ -534,6 +540,7 @@ describe('summarizeAggregations', () => {
     const summary = summarizeAggregations([metricsA, zeroRiskMetrics]);
 
     expect(summary.aggregateMPU).toBe(25);
+    expect(summary.aggregateRiskSeries.maxValue).toBe(25);
   });
 
   it('computes aggregate MPU across overlapping risk intervals', () => {
@@ -590,6 +597,7 @@ describe('summarizeAggregations', () => {
     const summary = summarizeAggregations([metricsA, metricsB]);
 
     expect(summary.aggregateMPU).toBeCloseTo(30);
+    expect(summary.aggregateRiskSeries.maxValue).toBeCloseTo(30);
   });
 
   it('calculates noTradeDays across sparse activity windows', () => {
@@ -868,6 +876,10 @@ describe('summarizeAggregations', () => {
     const relaxedSummary = summarizeAggregations(metricsList, { maxConcurrentBots: 5 });
 
     expect(relaxedSummary).toEqual(unlimitedSummary);
+
+    expect(unlimitedSummary.aggregateRiskSeries.maxValue).toBe(unlimitedSummary.aggregateMPU);
+    expect(boundedSummary.aggregateRiskSeries.maxValue).toBe(boundedSummary.aggregateMPU);
+    expect(unlimitedSummary.aggregateRiskSeries.points.length).toBeGreaterThan(0);
 
     expect(boundedSummary.totalDeals).toBeLessThan(unlimitedSummary.totalDeals);
     expect(boundedSummary.totalPnl).toBeLessThan(unlimitedSummary.totalPnl);

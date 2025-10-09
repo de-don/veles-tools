@@ -5,6 +5,7 @@ import type {
   LineSeriesOption,
 } from 'echarts';
 import type {
+  AggregateRiskSeries,
   DailyConcurrencyRecord,
   DailyConcurrencyStats,
   PortfolioEquitySeries,
@@ -215,6 +216,87 @@ export const createPortfolioEquityChartOptions = (
     },
     dataZoom: buildDataZoomComponents(range),
     series: [positiveAreaSeries, negativeAreaSeries, equitySeries],
+  } satisfies EChartsOption;
+};
+
+export const createAggregateRiskChartOptions = (
+  series: AggregateRiskSeries,
+  range?: DataZoomRange,
+): EChartsOption => {
+  const riskData = series.points.map((point) => [point.time, point.value]);
+
+  const riskSeries: LineSeriesOption = {
+    name: 'Суммарное МПУ',
+    type: 'line',
+    showSymbol: false,
+    smooth: false,
+    lineStyle: {
+      color: 'rgba(220, 38, 38, 0.85)',
+      width: 1.6,
+    },
+    itemStyle: {
+      color: 'rgba(220, 38, 38, 0.85)',
+    },
+    areaStyle: {
+      color: 'rgba(220, 38, 38, 0.2)',
+    },
+    markLine: {
+      symbol: 'none',
+      lineStyle: {
+        color: '#94a3b8',
+        type: 'dashed',
+        width: 1,
+      },
+      label: {
+        formatter: '0',
+        color: '#475569',
+        backgroundColor: 'rgba(241, 245, 249, 0.8)',
+        padding: [2, 4],
+        borderRadius: 4,
+      },
+      data: [{ yAxis: 0 }],
+    },
+    emphasis: { focus: 'series' },
+    data: riskData,
+  } satisfies LineSeriesOption;
+
+  return {
+    animation: false,
+    grid: { left: 60, right: 24, top: 16, bottom: 92 },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      valueFormatter: (value) => formatNumber(Number(value)),
+      order: 'valueDesc',
+    },
+    legend: {
+      bottom: 0,
+      icon: 'roundRect',
+      data: ['Суммарное МПУ'],
+    },
+    xAxis: {
+      type: 'time',
+      axisLabel: {
+        formatter: (value) => dateTimeFormatter.format(new Date(value)),
+      },
+      splitLine: {
+        show: true,
+        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+      },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      axisLabel: {
+        formatter: (value) => formatNumber(Number(value)),
+      },
+      splitLine: {
+        show: true,
+        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+      },
+    },
+    dataZoom: buildDataZoomComponents(range),
+    series: [riskSeries],
   } satisfies EChartsOption;
 };
 

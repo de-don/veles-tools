@@ -8,6 +8,7 @@ import {
   type BacktestAggregationMetrics,
 } from '../lib/backtestAggregation';
 import { DailyConcurrencyChart } from '../components/charts/DailyConcurrencyChart';
+import { AggregateRiskChart } from '../components/charts/AggregateRiskChart';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
 import { Tabs, type TabItem } from '../components/ui/Tabs';
@@ -491,6 +492,9 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
   const dailyConcurrencyRecords = aggregationSummary?.dailyConcurrency.records ?? [];
   const dailyConcurrencyStats = aggregationSummary?.dailyConcurrency.stats;
+
+  const aggregateRiskSeries = aggregationSummary?.aggregateRiskSeries ?? null;
+  const aggregateRiskPeak = aggregationSummary ? aggregationSummary.aggregateMPU : null;
 
   const portfolioEquitySeries = aggregationSummary?.portfolioEquity ?? null;
   const portfolioFinalValue = useMemo(() => {
@@ -1073,6 +1077,41 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                         />
                       ) : (
                         <div className="aggregation-equity__empty">Нет данных для построения графика.</div>
+                      )}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: 'aggregate-risk',
+                label: 'Суммарное МПУ',
+                content: (
+                  <div className="aggregation-risk">
+                    <div className="aggregation-risk__header">
+                      <h3 className="aggregation-risk__title">Суммарное МПУ портфеля</h3>
+                      <p className="aggregation-risk__subtitle">
+                        График показывает, как менялась совокупная потенциальная просадка по выбранным бэктестам.
+                      </p>
+                    </div>
+                    <div className="aggregation-risk__metrics">
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Пиковое суммарное МПУ
+                          <InfoTooltip text="Максимальная совокупная просадка (MPU) в любой момент времени по всем выбранным бэктестам." />
+                        </div>
+                        <div className={aggregateRiskPeak !== null ? resolveTrendClass(-Math.abs(aggregateRiskPeak)) : 'aggregation-metric__value aggregation-metric__value--muted'}>
+                          {aggregateRiskPeak !== null ? formatAggregationValue(aggregateRiskPeak) : '—'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="aggregation-risk__chart">
+                      {aggregateRiskSeries && aggregateRiskSeries.points.length > 0 ? (
+                        <AggregateRiskChart
+                          series={aggregateRiskSeries}
+                          className="aggregation-risk__canvas"
+                        />
+                      ) : (
+                        <div className="aggregation-risk__empty">Нет данных для построения графика.</div>
                       )}
                     </div>
                   </div>
