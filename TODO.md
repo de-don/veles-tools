@@ -16,6 +16,8 @@
 - [x] Show error details in backtest log
 - [ ] Retry backtest if 429 error
 - [ ] Favorite backtests
+- [ ] Export backtests links (public)
+- [ ] Import backtests by links (public) - directly to aggregation
 
 ### BackTests Stats
 

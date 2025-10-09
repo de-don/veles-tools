@@ -300,6 +300,104 @@ export const createAggregateRiskChartOptions = (
   } satisfies EChartsOption;
 };
 
+export interface LimitImpactPoint {
+  label: string;
+  totalPnl: number;
+  aggregateDrawdown: number;
+  aggregateMPU: number;
+}
+
+export const createLimitImpactChartOptions = (
+  points: LimitImpactPoint[],
+): EChartsOption => {
+  const categories = points.map((point) => point.label);
+
+  const pnlSeries: LineSeriesOption = {
+    name: 'Суммарный P&L',
+    type: 'line',
+    smooth: false,
+    showSymbol: true,
+    symbolSize: 8,
+    lineStyle: {
+      color: '#1d4ed8',
+      width: 1.8,
+    },
+    itemStyle: {
+      color: '#1d4ed8',
+    },
+    emphasis: { focus: 'series' },
+    data: points.map((point) => point.totalPnl),
+  } satisfies LineSeriesOption;
+
+  const drawdownSeries: LineSeriesOption = {
+    name: 'Макс. суммарная просадка',
+    type: 'line',
+    smooth: false,
+    showSymbol: true,
+    symbolSize: 8,
+    lineStyle: {
+      color: '#dc2626',
+      width: 1.6,
+    },
+    itemStyle: {
+      color: '#dc2626',
+    },
+    emphasis: { focus: 'series' },
+    data: points.map((point) => point.aggregateDrawdown),
+  } satisfies LineSeriesOption;
+
+  const riskSeries: LineSeriesOption = {
+    name: 'Макс. суммарное МПУ',
+    type: 'line',
+    smooth: false,
+    showSymbol: true,
+    symbolSize: 8,
+    lineStyle: {
+      color: '#f97316',
+      width: 1.6,
+    },
+    itemStyle: {
+      color: '#f97316',
+    },
+    emphasis: { focus: 'series' },
+    data: points.map((point) => point.aggregateMPU),
+  } satisfies LineSeriesOption;
+
+  return {
+    animation: false,
+    grid: { left: 60, right: 24, top: 16, bottom: 76 },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      valueFormatter: (value) => formatNumber(Number(value)),
+      order: 'valueDesc',
+    },
+    legend: {
+      bottom: 0,
+      icon: 'roundRect',
+      data: ['Суммарный P&L', 'Макс. суммарная просадка', 'Макс. суммарное МПУ'],
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisLabel: {
+        formatter: (value) => `≤ ${value}`,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: (value) => formatNumber(Number(value)),
+      },
+      splitLine: {
+        show: true,
+        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+      },
+    },
+    series: [pnlSeries, drawdownSeries, riskSeries],
+  } satisfies EChartsOption;
+};
+
 type BarMarkLine = NonNullable<BarSeriesOption['markLine']>;
 type BarMarkLineData = NonNullable<BarMarkLine['data']>;
 

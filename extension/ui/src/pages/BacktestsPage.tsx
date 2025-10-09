@@ -9,6 +9,7 @@ import {
 } from '../lib/backtestAggregation';
 import { DailyConcurrencyChart } from '../components/charts/DailyConcurrencyChart';
 import { AggregateRiskChart } from '../components/charts/AggregateRiskChart';
+import { LimitImpactChart } from '../components/charts/LimitImpactChart';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
 import { Tabs, type TabItem } from '../components/ui/Tabs';
@@ -504,6 +505,45 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     const lastPoint = portfolioEquitySeries.points[portfolioEquitySeries.points.length - 1];
     return lastPoint.value;
   }, [portfolioEquitySeries]);
+
+  const limitImpactPoints = useMemo(() => {
+    if (includedMetrics.length === 0) {
+      return [];
+    }
+
+    const metricsList = includedMetrics;
+    const total = metricsList.length;
+    if (total === 0) {
+      return [];
+    }
+
+    const items = [] as {
+      label: string;
+      totalPnl: number;
+      aggregateDrawdown: number;
+      aggregateMPU: number;
+    }[];
+
+    for (let limit = 1; limit <= total; limit += 1) {
+      const summary = summarizeAggregations(metricsList, { maxConcurrentBots: limit });
+      items.push({
+        label: `${limit}`,
+        totalPnl: summary.totalPnl,
+        aggregateDrawdown: summary.aggregateDrawdown,
+        aggregateMPU: summary.aggregateMPU,
+      });
+    }
+
+    const unlimitedSummary = summarizeAggregations(metricsList);
+    items.push({
+      label: '∞',
+      totalPnl: unlimitedSummary.totalPnl,
+      aggregateDrawdown: unlimitedSummary.aggregateDrawdown,
+      aggregateMPU: unlimitedSummary.aggregateMPU,
+    });
+
+    return items;
+  }, [includedMetrics]);
 
   const resolveTrendClass = (value: number): string => {
     if (!Number.isFinite(value) || Math.abs(value) <= 1e-9) {
@@ -1112,6 +1152,27 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                         />
                       ) : (
                         <div className="aggregation-risk__empty">Нет данных для построения графика.</div>
+                      )}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: 'limit-impact',
+                label: 'Влияние лимита',
+                content: (
+                  <div className="aggregation-limit">
+                    <div className="aggregation-limit__header">
+                      <h3 className="aggregation-limit__title">Как влияет лимит по ботам</h3>
+                      <p className="aggregation-limit__subtitle">
+                        Сравниваем итоговый P&amp;L, максимальную совокупную просадку и МПУ при разных ограничениях на количество ботов.
+                      </p>
+                    </div>
+                    <div className="aggregation-limit__chart">
+                      {limitImpactPoints.length > 0 ? (
+                        <LimitImpactChart points={limitImpactPoints} className="aggregation-limit__canvas" />
+                      ) : (
+                        <div className="aggregation-limit__empty">Нет данных для построения графика.</div>
                       )}
                     </div>
                   </div>
