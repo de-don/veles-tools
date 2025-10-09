@@ -93,6 +93,33 @@ const formatPercent = (value: number | null) => {
   return `${percentageFormatter.format(value)}%`;
 };
 
+const resolveDealCount = (value: number | null): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 0;
+  }
+  return value > 0 ? value : 0;
+};
+
+const formatWinRate = (wins: number | null, losses: number | null) => {
+  const winsCount = resolveDealCount(wins);
+  const lossesCount = resolveDealCount(losses);
+  const completedDeals = winsCount + lossesCount;
+  if (completedDeals <= 0) {
+    return '—';
+  }
+  return formatPercent((winsCount / completedDeals) * 100);
+};
+
+const formatLossRate = (losses: number | null, wins: number | null) => {
+  const lossesCount = resolveDealCount(losses);
+  const winsCount = resolveDealCount(wins);
+  const completedDeals = winsCount + lossesCount;
+  if (completedDeals <= 0) {
+    return '—';
+  }
+  return formatPercent((lossesCount / completedDeals) * 100);
+};
+
 type AggregationStatus = 'idle' | 'loading' | 'success' | 'error';
 
 interface AggregationItemState {
@@ -647,27 +674,29 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                 </th>
                 <th>Название</th>
                 <th>Период</th>
-                <th>Средняя длит.</th>
                 <th>Биржа</th>
                 <th>Пара</th>
                 <th>Прибыль</th>
                 <th>Net / день</th>
-                <th>Сделки</th>
+                <th>Число сделок</th>
                 <th>Win rate</th>
-                <th>MFE / MAE</th>
+                <th>МПУ</th>
+                <th>МПП</th>
+                <th>Макс время в сделке</th>
+                <th>Среднее время в сделке</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={11}>
+                  <td colSpan={13}>
                     <div className="loader">Загружаем данные…</div>
                   </td>
                 </tr>
               )}
               {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan={11}>
+                  <td colSpan={13}>
                     <div className="empty-state">Нет данных для отображения.</div>
                   </td>
                 </tr>
@@ -675,6 +704,10 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
               {!loading &&
                 items.map((item) => {
                   const isChecked = selection.has(item.id);
+                  const winsCount = item.winRateProfits ?? item.profits ?? null;
+                  const lossesCount = item.winRateLosses ?? item.losses ?? null;
+                  const winRateValue = formatWinRate(winsCount, lossesCount);
+                  const lossRateValue = formatLossRate(lossesCount, winsCount);
                   return (
                     <tr key={item.id}>
                       <td className="table__checkbox">
@@ -703,7 +736,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                         <div>{new Date(item.from).toLocaleDateString()}</div>
                         <div className="panel__description">до {new Date(item.to).toLocaleDateString()}</div>
                       </td>
-                      <td>{durationFormatter(item.avgDuration)}</td>
                       <td>{item.exchange}</td>
                       <td>
                         <div>{item.symbol}</div>
@@ -718,17 +750,23 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                         <div className="panel__description">в день: {formatAmount(item.netQuotePerDay, item.quote)}</div>
                       </td>
                       <td>
-                        <div>Всего: {item.totalDeals ?? '—'}</div>
+                        <div>{item.totalDeals ?? '—'}</div>
                         <div className="panel__description">P/L/B: {item.profits ?? 0}/{item.losses ?? 0}/{item.breakevens ?? 0}</div>
                       </td>
                       <td>
-                        <div>{formatPercent(item.winRateProfits)}</div>
-                        <div className="panel__description">Loss: {formatPercent(item.winRateLosses)}</div>
+                        <div>{winRateValue}</div>
+                        <div className="panel__description">Loss: {lossRateValue}</div>
                       </td>
                       <td>
-                        <div>MFE: {formatPercent(item.mfePercent)}</div>
-                        <div className="panel__description">MAE: {formatPercent(item.maePercent)}</div>
+                        <div>{formatAmount(item.mfeAbsolute, item.quote)}</div>
+                        <div className="panel__description">{formatPercent(item.mfePercent)}</div>
                       </td>
+                      <td>
+                        <div>{formatAmount(item.maeAbsolute, item.quote)}</div>
+                        <div className="panel__description">{formatPercent(item.maePercent)}</div>
+                      </td>
+                      <td>{durationFormatter(item.maxDuration)}</td>
+                      <td>{durationFormatter(item.avgDuration)}</td>
                     </tr>
                   );
                 })}
@@ -1114,7 +1152,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
             <table className="table aggregation-table">
               <thead>
                 <tr>
-                  <th className="aggregation-table__toggle">В статистике</th>
+                  <th className="aggregation-table__toggle">Вкл.</th>
                   <th>ID</th>
                   <th>Название</th>
                   <th>Пара</th>
@@ -1135,8 +1173,12 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                   const summary = selection.get(item.id);
                   const canToggle = item.status === 'success' && Boolean(metrics);
                   const isIncluded = canToggle && item.included;
+                  const rowClassName = ['aggregation-table__row'];
+                  if (!isIncluded) {
+                    rowClassName.push('aggregation-table__row--inactive');
+                  }
                   return (
-                    <tr key={item.id}>
+                    <tr key={item.id} className={rowClassName.join(' ')}>
                       <td className="aggregation-table__toggle">
                         <input
                           type="checkbox"

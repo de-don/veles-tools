@@ -98,9 +98,9 @@ export interface BacktestOrder {
 
 export interface BacktestCycle {
   id: number;
-  status: string;
-  substatus?: string | null;
-  exchange?: string | null;
+  status: 'CANCELED' | 'FINISHED' | string;
+  substatus?: 'PULL_UP' | 'TAKE_PROFIT' | string | null;
+  exchange?: 'BYBIT_FUTURES' | string | null;
   symbol?: string | null;
   base?: string | null;
   quote?: string | null;

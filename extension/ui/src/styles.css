@@ -1235,6 +1235,10 @@ body {
   white-space: nowrap;
 }
 
+.aggregation-table__row--inactive {
+  opacity: 0.45;
+}
+
 .aggregation-status {
   display: inline-flex;
   align-items: center;
