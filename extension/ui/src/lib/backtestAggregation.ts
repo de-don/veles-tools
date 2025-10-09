@@ -25,6 +25,7 @@ export interface EquityEvent {
 
 export interface AggregationTrade {
   id: number;
+  backtestId: number;
   start: number;
   end: number;
   net: number;
@@ -380,10 +381,11 @@ export const computeBacktestMetrics = (
   finishedCycleIntervals.forEach(({ cycle, interval }) => {
     const net = toNumber(cycle.netQuote ?? cycle.profitQuote ?? 0);
     const mfe = Math.max(0, toNumber(cycle.mfeAbsolute ?? 0));
-    const mae = Math.max(0, toNumber(cycle.maeAbsolute ?? 0));
+    const mae = Math.abs(toNumber(cycle.maeAbsolute ?? 0));
     const sanitizedNet = Number.isFinite(net) ? net : 0;
     trades.push({
       id: cycle.id,
+      backtestId: stats.id,
       start: interval.start,
       end: interval.end,
       net: sanitizedNet,
@@ -654,12 +656,19 @@ const computeNoTradeInfo = (metricsList: BacktestAggregationMetrics[]): { totalD
       if (startDay < minDay) {
         minDay = startDay;
       }
+      if (startDay > maxDay) {
+        maxDay = startDay;
+      }
     }
+
     if (Number.isFinite(metrics.spanEnd)) {
       const spanEndValue = Number(metrics.spanEnd);
       const spanStartValue = Number.isFinite(metrics.spanStart) ? Number(metrics.spanStart) : spanEndValue;
       const endAnchor = spanEndValue > spanStartValue ? spanEndValue - 1 : spanEndValue;
       const endDay = Math.floor(endAnchor / MS_IN_DAY);
+      if (endDay < minDay) {
+        minDay = endDay;
+      }
       if (endDay > maxDay) {
         maxDay = endDay;
       }
@@ -670,7 +679,7 @@ const computeNoTradeInfo = (metricsList: BacktestAggregationMetrics[]): { totalD
     return { totalDays: 0, noTradeDays: 0 };
   }
 
-  const totalDays = maxDay - minDay + 1;
+  const totalDays = Math.max(maxDay - minDay + 1, 0);
   let activeDayCount = 0;
   for (let day = minDay; day <= maxDay; day += 1) {
     if (activeDays.has(day)) {
@@ -832,18 +841,9 @@ const computePercentile = (values: number[], percentile: number): number => {
   return sorted[lower] + (sorted[upper] - sorted[lower]) * weight;
 };
 
-const computeDailyConcurrency = (metricsList: BacktestAggregationMetrics[]): DailyConcurrencyResult => {
-  const events: Array<{ time: number; type: 'start' | 'end' }> = [];
+type ConcurrencyEvent = { time: number; type: 'start' | 'end' };
 
-  metricsList.forEach((metrics) => {
-    metrics.concurrencyIntervals.forEach((interval) => {
-      if (Number.isFinite(interval.start) && Number.isFinite(interval.end) && interval.end > interval.start) {
-        events.push({ time: interval.start, type: 'start' });
-        events.push({ time: interval.end, type: 'end' });
-      }
-    });
-  });
-
+const computeDailyConcurrencyFromEvents = (events: ConcurrencyEvent[]): DailyConcurrencyResult => {
   if (events.length === 0) {
     return {
       records: [],
@@ -960,7 +960,379 @@ const computeDailyConcurrency = (metricsList: BacktestAggregationMetrics[]): Dai
   };
 };
 
-export const summarizeAggregations = (metricsList: BacktestAggregationMetrics[]): AggregationSummary => {
+const computeDailyConcurrency = (metricsList: BacktestAggregationMetrics[]): DailyConcurrencyResult => {
+  const events: ConcurrencyEvent[] = [];
+
+  metricsList.forEach((metrics) => {
+    metrics.concurrencyIntervals.forEach((interval) => {
+      if (Number.isFinite(interval.start) && Number.isFinite(interval.end) && interval.end > interval.start) {
+        events.push({ time: interval.start, type: 'start' });
+        events.push({ time: interval.end, type: 'end' });
+      }
+    });
+  });
+
+  return computeDailyConcurrencyFromEvents(events);
+};
+
+interface NormalizedTrade {
+  id: number;
+  backtestId: number;
+  start: number;
+  end: number;
+  net: number;
+  mfe: number;
+  mae: number;
+}
+
+const toSafeNumber = (value: number): number => {
+  return Number.isFinite(value) ? value : 0;
+};
+
+const toNormalizedTrades = (trades: AggregationTrade[]): NormalizedTrade[] => {
+  return trades
+    .map((trade) => {
+      const start = Number(trade.start);
+      const end = Number(trade.end);
+      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+        return null;
+      }
+      const normalizedEnd = end < start ? start : end;
+      return {
+        id: trade.id,
+        backtestId: trade.backtestId,
+        start,
+        end: normalizedEnd,
+        net: toSafeNumber(Number(trade.net)),
+        mfe: Math.max(0, toSafeNumber(Number(trade.mfe))),
+        mae: Math.abs(toSafeNumber(Number(trade.mae))),
+      } satisfies NormalizedTrade;
+    })
+    .filter((trade): trade is NormalizedTrade => trade !== null);
+};
+
+const pruneFinishedTrades = (active: NormalizedTrade[], currentTime: number) => {
+  while (active.length > 0 && active[0].end <= currentTime) {
+    active.shift();
+  }
+};
+
+const insertActiveTrade = (active: NormalizedTrade[], trade: NormalizedTrade) => {
+  let inserted = false;
+  for (let index = 0; index < active.length; index += 1) {
+    const candidate = active[index];
+    if (
+      trade.end < candidate.end
+      || (trade.end === candidate.end && (
+        trade.backtestId < candidate.backtestId
+        || (trade.backtestId === candidate.backtestId && trade.id < candidate.id)
+      ))
+    ) {
+      active.splice(index, 0, trade);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) {
+    active.push(trade);
+  }
+};
+
+const applyConcurrencyLimit = (trades: NormalizedTrade[], limit: number): NormalizedTrade[] => {
+  if (limit <= 0 || trades.length === 0) {
+    return [];
+  }
+
+  const sorted = [...trades].sort((a, b) => {
+    if (a.start === b.start) {
+      if (a.end === b.end) {
+        if (a.backtestId === b.backtestId) {
+          return a.id - b.id;
+        }
+        return a.backtestId - b.backtestId;
+      }
+      return a.end - b.end;
+    }
+    return a.start - b.start;
+  });
+
+  const active: NormalizedTrade[] = [];
+  const accepted: NormalizedTrade[] = [];
+
+  sorted.forEach((trade) => {
+    pruneFinishedTrades(active, trade.start);
+    if (active.length < limit) {
+      accepted.push(trade);
+      insertActiveTrade(active, trade);
+    }
+  });
+
+  return accepted;
+};
+
+const groupTradesByBacktest = (metricsList: BacktestAggregationMetrics[]): Map<number, NormalizedTrade[]> => {
+  const map = new Map<number, NormalizedTrade[]>();
+  metricsList.forEach((metrics) => {
+    map.set(metrics.id, []);
+  });
+  return map;
+};
+
+const computePortfolioEquitySeriesFromTrades = (trades: NormalizedTrade[]): PortfolioEquitySeries => {
+  if (trades.length === 0) {
+    return { points: [], minValue: 0, maxValue: 0 };
+  }
+
+  const events = new Map<number, number>();
+  let initialTime = Number.POSITIVE_INFINITY;
+
+  trades.forEach((trade) => {
+    if (trade.start < initialTime) {
+      initialTime = trade.start;
+    }
+    if (trade.end < initialTime) {
+      initialTime = trade.end;
+    }
+    const existing = events.get(trade.end) ?? 0;
+    events.set(trade.end, existing + trade.net);
+  });
+
+  const sortedTimes = Array.from(events.keys()).sort((a, b) => a - b);
+  const points: PortfolioEquityPoint[] = [];
+
+  if (Number.isFinite(initialTime)) {
+    points.push({ time: Number(initialTime), value: 0 });
+  }
+
+  let cumulative = 0;
+  sortedTimes.forEach((time) => {
+    cumulative += events.get(time) ?? 0;
+    points.push({ time, value: cumulative });
+  });
+
+  const values = points.map((point) => point.value);
+  const minValue = values.length > 0 ? Math.min(...values) : 0;
+  const maxValue = values.length > 0 ? Math.max(...values) : 0;
+
+  return { points, minValue, maxValue };
+};
+
+const computeMaxDrawdownFromTrades = (trades: NormalizedTrade[]): number => {
+  if (trades.length === 0) {
+    return 0;
+  }
+
+  const events = new Map<number, number>();
+  trades.forEach((trade) => {
+    const existing = events.get(trade.end) ?? 0;
+    events.set(trade.end, existing + trade.net);
+  });
+
+  const sortedTimes = Array.from(events.keys()).sort((a, b) => a - b);
+  let cumulative = 0;
+  let peak = 0;
+  let maxDrawdown = 0;
+
+  sortedTimes.forEach((time) => {
+    cumulative += events.get(time) ?? 0;
+    if (cumulative > peak) {
+      peak = cumulative;
+    }
+    const drawdown = peak - cumulative;
+    if (drawdown > maxDrawdown) {
+      maxDrawdown = drawdown;
+    }
+  });
+
+  return maxDrawdown;
+};
+
+const computeAggregateDrawdownFromTrades = (trades: NormalizedTrade[]): number => {
+  return computeMaxDrawdownFromTrades(trades);
+};
+
+const computeAggregateMPUFromTrades = (
+  trades: NormalizedTrade[],
+  metricsList: BacktestAggregationMetrics[],
+): number => {
+  const events: Array<{ time: number; delta: number; type: 'start' | 'end' }> = [];
+
+  trades.forEach((trade) => {
+    if (
+      !Number.isFinite(trade.start)
+      || !Number.isFinite(trade.end)
+      || trade.end < trade.start
+      || !Number.isFinite(trade.mae)
+    ) {
+      return;
+    }
+    const value = Math.max(0, Number(trade.mae));
+    if (value <= 0) {
+      return;
+    }
+    events.push({ time: trade.start, delta: value, type: 'start' });
+    events.push({ time: trade.end, delta: -value, type: 'end' });
+  });
+
+  if (events.length === 0) {
+    let fallback = 0;
+    metricsList.forEach((metrics) => {
+      if (metrics.maxMPU > fallback) {
+        fallback = metrics.maxMPU;
+      }
+    });
+    return fallback;
+  }
+
+  events.sort((a, b) => {
+    if (a.time === b.time) {
+      if (a.type === b.type) {
+        return 0;
+      }
+      return a.type === 'start' ? -1 : 1;
+    }
+    return a.time - b.time;
+  });
+
+  let current = 0;
+  let max = 0;
+
+  events.forEach((event) => {
+    current += event.delta;
+    if (current > max) {
+      max = current;
+    }
+  });
+
+  return max;
+};
+
+const computeConcurrencyFromTrades = (trades: NormalizedTrade[]): ConcurrencyResult => {
+  if (trades.length === 0) {
+    return { max: 0, average: 0, totalSpanMs: 0, zeroSpanMs: 0 };
+  }
+
+  const events: ConcurrencyEvent[] = [];
+  let minSpanStart = Number.POSITIVE_INFINITY;
+  let maxSpanEnd = Number.NEGATIVE_INFINITY;
+
+  trades.forEach((trade) => {
+    events.push({ time: trade.start, type: 'start' });
+    events.push({ time: trade.end, type: 'end' });
+    if (trade.start < minSpanStart) {
+      minSpanStart = trade.start;
+    }
+    if (trade.end > maxSpanEnd) {
+      maxSpanEnd = trade.end;
+    }
+  });
+
+  if (
+    !Number.isFinite(minSpanStart)
+    || !Number.isFinite(maxSpanEnd)
+    || maxSpanEnd <= minSpanStart
+  ) {
+    return { max: 0, average: 0, totalSpanMs: 0, zeroSpanMs: 0 };
+  }
+
+  events.sort((a, b) => {
+    if (a.time === b.time) {
+      if (a.type === b.type) {
+        return 0;
+      }
+      return a.type === 'start' ? -1 : 1;
+    }
+    return a.time - b.time;
+  });
+
+  let current = 0;
+  let max = 0;
+  let weightedSum = 0;
+  let totalDuration = 0;
+  let activeDuration = 0;
+  let previousTime = events[0].time;
+
+  if (minSpanStart > previousTime) {
+    minSpanStart = previousTime;
+  }
+
+  events.forEach((event) => {
+    if (event.time > previousTime) {
+      const duration = event.time - previousTime;
+      weightedSum += current * duration;
+      totalDuration += duration;
+      if (current > 0) {
+        activeDuration += duration;
+      }
+      previousTime = event.time;
+    }
+
+    if (event.type === 'start') {
+      current += 1;
+      if (current > max) {
+        max = current;
+      }
+    } else {
+      current = Math.max(0, current - 1);
+    }
+  });
+
+  if (maxSpanEnd > previousTime) {
+    const tailDuration = maxSpanEnd - previousTime;
+    if (current > 0) {
+      activeDuration += tailDuration;
+    }
+    totalDuration += tailDuration;
+    previousTime = maxSpanEnd;
+  }
+
+  const totalSpanMs = Math.max(previousTime - minSpanStart, 0);
+  const zeroSpanMs = Math.max(Math.min(totalSpanMs - activeDuration, totalSpanMs), 0);
+
+  return {
+    max,
+    average: totalDuration > 0 ? weightedSum / totalDuration : 0,
+    totalSpanMs,
+    zeroSpanMs,
+  };
+};
+
+const computeDailyConcurrencyFromTrades = (trades: NormalizedTrade[]): DailyConcurrencyResult => {
+  const events: ConcurrencyEvent[] = [];
+  trades.forEach((trade) => {
+    if (trade.end > trade.start) {
+      events.push({ time: trade.start, type: 'start' });
+      events.push({ time: trade.end, type: 'end' });
+    }
+  });
+  return computeDailyConcurrencyFromEvents(events);
+};
+
+const computeNoTradeInfoFromTrades = (trades: NormalizedTrade[]): { totalDays: number; noTradeDays: number } => {
+  const activeDays = new Set<number>();
+
+  trades.forEach((trade) => {
+    const startDay = Math.floor(trade.start / MS_IN_DAY);
+    const endAnchor = trade.end > trade.start ? trade.end - 1 : trade.end;
+    const endDay = Math.floor(endAnchor / MS_IN_DAY);
+    for (let day = startDay; day <= endDay; day += 1) {
+      activeDays.add(day);
+    }
+  });
+
+  if (activeDays.size === 0) {
+    return { totalDays: 0, noTradeDays: 0 };
+  }
+
+  const sortedDays = Array.from(activeDays.values()).sort((a, b) => a - b);
+  const minDay = sortedDays[0];
+  const maxDay = sortedDays[sortedDays.length - 1];
+  const totalDays = Math.max(maxDay - minDay + 1, 0);
+  const noTradeDays = Math.max(totalDays - activeDays.size, 0);
+  return { totalDays, noTradeDays };
+};
+
+const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): AggregationSummary => {
   const totalSelected = metricsList.length;
   const totalPnl = metricsList.reduce((acc, metrics) => acc + (Number(metrics.pnl) || 0), 0);
   const totalProfits = metricsList.reduce((acc, metrics) => acc + (Number(metrics.profitsCount) || 0), 0);
@@ -1002,4 +1374,92 @@ export const summarizeAggregations = (metricsList: BacktestAggregationMetrics[])
     dailyConcurrency,
     portfolioEquity,
   };
+};
+
+const summarizeWithConcurrencyLimit = (
+  metricsList: BacktestAggregationMetrics[],
+  limit: number,
+): AggregationSummary => {
+  const allTrades = toNormalizedTrades(metricsList.flatMap((metrics) => metrics.trades));
+  if (allTrades.length === 0) {
+    return summarizeWithoutLimit(metricsList);
+  }
+
+  const acceptedTrades = applyConcurrencyLimit(allTrades, limit);
+  const tradesByBacktest = groupTradesByBacktest(metricsList);
+  acceptedTrades.forEach((trade) => {
+    const bucket = tradesByBacktest.get(trade.backtestId);
+    if (bucket) {
+      bucket.push(trade);
+    }
+  });
+
+  const totalSelected = metricsList.length;
+  const totalPnl = acceptedTrades.reduce((acc, trade) => acc + trade.net, 0);
+  const totalProfits = acceptedTrades.reduce((acc, trade) => acc + (trade.net > 0 ? 1 : 0), 0);
+  const totalLosses = acceptedTrades.reduce((acc, trade) => acc + (trade.net < 0 ? 1 : 0), 0);
+  const totalDeals = acceptedTrades.length;
+  const totalTradeDurationSec = acceptedTrades.reduce((acc, trade) => acc + Math.max(trade.end - trade.start, 0) / 1000, 0);
+
+  const avgPnlPerDeal = totalDeals > 0 ? totalPnl / totalDeals : 0;
+  const avgPnlPerBacktest = totalSelected > 0 ? totalPnl / totalSelected : 0;
+  const avgTradeDurationDays = totalDeals > 0 ? totalTradeDurationSec / totalDeals / 86400 : 0;
+
+  const perBacktestDrawdowns = metricsList.map((metrics) => {
+    const trades = tradesByBacktest.get(metrics.id) ?? [];
+    return computeMaxDrawdownFromTrades(trades);
+  });
+  const avgMaxDrawdown = perBacktestDrawdowns.length > 0
+    ? perBacktestDrawdowns.reduce((acc, value) => acc + value, 0) / perBacktestDrawdowns.length
+    : 0;
+
+  const aggregateDrawdown = computeAggregateDrawdownFromTrades(acceptedTrades);
+  const aggregateMPU = computeAggregateMPUFromTrades(acceptedTrades, metricsList);
+  const concurrency = computeConcurrencyFromTrades(acceptedTrades);
+  const avgNetPerDay = concurrency.totalSpanMs > 0 ? totalPnl / (concurrency.totalSpanMs / MS_IN_DAY) : 0;
+  const noTradeInfo = computeNoTradeInfoFromTrades(acceptedTrades);
+  const dailyConcurrency = computeDailyConcurrencyFromTrades(acceptedTrades);
+  const portfolioEquity = computePortfolioEquitySeriesFromTrades(acceptedTrades);
+
+  return {
+    totalSelected,
+    totalPnl,
+    totalProfits,
+    totalLosses,
+    totalDeals,
+    avgPnlPerDeal,
+    avgPnlPerBacktest,
+    avgNetPerDay,
+    avgTradeDurationDays,
+    avgMaxDrawdown,
+    aggregateDrawdown,
+    aggregateMPU,
+    maxConcurrent: concurrency.max,
+    avgConcurrent: concurrency.average,
+    noTradeDays: noTradeInfo.noTradeDays,
+    dailyConcurrency,
+    portfolioEquity,
+  };
+};
+
+export interface AggregationSummaryOptions {
+  maxConcurrentBots?: number | null;
+}
+
+export const summarizeAggregations = (
+  metricsList: BacktestAggregationMetrics[],
+  options?: AggregationSummaryOptions,
+): AggregationSummary => {
+  const limit = options?.maxConcurrentBots;
+  if (!Number.isFinite(limit ?? Number.NaN) || limit === null || limit === undefined) {
+    return summarizeWithoutLimit(metricsList);
+  }
+
+  const normalizedLimit = Math.max(1, Math.floor(Number(limit)));
+  const concurrency = computeConcurrency(metricsList);
+  if (normalizedLimit >= concurrency.max) {
+    return summarizeWithoutLimit(metricsList);
+  }
+
+  return summarizeWithConcurrencyLimit(metricsList, normalizedLimit);
 };

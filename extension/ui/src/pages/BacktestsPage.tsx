@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktests, fetchBacktestCycles, fetchBacktestDetails } from '../api/backtests';
 import type { BacktestStatistics, BacktestStatisticsListResponse } from '../types/backtests';
 import {
@@ -162,6 +162,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     lastRunAt: null,
   });
   const [activeAggregationTab, setActiveAggregationTab] = useState<string>('metrics');
+  const [botLimit, setBotLimit] = useState<number | null>(null);
 
   useEffect(() => {
     if (!extensionReady) {
@@ -216,6 +217,44 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   const items = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
   const totalSelected = selection.size;
+
+  useEffect(() => {
+    if (totalSelected === 0) {
+      setBotLimit(null);
+      return;
+    }
+
+    setBotLimit((previous) => {
+      if (previous === null) {
+        return totalSelected;
+      }
+      if (previous > totalSelected) {
+        return totalSelected;
+      }
+      if (previous < 1) {
+        return 1;
+      }
+      return previous;
+    });
+  }, [totalSelected]);
+
+  const handleBotLimitChange = useCallback(
+    (nextValue: number) => {
+      if (totalSelected === 0) {
+        setBotLimit(null);
+        return;
+      }
+      const maxAllowed = totalSelected;
+      const clamped = Math.min(Math.max(Math.floor(nextValue), 1), maxAllowed);
+      setBotLimit((previous) => {
+        if (previous === clamped) {
+          return previous;
+        }
+        return clamped;
+      });
+    },
+    [totalSelected],
+  );
 
   const currentPageSelectedCount = useMemo(() => {
     if (items.length === 0) {
@@ -397,13 +436,19 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   );
 
   const hasFetchedMetrics = collectedItems.length > 0;
+  const canAdjustLimit = includedMetrics.length > 0;
+  const limitDisabled = !canAdjustLimit || aggregationState.running;
 
   const aggregationSummary = useMemo<AggregationSummary | null>(() => {
     if (includedMetrics.length === 0) {
       return null;
     }
-    return summarizeAggregations(includedMetrics);
-  }, [includedMetrics]);
+    const limit = botLimit;
+    return summarizeAggregations(
+      includedMetrics,
+      typeof limit === 'number' ? { maxConcurrentBots: limit } : undefined,
+    );
+  }, [includedMetrics, botLimit]);
 
   const aggregationErrors = useMemo(
     () => aggregationItems.filter((item) => item.status === 'error' && item.error),
@@ -814,6 +859,39 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                 <li key={item.id}>ID {item.id}: {item.error}</li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {botLimit !== null && totalSelected > 0 && (
+          <div className="aggregation-controls">
+            <label className="aggregation-controls__label" htmlFor="aggregation-bot-limit">
+              Блокировка по ботам
+              <InfoTooltip text="Максимальное количество ботов, которые могут вести сделки одновременно. Если все слоты заняты, новые сделки будут пропущены до освобождения места." />
+            </label>
+            <div className="aggregation-controls__inputs">
+              <input
+                id="aggregation-bot-limit"
+                type="range"
+                min={1}
+                max={totalSelected}
+                value={botLimit}
+                onChange={(event) => handleBotLimitChange(Number(event.target.value))}
+                className="aggregation-controls__slider"
+                disabled={limitDisabled}
+              />
+              <input
+                type="number"
+                min={1}
+                max={totalSelected}
+                value={botLimit}
+                onChange={(event) => handleBotLimitChange(Number(event.target.value))}
+                className="aggregation-controls__number"
+                disabled={limitDisabled}
+              />
+              <div className="aggregation-controls__value">
+                {botLimit} из {totalSelected}
+              </div>
+            </div>
           </div>
         )}
 

@@ -267,7 +267,7 @@ describe('computeBacktestMetrics', () => {
     expect(secondInterval.start).toBeLessThanOrEqual(thirdInterval.start);
 
     expect(metrics.trades).toHaveLength(2);
-    expect(metrics.trades[0]).toMatchObject({ id: 501, net: 75, mfe: 50, mae: 0 });
+    expect(metrics.trades[0]).toMatchObject({ id: 501, net: 75, mfe: 50, mae: 20 });
     expect(metrics.trades[1]).toMatchObject({ id: 502, net: 0, mfe: 0 });
 
     expect(metrics.maxMPP).toBe(50);
@@ -801,5 +801,83 @@ describe('summarizeAggregations', () => {
     const lastPoint = summary.portfolioEquity.points[summary.portfolioEquity.points.length - 1];
     expect(lastPoint.value).toBe(40);
     expect(summary.portfolioEquity.minValue).toBeLessThanOrEqual(summary.portfolioEquity.maxValue);
+  });
+
+  it('respects concurrency limits by skipping overlapping trades', () => {
+    const alphaMetrics = computeBacktestMetrics(
+      buildDetail({
+        id: 301,
+        name: 'Alpha',
+        netQuote: 180,
+        netQuotePerDay: 18,
+        profits: 3,
+        losses: 0,
+        totalDeals: 3,
+        avgDuration: 7200,
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-01-03T00:00:00Z',
+      }),
+      [
+        buildCycle({
+          id: 1,
+          date: '2024-01-01T02:00:00Z',
+          duration: 7200,
+          netQuote: 100,
+        }),
+        buildCycle({
+          id: 2,
+          date: '2024-01-01T04:00:01Z',
+          duration: 7200,
+          netQuote: 50,
+        }),
+        buildCycle({
+          id: 3,
+          date: '2024-01-02T04:00:00Z',
+          duration: 3600,
+          netQuote: 30,
+        }),
+      ],
+    );
+
+    const betaMetrics = computeBacktestMetrics(
+      buildDetail({
+        id: 302,
+        name: 'Beta',
+        netQuote: 80,
+        netQuotePerDay: 8,
+        profits: 1,
+        losses: 0,
+        totalDeals: 1,
+        avgDuration: 7200,
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-01-02T00:00:00Z',
+      }),
+      [
+        buildCycle({
+          id: 10,
+          date: '2024-01-01T03:00:00Z',
+          duration: 7200,
+          netQuote: 80,
+        }),
+      ],
+    );
+
+    const metricsList = [alphaMetrics, betaMetrics];
+    const unlimitedSummary = summarizeAggregations(metricsList);
+    const boundedSummary = summarizeAggregations(metricsList, { maxConcurrentBots: 1 });
+    const relaxedSummary = summarizeAggregations(metricsList, { maxConcurrentBots: 5 });
+
+    expect(relaxedSummary).toEqual(unlimitedSummary);
+
+    expect(boundedSummary.totalDeals).toBeLessThan(unlimitedSummary.totalDeals);
+    expect(boundedSummary.totalPnl).toBeLessThan(unlimitedSummary.totalPnl);
+    expect(boundedSummary.totalDeals).toBe(3);
+    expect(boundedSummary.totalPnl).toBe(180);
+    expect(boundedSummary.totalProfits).toBe(3);
+    expect(boundedSummary.totalLosses).toBe(0);
+    expect(boundedSummary.maxConcurrent).toBeLessThanOrEqual(1);
+    expect(boundedSummary.dailyConcurrency.records.every((record) => record.maxCount <= 1)).toBe(true);
+    expect(boundedSummary.noTradeDays).toBeGreaterThanOrEqual(unlimitedSummary.noTradeDays);
+    expect(relaxedSummary.noTradeDays).toBe(unlimitedSummary.noTradeDays);
   });
 });
