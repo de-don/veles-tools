@@ -44,6 +44,12 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Главная
           </NavLink>
+          <NavLink
+              to="/active-deals"
+              className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}
+          >
+            Активные сделки
+          </NavLink>
           <NavLink to="/bots" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Мои боты
           </NavLink>
@@ -52,12 +58,6 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           </NavLink>
           <NavLink to="/backtests" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Бэктесты
-          </NavLink>
-          <NavLink
-            to="/active-deals"
-            className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}
-          >
-            Активные сделки
           </NavLink>
           <NavLink to="/settings" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Настройки
