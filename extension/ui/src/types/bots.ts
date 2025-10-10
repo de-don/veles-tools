@@ -47,6 +47,8 @@ export interface TradingBot {
   apiKey: number | null;
   substatus: string | null;
   symbols: string[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface BotSummary {

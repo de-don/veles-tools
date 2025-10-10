@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, type ChangeEvent } from 'react';
+import { Table } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import type { DataZoomRange } from '../lib/chartOptions';
 import {
@@ -14,6 +16,7 @@ import {
 } from '../lib/activeDealsPolling';
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import { useActiveDeals } from '../context/ActiveDealsContext';
+import type { ActiveDealMetrics } from '../lib/activeDeals';
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
   minimumFractionDigits: 2,
@@ -69,6 +72,17 @@ const formatPercent = (value: number): string => {
   }
   const sign = value > 0 ? '+' : value < 0 ? '' : '';
   return `${sign}${percentFormatter.format(value)}%`;
+};
+
+const formatDateTime = (value: string | null | undefined): string => {
+  if (!value) {
+    return '—';
+  }
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    return '—';
+  }
+  return new Date(timestamp).toLocaleString('ru-RU');
 };
 
 interface ActiveDealsPageProps {
@@ -177,6 +191,88 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     }
     return new Date(dealsState.lastUpdated).toLocaleTimeString();
   }, [dealsState.lastUpdated]);
+
+  const positions = dealsState.positions;
+
+  const dealsColumns: ColumnsType<ActiveDealMetrics> = useMemo(
+    () => [
+      {
+        title: 'ID сделки',
+        dataIndex: ['deal', 'id'],
+        key: 'id',
+        width: 110,
+        sorter: (a, b) => a.deal.id - b.deal.id,
+        render: (_value, record) => record.deal.id,
+      },
+      {
+        title: 'Бот',
+        dataIndex: ['deal', 'botName'],
+        key: 'botName',
+        ellipsis: true,
+        render: (_value, record) => record.deal.botName ?? '—',
+      },
+      {
+        title: 'Пара',
+        dataIndex: ['deal', 'symbol'],
+        key: 'symbol',
+        render: (_value, record) => `${record.deal.symbol} · ${record.deal.algorithm}`,
+      },
+      {
+        title: 'Кол-во',
+        dataIndex: 'absQuantity',
+        key: 'quantity',
+        align: 'right',
+        render: (_value, record) => formatQuantity(record.absQuantity),
+      },
+      {
+        title: 'Вход',
+        dataIndex: 'averageEntryPrice',
+        key: 'entryPrice',
+        align: 'right',
+        render: (_value, record) => formatPrice(record.averageEntryPrice),
+      },
+      {
+        title: 'Текущая',
+        dataIndex: 'markPrice',
+        key: 'markPrice',
+        align: 'right',
+        render: (_value, record) => formatPrice(record.markPrice),
+      },
+      {
+        title: 'P&L, USDT',
+        dataIndex: 'pnl',
+        key: 'pnl',
+        align: 'right',
+        sorter: (a, b) => a.pnl - b.pnl,
+        defaultSortOrder: 'descend',
+        render: (_value, record) => (
+          <span style={{ color: record.pnl > 0 ? '#047857' : record.pnl < 0 ? '#b91c1c' : '#334155' }}>
+            {formatSignedCurrency(record.pnl)}
+          </span>
+        ),
+      },
+      {
+        title: 'P&L, %',
+        dataIndex: 'pnlPercent',
+        key: 'pnlPercent',
+        align: 'right',
+        sorter: (a, b) => a.pnlPercent - b.pnlPercent,
+        render: (_value, record) => (
+          <span style={{ color: record.pnlPercent > 0 ? '#047857' : record.pnlPercent < 0 ? '#b91c1c' : '#334155' }}>
+            {formatPercent(record.pnlPercent)}
+          </span>
+        ),
+      },
+      {
+        title: 'Старт',
+        dataIndex: ['deal', 'createdAt'],
+        key: 'createdAt',
+        sorter: (a, b) => Date.parse(a.deal.createdAt) - Date.parse(b.deal.createdAt),
+        render: (_value, record) => formatDateTime(record.deal.createdAt),
+      },
+    ],
+    [],
+  );
 
   return (
     <section className="page">
@@ -320,67 +416,15 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         <h2 className="panel__title">Список сделок</h2>
         {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
         <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID сделки</th>
-                <th>Бот</th>
-                <th>Пара</th>
-                <th>Кол-во</th>
-                <th>Вход</th>
-                <th>Текущая</th>
-                <th>P&amp;L, USDT</th>
-                <th>P&amp;L, %</th>
-                <th>Старт</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={9}>
-                    <div className="loader">Загружаем данные…</div>
-                  </td>
-                </tr>
-              )}
-              {!loading && dealsState.positions.length === 0 && (
-                <tr>
-                  <td colSpan={9}>
-                    <div className="empty-state">Активных сделок нет.</div>
-                  </td>
-                </tr>
-              )}
-              {!loading &&
-                dealsState.positions.map((position) => {
-                  const { deal } = position;
-                  const amountLabel = position.absQuantity > 0 ? formatQuantity(position.absQuantity) : '—';
-                  const entryLabel = position.averageEntryPrice > 0 ? formatPrice(position.averageEntryPrice) : '—';
-                  const markLabel = position.markPrice > 0 ? formatPrice(position.markPrice) : '—';
-                  return (
-                    <tr key={deal.id}>
-                      <td>{deal.id}</td>
-                      <td>
-                        <div>{deal.botName}</div>
-                        <div className="panel__description">Bot ID: {deal.botId}</div>
-                      </td>
-                      <td>
-                        <div>{deal.symbol}</div>
-                        <div className="panel__description">{deal.pair.symbol}</div>
-                      </td>
-                      <td>{amountLabel}</td>
-                      <td>{entryLabel}</td>
-                      <td>{markLabel}</td>
-                      <td style={{ color: position.pnl >= 0 ? '#047857' : position.pnl < 0 ? '#b91c1c' : '#334155' }}>
-                        {formatSignedCurrency(position.pnl)}
-                      </td>
-                      <td style={{ color: position.pnlPercent >= 0 ? '#047857' : position.pnlPercent < 0 ? '#b91c1c' : '#334155' }}>
-                        {formatPercent(position.pnlPercent)}
-                      </td>
-                      <td>{new Date(deal.createdAt).toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
+          <Table<ActiveDealMetrics>
+            columns={dealsColumns}
+            dataSource={positions}
+            rowKey={(record) => record.deal.id}
+            pagination={false}
+            loading={loading}
+            locale={{ emptyText: 'Активных сделок нет.' }}
+            scroll={{ x: true }}
+          />
         </div>
       </div>
     </section>

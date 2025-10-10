@@ -534,6 +534,32 @@ const sortRiskEvents = (events: RiskEvent[]) => {
   });
 };
 
+const buildZeroRiskSeries = (
+  candidates: Array<number | null | undefined>,
+  fallbackMax: number,
+): AggregateRiskSeries => {
+  const safeValue = Math.max(0, fallbackMax);
+  const times = Array.from(new Set(
+    candidates
+      .filter((candidate): candidate is number => typeof candidate === 'number' && Number.isFinite(candidate))
+      .sort((a, b) => a - b),
+  ));
+
+  if (times.length === 0) {
+    return {
+      points: [],
+      maxValue: safeValue,
+    } satisfies AggregateRiskSeries;
+  }
+
+  const points: AggregateRiskPoint[] = times.map((time) => ({ time, value: safeValue }));
+
+  return {
+    points,
+    maxValue: safeValue,
+  } satisfies AggregateRiskSeries;
+};
+
 const computeRiskSeriesFromEvents = (events: RiskEvent[], fallbackMax = 0): AggregateRiskSeries => {
   if (events.length === 0) {
     return {
@@ -572,18 +598,15 @@ const computeRiskSeriesFromEvents = (events: RiskEvent[], fallbackMax = 0): Aggr
 
     pushPoint(time, current);
 
-    let deltaSum = 0;
     while (index < events.length && events[index].time === time) {
-      deltaSum += events[index].delta;
+      const delta = events[index].delta;
+      current = Math.max(0, current + delta);
+      if (current > max) {
+        max = current;
+      }
+      pushPoint(time, current);
       index += 1;
     }
-
-    current = Math.max(0, current + deltaSum);
-    if (current > max) {
-      max = current;
-    }
-
-    pushPoint(time, current);
   }
 
   return {
@@ -621,11 +644,20 @@ const computeAggregateRiskSeriesFromMetrics = (
   metricsList: BacktestAggregationMetrics[],
 ): AggregateRiskSeries => {
   const events = buildRiskEventsFromMetrics(metricsList);
+  if (events.length === 0) {
+    const candidates: Array<number | null | undefined> = [];
+    metricsList.forEach((metrics) => {
+      candidates.push(metrics.spanStart, metrics.spanEnd);
+      metrics.concurrencyIntervals.forEach((interval) => {
+        candidates.push(interval.start, interval.end);
+      });
+      metrics.trades.forEach((trade) => {
+        candidates.push(trade.start, trade.end);
+      });
+    });
+    return buildZeroRiskSeries(candidates, 0);
+  }
   return computeRiskSeriesFromEvents(events, 0);
-};
-
-const computeAggregateMPU = (metricsList: BacktestAggregationMetrics[]): number => {
-  return computeAggregateRiskSeriesFromMetrics(metricsList).maxValue;
 };
 
 const computePortfolioEquitySeries = (metricsList: BacktestAggregationMetrics[]): PortfolioEquitySeries => {
@@ -1246,14 +1278,11 @@ const computeAggregateRiskSeriesFromTrades = (
 ): AggregateRiskSeries => {
   const events = buildRiskEventsFromTrades(trades);
   const fallback = metricsList.reduce((acc, metrics) => (metrics.maxMPU > acc ? metrics.maxMPU : acc), 0);
+  if (events.length === 0) {
+    const candidates: Array<number | null | undefined> = trades.flatMap((trade) => [trade.start, trade.end]);
+    return buildZeroRiskSeries(candidates, fallback);
+  }
   return computeRiskSeriesFromEvents(events, fallback);
-};
-
-const computeAggregateMPUFromTrades = (
-  trades: NormalizedTrade[],
-  metricsList: BacktestAggregationMetrics[],
-): number => {
-  return computeAggregateRiskSeriesFromTrades(trades, metricsList).maxValue;
 };
 
 const computeConcurrencyFromTrades = (trades: NormalizedTrade[]): ConcurrencyResult => {

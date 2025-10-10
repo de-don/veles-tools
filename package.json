@@ -13,6 +13,8 @@
     "release": "npx -y -p semantic-release -p @semantic-release/commit-analyzer -p @semantic-release/release-notes-generator -p conventional-changelog-conventionalcommits -p @semantic-release/changelog -p @semantic-release/exec -p @semantic-release/git -p @semantic-release/github -p @semantic-release/npm semantic-release"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "antd": "^5.27.4",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
     "react": "^18.2.0",
