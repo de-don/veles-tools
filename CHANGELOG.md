@@ -1,3 +1,10 @@
+## [1.4.0](https://github.com/de-don/veles-tools/compare/v1.3.1...v1.4.0) (2025-10-10)
+
+### Features
+
+* **active-deals:** add Active Deals page with real-time monitoring, P&L aggregation ([e8d617c](https://github.com/de-don/veles-tools/commit/e8d617cec81744dd5206e4848a185af0f83aebd3))
+* **ui:** update donate button design with BuyMeACoffee branding ([d1adae4](https://github.com/de-don/veles-tools/commit/d1adae417981a6b95a8636a2394f82147b94d913))
+
 ## [1.3.1](https://github.com/de-don/veles-tools/compare/v1.3.0...v1.3.1) (2025-10-07)
 
 ### Bug Fixes
