@@ -15,13 +15,20 @@ import {
 import type { ActiveDeal } from '../types/activeDeals';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
 import {
+  ACTIVE_DEALS_REFRESH_INTERVALS,
+  DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
+  isActiveDealsRefreshInterval,
+  type ActiveDealsRefreshInterval,
+} from '../lib/activeDealsPolling';
+import {
   clearActiveDealsSnapshot,
   readActiveDealsSnapshot,
   writeActiveDealsSnapshot,
 } from '../storage/activeDealsStore';
-
-const REFRESH_INTERVALS = [5, 10, 20, 30, 60] as const;
-const DEFAULT_REFRESH_INTERVAL = 10;
+import {
+  readActiveDealsPreferences,
+  writeActiveDealsPreferences,
+} from '../storage/activeDealsPreferencesStore';
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
   minimumFractionDigits: 2,
@@ -110,7 +117,10 @@ interface DealsState {
 }
 
 const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
-  const [refreshInterval, setRefreshInterval] = useState<typeof REFRESH_INTERVALS[number]>(DEFAULT_REFRESH_INTERVAL);
+  const [refreshInterval, setRefreshInterval] = useState<ActiveDealsRefreshInterval>(() => {
+    const preferences = readActiveDealsPreferences();
+    return preferences?.refreshInterval ?? DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL;
+  });
   const [dealsState, setDealsState] = useState<DealsState>({
     aggregation: null,
     positions: [],
@@ -142,6 +152,9 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     },
     [],
   );
+  useEffect(() => {
+    writeActiveDealsPreferences({ refreshInterval });
+  }, [refreshInterval]);
 
   const resetPolling = useCallback(() => {
     if (timerRef.current) {
@@ -228,8 +241,10 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   }, [resetPolling]);
 
   const onRefreshIntervalChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const nextValue = Number(event.target.value) as typeof REFRESH_INTERVALS[number];
-    setRefreshInterval(nextValue);
+    const nextValue = Number(event.target.value);
+    if (isActiveDealsRefreshInterval(nextValue)) {
+      setRefreshInterval(nextValue);
+    }
   };
 
   const handleZoomChange = useCallback((range: DataZoomRange) => {
@@ -374,7 +389,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               onChange={onRefreshIntervalChange}
               aria-label="Интервал обновления"
             >
-              {REFRESH_INTERVALS.map((interval) => (
+              {ACTIVE_DEALS_REFRESH_INTERVALS.map((interval) => (
                 <option key={interval} value={interval}>
                   {interval} сек
                 </option>
