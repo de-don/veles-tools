@@ -1,34 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { fetchAllActiveDeals, ACTIVE_DEALS_DEFAULT_SIZE } from '../api/activeDeals';
-import { aggregateDeals, type ActiveDealsAggregation } from '../lib/activeDeals';
-import type { ActiveDealMetrics } from '../lib/activeDeals';
-import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
+import { useCallback, useEffect, useMemo, useRef, type ChangeEvent } from 'react';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import type { DataZoomRange } from '../lib/chartOptions';
 import {
   ACTIVE_DEALS_ZOOM_PRESET_OPTIONS,
   areZoomRangesEqual,
   calculateZoomRangeForPreset,
-  type ActiveDealsZoomPreset,
   type ActiveDealsZoomPresetKey,
 } from '../lib/activeDealsZoom';
-import type { ActiveDeal } from '../types/activeDeals';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
 import {
   ACTIVE_DEALS_REFRESH_INTERVALS,
-  DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
   isActiveDealsRefreshInterval,
-  type ActiveDealsRefreshInterval,
 } from '../lib/activeDealsPolling';
-import {
-  clearActiveDealsSnapshot,
-  readActiveDealsSnapshot,
-  writeActiveDealsSnapshot,
-} from '../storage/activeDealsStore';
-import {
-  readActiveDealsPreferences,
-  writeActiveDealsPreferences,
-} from '../storage/activeDealsPreferencesStore';
+import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
+import { useActiveDeals } from '../context/ActiveDealsContext';
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
   minimumFractionDigits: 2,
@@ -86,159 +71,30 @@ const formatPercent = (value: number): string => {
   return `${sign}${percentFormatter.format(value)}%`;
 };
 
-const createEmptySeries = (): PortfolioEquitySeries => ({ points: [], minValue: 0, maxValue: 0 });
-
-const buildSeriesWithPoint = (
-  current: PortfolioEquitySeries | null,
-  value: number,
-  timestamp: number,
-): PortfolioEquitySeries => {
-  const base = current ?? createEmptySeries();
-  const nextPoints = [...base.points, { time: timestamp, value }];
-  if (nextPoints.length === 0) {
-    return createEmptySeries();
-  }
-  const values = nextPoints.map((point) => point.value);
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
-  return { points: nextPoints, minValue, maxValue };
-};
-
 interface ActiveDealsPageProps {
   extensionReady: boolean;
 }
 
-interface DealsState {
-  aggregation: ActiveDealsAggregation | null;
-  positions: ActiveDealMetrics[];
-  rawDeals: ActiveDeal[];
-  totalDeals: number;
-  lastUpdated: number | null;
-}
-
 const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
-  const [refreshInterval, setRefreshInterval] = useState<ActiveDealsRefreshInterval>(() => {
-    const preferences = readActiveDealsPreferences();
-    return preferences?.refreshInterval ?? DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL;
-  });
-  const [dealsState, setDealsState] = useState<DealsState>({
-    aggregation: null,
-    positions: [],
-    rawDeals: [],
-    totalDeals: 0,
-    lastUpdated: null,
-  });
-  const [pnlSeries, setPnlSeries] = useState<PortfolioEquitySeries>(() => createEmptySeries());
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [zoomRange, setZoomRange] = useState<DataZoomRange | undefined>(undefined);
-  const [zoomPreset, setZoomPreset] = useState<ActiveDealsZoomPreset>('all');
-
-  const timerRef = useRef<number | null>(null);
-  const initialLoadRef = useRef(false);
+  const {
+    dealsState,
+    pnlSeries,
+    loading,
+    error,
+    refreshInterval,
+    setRefreshInterval,
+    resetHistory,
+    zoomRange,
+    setZoomRange,
+    zoomPreset,
+    setZoomPreset,
+  } = useActiveDeals();
 
   const seriesRef = useRef<PortfolioEquitySeries>(pnlSeries);
 
   useEffect(() => {
     seriesRef.current = pnlSeries;
   }, [pnlSeries]);
-
-  const appendSeriesPoint = useCallback(
-    (value: number, timestamp: number): PortfolioEquitySeries => {
-      const nextSeries = buildSeriesWithPoint(seriesRef.current, value, timestamp);
-      seriesRef.current = nextSeries;
-      setPnlSeries(nextSeries);
-      return nextSeries;
-    },
-    [],
-  );
-  useEffect(() => {
-    writeActiveDealsPreferences({ refreshInterval });
-  }, [refreshInterval]);
-
-  const resetPolling = useCallback(() => {
-    if (timerRef.current) {
-      window.clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
-
-  const handleDealsResponse = useCallback(
-    (deals: ActiveDeal[], aggregation: ActiveDealsAggregation, timestamp: number) => {
-      appendSeriesPoint(aggregation.totalPnl, timestamp);
-      setDealsState({
-        aggregation,
-        positions: aggregation.positions,
-        rawDeals: deals,
-        totalDeals: deals.length,
-        lastUpdated: timestamp,
-      });
-    },
-    [appendSeriesPoint],
-  );
-
-  const fetchDeals = useCallback(async () => {
-    if (!extensionReady) {
-      return;
-    }
-
-    setError(null);
-    if (!initialLoadRef.current) {
-      setLoading(true);
-    }
-
-    try {
-      const deals = await fetchAllActiveDeals({
-        size: ACTIVE_DEALS_DEFAULT_SIZE,
-      });
-      const aggregation = aggregateDeals(deals);
-      const timestamp = Date.now();
-      handleDealsResponse(deals, aggregation, timestamp);
-      initialLoadRef.current = true;
-    } catch (requestError: unknown) {
-      const message = requestError instanceof Error ? requestError.message : String(requestError);
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [extensionReady, handleDealsResponse]);
-
-  useEffect(() => {
-    if (!extensionReady) {
-      resetPolling();
-      const emptySeries = createEmptySeries();
-      seriesRef.current = emptySeries;
-      setDealsState({ aggregation: null, positions: [], rawDeals: [], totalDeals: 0, lastUpdated: null });
-      setPnlSeries(emptySeries);
-      setZoomRange(undefined);
-      setZoomPreset('all');
-      initialLoadRef.current = false;
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    fetchDeals().catch(() => {
-      // error state handled inside fetchDeals
-    });
-
-    resetPolling();
-    timerRef.current = window.setInterval(() => {
-      fetchDeals().catch(() => {
-        // errors handled
-      });
-    }, refreshInterval * 1000);
-
-    return () => {
-      resetPolling();
-    };
-  }, [extensionReady, fetchDeals, refreshInterval, resetPolling]);
-
-  useEffect(() => {
-    return () => {
-      resetPolling();
-    };
-  }, [resetPolling]);
 
   const onRefreshIntervalChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const nextValue = Number(event.target.value);
@@ -247,42 +103,40 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     }
   };
 
-  const handleZoomChange = useCallback((range: DataZoomRange) => {
-    setZoomRange((prev) => {
-      const next: DataZoomRange = {
-        start: typeof range.start === 'number' ? range.start : prev?.start,
-        end: typeof range.end === 'number' ? range.end : prev?.end,
-      };
-      if (areZoomRangesEqual(prev, next)) {
-        return prev;
-      }
-      setZoomPreset((previousPreset) => (previousPreset === 'custom' ? previousPreset : 'custom'));
-      return next;
-    });
-  }, [setZoomPreset, areZoomRangesEqual]);
+  const handleZoomChange = useCallback(
+    (range: DataZoomRange) => {
+      setZoomRange((prev) => {
+        const next: DataZoomRange = {
+          start: typeof range.start === 'number' ? range.start : prev?.start,
+          end: typeof range.end === 'number' ? range.end : prev?.end,
+        };
+        if (areZoomRangesEqual(prev, next)) {
+          return prev;
+        }
+        setZoomPreset((previousPreset) => (previousPreset === 'custom' ? previousPreset : 'custom'));
+        return next;
+      });
+    },
+    [setZoomPreset, setZoomRange, areZoomRangesEqual],
+  );
 
-  const applyZoomPreset = useCallback((presetKey: ActiveDealsZoomPresetKey) => {
-    const nextRange = calculateZoomRangeForPreset(seriesRef.current, presetKey);
-    setZoomRange((prev) => {
-      if (areZoomRangesEqual(prev, nextRange)) {
-        return prev;
-      }
-      return nextRange;
-    });
-    setZoomPreset(presetKey);
-  }, [setZoomPreset, areZoomRangesEqual, calculateZoomRangeForPreset]);
+  const applyZoomPreset = useCallback(
+    (presetKey: ActiveDealsZoomPresetKey) => {
+      const nextRange = calculateZoomRangeForPreset(seriesRef.current, presetKey);
+      setZoomRange((prev) => {
+        if (areZoomRangesEqual(prev, nextRange)) {
+          return prev;
+        }
+        return nextRange;
+      });
+      setZoomPreset(presetKey);
+    },
+    [setZoomRange, setZoomPreset, calculateZoomRangeForPreset, areZoomRangesEqual],
+  );
 
   const handleResetHistory = useCallback(() => {
-    clearActiveDealsSnapshot();
-    const emptySeries = createEmptySeries();
-    seriesRef.current = emptySeries;
-    setPnlSeries(emptySeries);
-    setDealsState({ aggregation: null, positions: [], rawDeals: [], totalDeals: 0, lastUpdated: null });
-    setZoomRange(undefined);
-    setZoomPreset('all');
-    initialLoadRef.current = false;
-    setError(null);
-  }, []);
+    resetHistory();
+  }, [resetHistory]);
 
   useEffect(() => {
     if (zoomPreset === 'custom') {
@@ -295,42 +149,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
       }
       return nextRange;
     });
-  }, [pnlSeries, zoomPreset, areZoomRangesEqual, calculateZoomRangeForPreset]);
-
-  useEffect(() => {
-    const snapshot = readActiveDealsSnapshot();
-    if (!snapshot) {
-      return;
-    }
-
-    const aggregation = aggregateDeals(snapshot.deals);
-    seriesRef.current = snapshot.series;
-    setPnlSeries(snapshot.series);
-    setDealsState({
-      aggregation,
-      positions: aggregation.positions,
-      rawDeals: snapshot.deals,
-      totalDeals: snapshot.deals.length,
-      lastUpdated: snapshot.lastUpdated,
-    });
-    setZoomRange(snapshot.zoomRange ?? undefined);
-    setZoomPreset(snapshot.zoomPreset ?? 'all');
-    initialLoadRef.current = snapshot.deals.length > 0;
-  }, []);
-
-  useEffect(() => {
-    if (dealsState.rawDeals.length === 0) {
-      return;
-    }
-    writeActiveDealsSnapshot({
-      deals: dealsState.rawDeals,
-      series: seriesRef.current,
-      zoomRange,
-      zoomPreset,
-      lastUpdated: dealsState.lastUpdated,
-      storedAt: Date.now(),
-    });
-  }, [dealsState.rawDeals, dealsState.lastUpdated, zoomRange, zoomPreset]);
+  }, [pnlSeries, zoomPreset, setZoomRange, calculateZoomRangeForPreset, areZoomRangesEqual]);
 
   const summary = useMemo(() => {
     const aggregation = dealsState.aggregation;
@@ -379,7 +198,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           <div>
             <h2 className="panel__title">Мониторинг сделок</h2>
             <p className="panel__description">
-              Выбор интервала обновления данных и текущие агрегированные показатели портфеля.
+              Текущие агрегированные показатели портфеля.
             </p>
           </div>
           <div className="panel__actions">
@@ -395,9 +214,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 </option>
               ))}
             </select>
-            <button type="button" className="button button--ghost" onClick={handleResetHistory}>
-              Сбросить данные
-            </button>
           </div>
         </div>
 
@@ -463,7 +279,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
             <h2 className="panel__title">Динамика агрегированного P&amp;L</h2>
             <p className="panel__description">
               На графике отображается история суммарного результата портфеля с выбранным интервалом обновления.
-              История накапливается только пока эта страница открыта.
+              История накапливается только когда вкладка с расширением открыта.
             </p>
           </div>
         </div>
@@ -482,6 +298,9 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               </button>
             );
           })}
+          <button type="button" className="button button--ghost" onClick={handleResetHistory}>
+            Сбросить данные
+          </button>
         </div>
         <div className="aggregation-equity__chart">
           {pnlSeries.points.length === 0 ? (

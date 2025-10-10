@@ -9,6 +9,7 @@ import SettingsPage from './pages/SettingsPage';
 import ActiveDealsPage from './pages/ActiveDealsPage';
 import { ImportedBotsProvider } from './context/ImportedBotsContext';
 import { isExtensionRuntime, pingConnection, readConnectionStatus, updateRequestDelay } from './lib/extensionMessaging';
+import { ActiveDealsProvider } from './context/ActiveDealsContext';
 
 const DEFAULT_REQUEST_DELAY = 300;
 
@@ -146,21 +147,23 @@ const App = () => {
   return (
     <HashRouter>
       <ImportedBotsProvider>
-        <AppLayout
-          extensionReady={extensionReady}
-          connectionStatus={connectionStatus}
-          onPing={triggerPing}
-          onOpenVeles={openVelesTab}
-        >
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
-            <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
-            <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
-            <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </AppLayout>
+        <ActiveDealsProvider extensionReady={extensionReady}>
+          <AppLayout
+            extensionReady={extensionReady}
+            connectionStatus={connectionStatus}
+            onPing={triggerPing}
+            onOpenVeles={openVelesTab}
+          >
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
+              <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
+              <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
+              <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </AppLayout>
+        </ActiveDealsProvider>
       </ImportedBotsProvider>
     </HashRouter>
   );
