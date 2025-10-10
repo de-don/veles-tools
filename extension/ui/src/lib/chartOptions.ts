@@ -1,4 +1,9 @@
-import type { BarSeriesOption, EChartsOption, LineSeriesOption } from 'echarts';
+import type {
+  BarSeriesOption,
+  DataZoomComponentOption,
+  EChartsOption,
+  LineSeriesOption,
+} from 'echarts';
 import type {
   DailyConcurrencyRecord,
   DailyConcurrencyStats,
@@ -53,12 +58,112 @@ const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLin
   } satisfies LineSeriesOption['markLine'];
 };
 
+export interface DataZoomRange {
+  start?: number;
+  end?: number;
+}
+
+const applyRange = (
+  base: DataZoomComponentOption,
+  range?: DataZoomRange,
+): DataZoomComponentOption => {
+  if (!range) {
+    return base;
+  }
+  const next: DataZoomComponentOption = { ...base };
+  if (typeof range.start === 'number') {
+    next.start = range.start;
+  }
+  if (typeof range.end === 'number') {
+    next.end = range.end;
+  }
+  return next;
+};
+
+const disableWheelInteraction = <T extends DataZoomComponentOption>(option: T): T => {
+  return {
+    ...option,
+    zoomOnMouseWheel: false,
+    moveOnMouseWheel: false,
+    moveOnMouseMove: false,
+  } as T;
+};
+
+const buildDataZoomComponents = (range?: DataZoomRange): DataZoomComponentOption[] => {
+  const insideZoom = applyRange(
+    disableWheelInteraction({
+      type: 'inside',
+      throttle: 30,
+    }),
+    range,
+  );
+
+  const sliderZoom = applyRange(
+    disableWheelInteraction({
+      type: 'slider',
+      bottom: 40,
+    }),
+    range,
+  );
+
+  return [insideZoom, sliderZoom];
+};
+
 export const createPortfolioEquityChartOptions = (
   series: PortfolioEquitySeries,
+  range?: DataZoomRange,
 ): EChartsOption => {
   const equityData = series.points.map((point) => [point.time, point.value]);
+  const positiveAreaData = series.points.map((point) =>
+    point.value > 0 ? [point.time, point.value] : [point.time, null],
+  );
+  const negativeAreaData = series.points.map((point) =>
+    point.value < 0 ? [point.time, point.value] : [point.time, null],
+  );
 
   const markLine = buildZeroLine(series);
+
+  const positiveAreaSeries: LineSeriesOption = {
+    name: 'positive-area',
+    type: 'line',
+    showSymbol: false,
+    silent: true,
+    connectNulls: false,
+    lineStyle: { width: 0 },
+    areaStyle: {
+      color: 'rgba(22, 163, 74, 0.25)',
+    },
+    itemStyle: {
+      color: 'rgba(22, 163, 74, 0.25)',
+    },
+    emphasis: { focus: 'none' },
+    tooltip: { show: false },
+    smooth: false,
+    clip: true,
+    z: 1,
+    data: positiveAreaData,
+  };
+
+  const negativeAreaSeries: LineSeriesOption = {
+    name: 'negative-area',
+    type: 'line',
+    showSymbol: false,
+    silent: true,
+    connectNulls: false,
+    lineStyle: { width: 0 },
+    areaStyle: {
+      color: 'rgba(220, 38, 38, 0.25)',
+    },
+    itemStyle: {
+      color: 'rgba(220, 38, 38, 0.25)',
+    },
+    emphasis: { focus: 'none' },
+    tooltip: { show: false },
+    smooth: false,
+    clip: true,
+    z: 1,
+    data: negativeAreaData,
+  };
 
   const equitySeries: LineSeriesOption = {
     name: 'Суммарный P&L',
@@ -79,7 +184,7 @@ export const createPortfolioEquityChartOptions = (
 
   return {
     animation: false,
-    grid: { left: 60, right: 24, top: 20, bottom: 80 },
+    grid: { left: 60, right: 24, top: 16, bottom: 92 },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },
@@ -87,7 +192,7 @@ export const createPortfolioEquityChartOptions = (
       order: 'valueDesc',
     },
     legend: {
-      bottom: 16,
+      bottom: 0,
       icon: 'roundRect',
       data: ['Суммарный P&L'],
     },
@@ -108,17 +213,8 @@ export const createPortfolioEquityChartOptions = (
         },
       },
     },
-    dataZoom: [
-      {
-        type: 'inside',
-        throttle: 30,
-      },
-      {
-        type: 'slider',
-        bottom: 40,
-      },
-    ],
-    series: [equitySeries],
+    dataZoom: buildDataZoomComponents(range),
+    series: [positiveAreaSeries, negativeAreaSeries, equitySeries],
   } satisfies EChartsOption;
 };
 
@@ -221,16 +317,7 @@ export const createDailyConcurrencyChartOptions = (
         },
       },
     },
-    dataZoom: [
-      {
-        type: 'inside',
-        throttle: 30,
-      },
-      {
-        type: 'slider',
-        bottom: 40,
-      },
-    ],
+    dataZoom: buildDataZoomComponents(),
     series: [barSeries],
   } satisfies EChartsOption;
 };

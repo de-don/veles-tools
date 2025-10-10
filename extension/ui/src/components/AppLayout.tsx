@@ -44,6 +44,12 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Главная
           </NavLink>
+          <NavLink
+              to="/active-deals"
+              className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}
+          >
+            Активные сделки
+          </NavLink>
           <NavLink to="/bots" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Мои боты
           </NavLink>
@@ -64,12 +70,15 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
         )}
         <div className="sidebar__controls">
           <a
-            className="button button--ghost sidebar__donate"
-            href="https://buymeacoffee.com/dedon"
+            className="sidebar__donate"
+            href="https://www.buymeacoffee.com/dedon"
             target="_blank"
             rel="noreferrer noopener"
           >
-            Поддержать проект
+            <img
+              src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20coffee&emoji=☕&slug=dedon&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff"
+              alt="Buy me coffee"
+            />
           </a>
           <div className={`status status--${connectionStatus.ok ? 'online' : 'offline'}`}>
             <div className="status__row">

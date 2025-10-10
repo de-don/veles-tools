@@ -87,6 +87,11 @@ body {
   width: 100%;
 }
 
+.sidebar__donate img {
+  width: 100%;
+  height: auto;
+}
+
 .sidebar__controls {
   margin-top: auto;
   padding-top: 16px;
@@ -1036,6 +1041,45 @@ body {
   width: 100%;
   height: 200px;
   display: block;
+}
+
+.chart-zoom-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.chart-zoom-presets__button {
+  padding: 6px 12px;
+  border-radius: 9999px;
+  border: 1px solid #cbd5f5;
+  background-color: #fff;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.chart-zoom-presets__button:not(.chart-zoom-presets__button--active):hover {
+  border-color: #1d4ed8;
+  color: #1d4ed8;
+}
+
+.chart-zoom-presets__button--active {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.chart-zoom-presets__button--active:hover {
+  color: #fff;
+}
+
+.chart-zoom-presets__button:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
 }
 
 .aggregation-equity__empty {
