@@ -327,7 +327,7 @@ const dispatchToTab = (tabId, queueItem) => {
   );
 };
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || typeof message !== 'object') {
     return false;
   }

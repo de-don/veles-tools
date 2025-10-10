@@ -297,7 +297,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, []);
 
   const appendLog = useCallback(
     (node: ReactNode, id?: string): string | null => {
@@ -438,7 +438,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           payload.variant === 'multiCurrency' ? payload.bots.length * assets.length : payload.bots.length;
 
         let completed = 0;
-        let launchedRequests = 0;
+        let _launchedRequests = 0;
 
         const updateProgress = () => {
           if (!isActiveRef.current) {
@@ -578,7 +578,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                   return;
                 }
               } finally {
-                launchedRequests += 1;
+                _launchedRequests += 1;
                 completed += 1;
                 updateProgress();
               }
@@ -661,7 +661,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 return;
               }
             } finally {
-              launchedRequests += 1;
+              _launchedRequests += 1;
               completed += 1;
               updateProgress();
             }
@@ -696,7 +696,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
         }
       }
     },
-    [],
+    [appendLog, getStrategyById, replaceLog],
   );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

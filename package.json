@@ -6,6 +6,10 @@
     "dev": "vite --config extension/ui/vite.config.ts",
     "build": "vite build --config extension/ui/vite.config.ts",
     "preview": "vite preview --config extension/ui/vite.config.ts",
+    "format": "biome format .",
+    "format:fix": "biome format --write .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
     "typecheck": "tsc --project extension/ui/tsconfig.json --noEmit",
     "test": "vitest run --config extension/ui/vitest.config.ts",
     "test:watch": "vitest --config extension/ui/vitest.config.ts",
@@ -22,6 +26,7 @@
     "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.5",
     "@types/chrome": "^0.0.255",
     "@types/node": "^22.10.2",
     "@types/react": "^18.2.37",

@@ -131,7 +131,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         return next;
       });
     },
-    [setZoomPreset, setZoomRange, areZoomRangesEqual],
+    [setZoomPreset, setZoomRange],
   );
 
   const applyZoomPreset = useCallback(
@@ -145,7 +145,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
       });
       setZoomPreset(presetKey);
     },
-    [setZoomRange, setZoomPreset, calculateZoomRangeForPreset, areZoomRangesEqual],
+    [setZoomRange, setZoomPreset],
   );
 
   const handleResetHistory = useCallback(() => {
@@ -163,7 +163,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
       }
       return nextRange;
     });
-  }, [pnlSeries, zoomPreset, setZoomRange, calculateZoomRangeForPreset, areZoomRangesEqual]);
+  }, [zoomPreset, setZoomRange]);
 
   const summary = useMemo(() => {
     const aggregation = dealsState.aggregation;

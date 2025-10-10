@@ -10,7 +10,7 @@ import type {ApiKey} from '../types/apiKeys';
 import BacktestModal, {type BacktestVariant} from '../components/BacktestModal';
 import {parseSortDescriptor, serializeSortDescriptor} from '../lib/tableSort';
 import {resolveBotStatusColor} from '../lib/statusColors';
-import {TableRowSelection} from 'antd/es/table/interface';
+import type {TableRowSelection} from 'antd/es/table/interface';
 
 interface BotsPageProps {
     extensionReady: boolean;
@@ -52,7 +52,7 @@ const formatExchangeLabel = (exchange: string): string => {
         .trim();
 };
 
-const createSummary = (bot: TradingBot): BotSummary => ({
+const _createSummary = (bot: TradingBot): BotSummary => ({
     id: bot.id,
     name: bot.name,
     exchange: bot.exchange,
@@ -165,7 +165,7 @@ const BotsPage = ({extensionReady}: BotsPageProps) => {
     useEffect(() => {
         setSelection([]);
         setActiveModal(null);
-    }, [appliedFilters]);
+    }, []);
 
     const apiKeyOptions = useMemo(
         () =>
@@ -204,7 +204,7 @@ const BotsPage = ({extensionReady}: BotsPageProps) => {
         selectedRowKeys,
         type: 'checkbox',
         preserveSelectedRowKeys: true,
-        onChange: (nextSelectedRowKeys, nextSelectedRows) => {
+        onChange: (_nextSelectedRowKeys, nextSelectedRows) => {
             setSelection(nextSelectedRows);
         }
     };

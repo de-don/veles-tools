@@ -17,7 +17,7 @@ import {PortfolioEquityChart} from '../components/charts/PortfolioEquityChart';
 import {InfoTooltip} from '../components/ui/InfoTooltip';
 import {type TabItem, Tabs} from '../components/ui/Tabs';
 import {readCachedBacktestCycles, readCachedBacktestDetail} from '../storage/backtestCache';
-import {TableRowSelection} from 'antd/es/table/interface';
+import type {TableRowSelection} from 'antd/es/table/interface';
 
 interface BacktestsPageProps {
     extensionReady: boolean;
@@ -279,7 +279,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
         selectedRowKeys,
         type: 'checkbox',
         preserveSelectedRowKeys: true,
-        onChange: (nextSelectedRowKeys, nextSelectedRows) => {
+        onChange: (_nextSelectedRowKeys, nextSelectedRows) => {
             setSelection(nextSelectedRows);
         }
     };
@@ -886,7 +886,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                     className={resolveStatusTone(record.status)}>{resolveStatusLabel(record)}</span>,
             },
         ],
-        [selection, toggleAggregationInclude],
+        [toggleAggregationInclude, resolveStatusLabel, resolveStatusTone],
     );
 
     const aggregationRowClassName = useCallback((record: AggregationItemState) => {

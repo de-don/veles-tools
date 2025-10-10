@@ -69,7 +69,7 @@ const normalizeStatusValue = (value: string | null | undefined): BotStatus => {
 };
 
 const normalizeAliasCandidate = (candidate: string): string | null => {
-  const trimmed = candidate.trim().replace(/["'\[\]]/g, '');
+  const trimmed = candidate.trim().replace(/["'[\]]/g, '');
   if (!trimmed) {
     return null;
   }
