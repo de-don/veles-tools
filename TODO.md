@@ -1,7 +1,6 @@
 # TODO
 
 - [ ] Different colors for -10%, -20% etc in Backtest results
-- [x] API domain should be the same as in tab (veles.finance, ru.veles.finance)
 
 ## Bots
 
@@ -19,10 +18,6 @@
 - [ ] Export backtests links (public)
 - [ ] Import backtests by links (public) - directly to aggregation
 
-### BackTests Stats
-
-- [ ] Create MORE visualizations for backtest results
-
 ## Other Features
 
 - [ ] Symbols groups
@@ -31,6 +26,3 @@
 
 
 ## FAQ
-
-- [x] How to update extension
-- [x] Why some stats is 0

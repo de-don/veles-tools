@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
-import type { PropsWithChildren } from 'react';
+import { type PropsWithChildren, useState } from 'react';
 import { APP_NAME, APP_VERSION } from '../config/version';
 import logo from '../assets/logo.png';
+import SupportProjectModal from './SupportProjectModal';
 
 interface AppLayoutProps extends PropsWithChildren {
   extensionReady: boolean;
@@ -30,6 +31,8 @@ const formatTimestamp = (timestamp: number | null) => {
 };
 
 const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenVeles }: AppLayoutProps) => {
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
+
   return (
     <div className="app">
       <aside className="app__sidebar">
@@ -69,17 +72,13 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           </div>
         )}
         <div className="sidebar__controls">
-          <a
-            className="sidebar__donate"
-            href="https://www.buymeacoffee.com/dedon"
-            target="_blank"
-            rel="noreferrer noopener"
+          <button
+            type="button"
+            className="button sidebar__support-button"
+            onClick={() => setSupportModalOpen(true)}
           >
-            <img
-              src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20coffee&emoji=☕&slug=dedon&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff"
-              alt="Buy me coffee"
-            />
-          </a>
+            Поддержать проект
+          </button>
           <div className={`status status--${connectionStatus.ok ? 'online' : 'offline'}`}>
             <div className="status__row">
               <div className="status__details">
@@ -123,6 +122,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
         </div>
       </aside>
       <main className="app__content">{children}</main>
+      <SupportProjectModal open={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
     </div>
   );
 };

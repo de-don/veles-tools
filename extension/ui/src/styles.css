@@ -79,17 +79,12 @@ body {
   gap: 8px;
 }
 
-.sidebar__donate {
+.sidebar__support-button {
+  width: 100%;
   display: inline-flex;
   justify-content: center;
   align-items: center;
   text-decoration: none;
-  width: 100%;
-}
-
-.sidebar__donate img {
-  width: 100%;
-  height: auto;
 }
 
 .sidebar__controls {
@@ -1050,6 +1045,96 @@ body {
 
 .tabs__panel > *:first-child {
   margin-top: 0;
+}
+
+.support-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 14px;
+  color: #475467;
+}
+
+.support-modal__heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.support-modal__intro {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.support-modal__tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #475467;
+}
+
+.support-modal__address-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.support-modal__address-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.support-modal__address-row {
+  display: flex;
+  gap: 8px;
+}
+
+.support-modal__address-input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5f5;
+  background-color: #fff;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', ui-monospace, monospace;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.support-modal__address-input:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.support-modal__copy-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.support-modal__copy-status {
+  font-size: 12px;
+}
+
+.support-modal__copy-status--success {
+  color: #16a34a;
+}
+
+.support-modal__copy-status--error {
+  color: #dc2626;
+}
+
+.support-modal__link {
+  align-self: flex-start;
+  font-weight: 600;
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+.support-modal__link:hover {
+  text-decoration: underline;
 }
 
 .info-tooltip {
