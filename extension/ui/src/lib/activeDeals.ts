@@ -2,6 +2,10 @@ import type { ActiveDeal, ActiveDealOrder } from '../types/activeDeals';
 
 const EXECUTED_ORDER_STATUSES = new Set(['EXECUTED', 'FILLED']);
 
+const isExecutedOrder = (order: ActiveDealOrder): boolean => {
+  return EXECUTED_ORDER_STATUSES.has(order.status);
+};
+
 const toFiniteNumber = (value: number | null | undefined): number | null => {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 };
@@ -44,6 +48,8 @@ export interface ActiveDealMetrics {
   exposure: number;
   pnl: number;
   pnlPercent: number;
+  executedOrdersCount: number;
+  totalOrdersCount: number;
 }
 
 export interface ActiveDealsAggregation {
@@ -56,8 +62,12 @@ export interface ActiveDealsAggregation {
 }
 
 export const computeDealMetrics = (deal: ActiveDeal): ActiveDealMetrics => {
+  let executedOrdersCount = 0;
   const totals = deal.orders.reduce(
     (acc, order) => {
+      if (isExecutedOrder(order)) {
+        executedOrdersCount += 1;
+      }
       const contribution = accumulateOrderContribution(order);
       if (!contribution) {
         return acc;
@@ -78,6 +88,7 @@ export const computeDealMetrics = (deal: ActiveDeal): ActiveDealMetrics => {
   const exposure = absQuantity * averageEntryPrice;
   const pnl = absQuantity > 0 ? markPrice * netQuantity - totals.cost : 0;
   const pnlPercent = computePnlPercent(pnl, exposure);
+  const totalOrdersCount = deal.orders.length;
 
   return {
     deal,
@@ -88,6 +99,8 @@ export const computeDealMetrics = (deal: ActiveDeal): ActiveDealMetrics => {
     exposure,
     pnl,
     pnlPercent,
+    executedOrdersCount,
+    totalOrdersCount,
   };
 };
 

@@ -350,6 +350,13 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         render: (_value, record) => formatQuantity(record.absQuantity),
       },
       {
+        title: 'Ордеры',
+        key: 'ordersProgress',
+        align: 'right',
+        width: 120,
+        render: (_value, record) => `${record.executedOrdersCount}/${record.totalOrdersCount}`,
+      },
+      {
         title: 'ID сделки',
         dataIndex: ['deal', 'id'],
         key: 'id',
