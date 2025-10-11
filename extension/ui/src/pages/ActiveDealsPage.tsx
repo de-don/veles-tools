@@ -70,7 +70,7 @@ const getDealBaseAsset = (deal: ActiveDeal): string => {
     return deal.pair.from;
   }
   if (deal.symbol) {
-    const [base] = deal.symbol.split(/[\/-]/);
+    const [base] = deal.symbol.split(/[/-]/);
     return base?.replace(/USD(T)?$/i, '') ?? deal.symbol;
   }
   return '—';

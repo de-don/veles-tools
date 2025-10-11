@@ -1,9 +1,11 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import type {TableProps} from 'antd';
-import {Switch, Table} from 'antd';
+import {Dropdown, Switch, Table} from 'antd';
+import type {MenuProps} from 'antd';
+import {DownOutlined} from '@ant-design/icons';
 import type {ColumnsType} from 'antd/es/table';
 import {DEFAULT_CYCLES_PAGE_SIZE, fetchBacktestCycles, fetchBacktestDetails, fetchBacktests} from '../api/backtests';
-import type {BacktestStatistics, BacktestStatisticsListResponse} from '../types/backtests';
+import type {BacktestStatistics, BacktestStatisticsDetail, BacktestStatisticsListResponse} from '../types/backtests';
 import {
     type AggregationSummary,
     type BacktestAggregationMetrics,
@@ -18,6 +20,7 @@ import {InfoTooltip} from '../components/ui/InfoTooltip';
 import {type TabItem, Tabs} from '../components/ui/Tabs';
 import {readCachedBacktestCycles, readCachedBacktestDetail} from '../storage/backtestCache';
 import type {TableRowSelection} from 'antd/es/table/interface';
+import CreateBotsFromBacktestsModal, {type BacktestBotTarget} from '../components/CreateBotsFromBacktestsModal';
 
 interface BacktestsPageProps {
     extensionReady: boolean;
@@ -125,6 +128,7 @@ interface AggregationItemState {
     status: AggregationStatus;
     included: boolean;
     metrics?: BacktestAggregationMetrics;
+    detail?: BacktestStatisticsDetail;
     error?: string;
 }
 
@@ -440,23 +444,23 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
             },
             {
                 title: 'МПУ',
-                dataIndex: 'mfeAbsolute',
-                key: 'mfeAbsolute',
-                render: (_value, item) => (
-                    <div>
-                        <div>{formatAmount(item.mfeAbsolute, item.quote)}</div>
-                        <div className="panel__description">{formatPercent(item.mfePercent)}</div>
-                    </div>
-                ),
-            },
-            {
-                title: 'МПП',
                 dataIndex: 'maeAbsolute',
                 key: 'maeAbsolute',
                 render: (_value, item) => (
                     <div>
                         <div>{formatAmount(item.maeAbsolute, item.quote)}</div>
                         <div className="panel__description">{formatPercent(item.maePercent)}</div>
+                    </div>
+                ),
+            },
+            {
+                title: 'МПП',
+                dataIndex: 'mfeAbsolute',
+                key: 'mfeAbsolute',
+                render: (_value, item) => (
+                    <div>
+                        <div>{formatAmount(item.mfeAbsolute, item.quote)}</div>
+                        <div className="panel__description">{formatPercent(item.mfePercent)}</div>
                     </div>
                 ),
             },
@@ -489,6 +493,48 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
     );
 
     const aggregationItems = useMemo(() => Array.from(aggregationState.items.values()), [aggregationState.items]);
+
+    const includedActionableTargets = useMemo<BacktestBotTarget[]>(
+        () =>
+            aggregationItems
+                .filter((item) => item.status === 'success' && item.included && item.detail)
+                .map((item) => ({id: item.id, detail: item.detail as BacktestStatisticsDetail})),
+        [aggregationItems],
+    );
+
+    const [botCreationOpen, setBotCreationOpen] = useState(false);
+    const [botCreationTargets, setBotCreationTargets] = useState<BacktestBotTarget[]>([]);
+
+    const handleOpenBotCreation = useCallback(() => {
+        if (includedActionableTargets.length === 0) {
+            return;
+        }
+        setBotCreationTargets(includedActionableTargets);
+        setBotCreationOpen(true);
+    }, [includedActionableTargets]);
+
+    const handleBotCreationClose = useCallback(() => {
+        setBotCreationOpen(false);
+        setBotCreationTargets([]);
+    }, []);
+
+    const botActionsMenu = useMemo<MenuProps>(
+        () => ({
+            items: [
+                {
+                    key: 'create-bots',
+                    label: 'Создать ботов',
+                    disabled: includedActionableTargets.length === 0,
+                },
+            ],
+            onClick: ({key}) => {
+                if (key === 'create-bots') {
+                    handleOpenBotCreation();
+                }
+            },
+        }),
+        [handleOpenBotCreation, includedActionableTargets.length],
+    );
 
     const pendingCachedEntries = useMemo(() => {
         const entries: Array<[number, BacktestStatistics]> = [];
@@ -544,6 +590,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                         status: 'success',
                         included: existing.included ?? true,
                         metrics,
+                        detail,
                         error: undefined,
                     });
                     return {...prev, items: nextItems};
@@ -734,6 +781,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                             ...current,
                             status: 'success',
                             metrics,
+                            detail: details,
                             error: undefined,
                         });
                         return {...prev, items: nextItems, completed: nextCompleted};
@@ -1031,6 +1079,15 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                         </p>
                     </div>
                     <div className="panel__actions">
+                        <Dropdown
+                            menu={botActionsMenu}
+                            trigger={['click']}
+                            disabled={aggregationState.running || includedActionableTargets.length === 0}
+                        >
+                            <button type="button" className="button button--ghost">
+                                Действия <DownOutlined style={{marginLeft: 6}}/>
+                            </button>
+                        </Dropdown>
                         <button
                             type="button"
                             className="button button--ghost"
@@ -1447,6 +1504,12 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                     </div>
                 )}
             </div>
+
+            <CreateBotsFromBacktestsModal
+                open={botCreationOpen}
+                targets={botCreationTargets}
+                onClose={handleBotCreationClose}
+            />
         </section>
     );
 };

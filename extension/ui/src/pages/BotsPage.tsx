@@ -84,6 +84,8 @@ const BotsPage = ({extensionReady}: BotsPageProps) => {
     const [reloadCounter, setReloadCounter] = useState(0);
 
     useEffect(() => {
+        void reloadCounter;
+
         if (!extensionReady) {
             setData(null);
             setLoading(false);

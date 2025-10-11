@@ -5,6 +5,7 @@ import type {
   BotsListParams,
   BotsListResponse,
 } from '../types/bots';
+import type { BacktestConfig } from '../types/backtests';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
 import { buildApiUrl } from './baseUrl';
@@ -45,6 +46,17 @@ const mergeHeaders = (headers?: HeadersInit): Record<string, string> => {
 
   return { ...base, ...(headers as Record<string, string>) };
 };
+
+export type CreateBotPayload = Omit<BacktestConfig, 'id'> & {
+  id: null;
+  apiKey: number;
+};
+
+export interface CreateBotResponse {
+  id: number;
+  name?: string | null;
+  status?: string | null;
+}
 
 interface BotsFilterRequestPayload {
   tags?: string[];
@@ -153,4 +165,29 @@ export const stopBot = async (botId: BotIdentifier): Promise<void> => {
 
 export const startBot = async (botId: BotIdentifier): Promise<void> => {
   await performBotAction(botId, { method: 'POST' }, '/start');
+};
+
+export const createBot = async (payload: CreateBotPayload): Promise<CreateBotResponse> => {
+  const headers = mergeHeaders({ 'content-type': 'application/json' });
+
+  const response = await proxyHttpRequest<CreateBotResponse>({
+    url: BOTS_ENDPOINT,
+    init: {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify(payload),
+    },
+  });
+
+  if (!response.ok) {
+    const message = resolveProxyErrorMessage(response);
+    throw new Error(message);
+  }
+
+  if (!response.body) {
+    throw new Error('Пустой ответ сервера при создании бота.');
+  }
+
+  return response.body;
 };

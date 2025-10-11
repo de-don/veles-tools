@@ -1,3 +1,5 @@
+import type { StrategyCondition } from './bots';
+
 export interface BacktestStatisticsListResponse {
   totalElements: number;
   totalPages: number;
@@ -10,6 +12,50 @@ export interface BacktestDepositConfig {
   leverage: number | string | null;
   marginType: string | null;
   currency?: string | null;
+}
+
+export interface BacktestCommissionsConfig {
+  maker: number | null;
+  taker: number | null;
+}
+
+type BacktestJsonPrimitive = string | number | boolean | null;
+
+export type BacktestJsonValue =
+  | BacktestJsonPrimitive
+  | BacktestJsonValue[]
+  | { [key: string]: BacktestJsonValue | undefined };
+
+export type BacktestSettings = Record<string, BacktestJsonValue | undefined> | null;
+
+export interface BacktestProfitConfig {
+  type: string;
+  currency: string;
+  checkPnl: number | null;
+  conditions: StrategyCondition[] | null;
+}
+
+export interface BacktestConfig {
+  id: number;
+  name: string;
+  symbol: string | null;
+  exchange: string | null;
+  algorithm: string | null;
+  pullUp: number | null;
+  portion: number | null;
+  profit: BacktestProfitConfig | null;
+  deposit: BacktestDepositConfig | null;
+  settings: BacktestSettings;
+  conditions: StrategyCondition[] | null;
+  from: string | null;
+  to: string | null;
+  status: string | null;
+  commissions: BacktestCommissionsConfig | null;
+  public: boolean | null;
+  useWicks: boolean | null;
+  cursor: string | null;
+  includePosition: boolean | null;
+  symbols: string[] | null;
 }
 
 export interface BacktestStatistics {
@@ -69,6 +115,19 @@ export interface BacktestsListParams {
 }
 
 export interface BacktestStatisticsDetail extends BacktestStatistics {
+  pullUp?: number | null;
+  portion?: number | null;
+  profit?: BacktestProfitConfig | null;
+  deposit?: BacktestDepositConfig | null;
+  settings?: BacktestSettings;
+  conditions?: StrategyCondition[] | null;
+  commissions?: BacktestCommissionsConfig | null;
+  public?: boolean | null;
+  useWicks?: boolean | null;
+  cursor?: string | null;
+  includePosition?: boolean | null;
+  symbols?: string[] | null;
+  status?: string | null;
   start?: string | null;
   end?: string | null;
   periodStart?: string | null;

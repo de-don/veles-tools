@@ -164,7 +164,7 @@ const coerceLooseNumber = (value: unknown): number | null => {
     return null;
   }
 
-  const numericPortion = trimmed.replace(/[^0-9.,\-]+/g, '');
+  const numericPortion = trimmed.replace(/[^0-9.,-]+/g, '');
   if (!numericPortion) {
     return null;
   }
