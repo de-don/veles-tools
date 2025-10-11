@@ -37,6 +37,10 @@ export interface BacktestAggregationMetrics {
   id: number;
   name: string;
   symbol: string;
+  depositAmount: number | null;
+  depositCurrency: string | null;
+  depositLeverage: number | null;
+  winRatePercent: number | null;
   pnl: number;
   profitsCount: number;
   lossesCount: number;
@@ -145,6 +149,44 @@ const parseTimestamp = (value: unknown): number | null => {
   const date = new Date(value as string);
   const time = date.getTime();
   return Number.isFinite(time) ? time : null;
+};
+
+const coerceLooseNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const numericPortion = trimmed.replace(/[^0-9.,\-]+/g, '');
+  if (!numericPortion) {
+    return null;
+  }
+
+  const hasComma = numericPortion.includes(',');
+  const hasDot = numericPortion.includes('.');
+  let normalized = numericPortion;
+
+  if (hasComma && hasDot) {
+    const commaIndex = numericPortion.lastIndexOf(',');
+    const dotIndex = numericPortion.lastIndexOf('.');
+    if (commaIndex > dotIndex) {
+      normalized = numericPortion.replace(/\./g, '').replace(/,/g, '.');
+    } else {
+      normalized = numericPortion.replace(/,/g, '');
+    }
+  } else if (hasComma) {
+    normalized = numericPortion.replace(/,/g, '.');
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const isFiniteNumber = (value: unknown): value is number => {
@@ -368,6 +410,19 @@ export const computeBacktestMetrics = (
   stats: BacktestStatisticsDetail,
   cycles: BacktestCycle[],
 ): BacktestAggregationMetrics => {
+  const depositAmount = coerceLooseNumber(stats.deposit?.amount ?? null);
+  const depositLeverage = coerceLooseNumber(stats.deposit?.leverage ?? null);
+  const depositCurrencyCandidate =
+    typeof stats.deposit?.currency === 'string' && stats.deposit.currency.trim() !== ''
+      ? stats.deposit.currency.trim()
+      : stats.quote ?? null;
+  const depositCurrency = depositCurrencyCandidate ?? null;
+
+  const winsForRate = Math.max(0, Math.round(toNumber(stats.winRateProfits ?? stats.profits ?? 0))) || 0;
+  const lossesForRate = Math.max(0, Math.round(toNumber(stats.winRateLosses ?? stats.losses ?? 0))) || 0;
+  const completedForRate = winsForRate + lossesForRate;
+  const winRatePercent = completedForRate > 0 ? (winsForRate / completedForRate) * 100 : null;
+
   const pnl = toNumber(stats.netQuote ?? stats.profitQuote ?? 0) || 0;
   const profitsCount = Math.max(0, Math.round(toNumber(stats.profits ?? 0))) || 0;
   const lossesCount = Math.max(0, Math.round(toNumber(stats.losses ?? 0))) || 0;
@@ -458,6 +513,10 @@ export const computeBacktestMetrics = (
     id: stats.id,
     name,
     symbol: sanitizedSymbol,
+    depositAmount,
+    depositCurrency,
+    depositLeverage,
+    winRatePercent,
     pnl,
     profitsCount,
     lossesCount,

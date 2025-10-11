@@ -73,6 +73,13 @@ const formatPercent = (value: number | null) => {
     return `${percentageFormatter.format(value)}%`;
 };
 
+const formatLeverage = (value: number | null) => {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+        return '—';
+    }
+    return `${numberFormatter.format(value)}x`;
+};
+
 const formatDateRu = (value: string | null | undefined) => {
     if (!value) {
         return '—';
@@ -762,8 +769,8 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
 
     const resetAggregation = () => {
         const nextItems = new Map<number, AggregationItemState>();
-        selection.forEach((_, id) => {
-            nextItems.set(id, {id, status: 'idle', included: true});
+        selection.forEach((stat) => {
+            nextItems.set(stat.id, {id: stat.id, status: 'idle', included: true});
         });
         setAggregationState({
             items: nextItems,
@@ -829,6 +836,42 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                 dataIndex: 'metrics',
                 key: 'symbol',
                 render: (_metrics, record) => record.metrics?.symbol ?? '—',
+            },
+            {
+                title: 'Депозит',
+                dataIndex: 'metrics',
+                key: 'deposit',
+                render: (_metrics, record) => {
+                    if (!record.metrics) {
+                        return '—';
+                    }
+                    return formatAmount(
+                        record.metrics.depositAmount,
+                        record.metrics.depositCurrency ?? undefined,
+                    );
+                },
+            },
+            {
+                title: 'Плечо',
+                dataIndex: 'metrics',
+                key: 'leverage',
+                render: (_metrics, record) => {
+                    if (!record.metrics) {
+                        return '—';
+                    }
+                    return formatLeverage(record.metrics.depositLeverage);
+                },
+            },
+            {
+                title: 'Win rate',
+                dataIndex: 'metrics',
+                key: 'winRate',
+                render: (_metrics, record) => {
+                    if (!record.metrics) {
+                        return '—';
+                    }
+                    return formatPercent(record.metrics.winRatePercent);
+                },
             },
             {
                 title: 'P&L',

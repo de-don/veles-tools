@@ -69,8 +69,8 @@ export interface BotProfitConfig {
 }
 
 export interface BotDepositConfig {
-  amount: number | null;
-  leverage: number | null;
+  amount: number | string | null;
+  leverage: number | string | null;
   marginType: string | null;
 }
 

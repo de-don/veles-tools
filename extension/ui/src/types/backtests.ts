@@ -5,6 +5,13 @@ export interface BacktestStatisticsListResponse {
   content: BacktestStatistics[];
 }
 
+export interface BacktestDepositConfig {
+  amount: number | string | null;
+  leverage: number | string | null;
+  marginType: string | null;
+  currency?: string | null;
+}
+
 export interface BacktestStatistics {
   id: number;
   name: string;
@@ -52,6 +59,7 @@ export interface BacktestStatistics {
   maeAbsolute: number | null;
   commissionBase: number | null;
   commissionQuote: number | null;
+  deposit?: BacktestDepositConfig | null;
 }
 
 export interface BacktestsListParams {

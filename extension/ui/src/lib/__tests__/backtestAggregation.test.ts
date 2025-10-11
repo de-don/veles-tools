@@ -59,6 +59,7 @@ const buildDetail = (
   maeAbsolute: 0,
   commissionBase: 0,
   commissionQuote: 0,
+  deposit: null,
   ...overrides,
 });
 
@@ -132,6 +133,9 @@ describe('computeBacktestMetrics', () => {
       avgDuration: 3600,
       from: '2024-01-01T00:00:00Z',
       to: '2024-01-10T00:00:00Z',
+      deposit: { amount: 2500, leverage: 5, marginType: 'CROSS', currency: 'USDT' },
+      winRateProfits: 2,
+      winRateLosses: 1,
     });
 
     const cycles: BacktestCycle[] = [
@@ -184,6 +188,10 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.maxDrawdown).toBe(40);
     expect(metrics.maxMPU).toBe(45);
     expect(metrics.maxMPP).toBe(120);
+    expect(metrics.depositAmount).toBe(2500);
+    expect(metrics.depositLeverage).toBe(5);
+    expect(metrics.depositCurrency).toBe('USDT');
+    expect(metrics.winRatePercent).toBeCloseTo((2 / 3) * 100, 6);
     expect(metrics.concurrencyIntervals).toHaveLength(4);
     expect(metrics.concurrencyIntervals[0].start).toBe(new Date('2024-01-02T22:00:00Z').getTime());
     expect(metrics.concurrencyIntervals[0].end).toBe(new Date('2024-01-03T00:00:00Z').getTime());
@@ -279,6 +287,26 @@ describe('computeBacktestMetrics', () => {
     const uniqueDayIndices = new Set(metrics.activeDayIndices);
     expect(uniqueDayIndices.size).toBe(metrics.activeDayIndices.length);
     expect(metrics.activeDayIndices[0]).toBeLessThanOrEqual(metrics.activeDayIndices[metrics.activeDayIndices.length - 1]);
+    expect(metrics.depositAmount).toBeNull();
+    expect(metrics.depositLeverage).toBeNull();
+    expect(metrics.winRatePercent).toBeCloseTo((3 / 4) * 100, 6);
+  });
+
+  it('normalizes textual deposit configuration values', () => {
+    const stats = buildDetail({
+      id: 909,
+      winRateProfits: 5,
+      winRateLosses: 5,
+      deposit: { amount: '1 250,75 USDT' as unknown as number, leverage: '10x' as unknown as number, marginType: 'ISOLATED', currency: null },
+      quote: 'USDT',
+    });
+
+    const metrics = computeBacktestMetrics(stats, []);
+
+    expect(metrics.depositAmount).toBeCloseTo(1250.75, 6);
+    expect(metrics.depositCurrency).toBe('USDT');
+    expect(metrics.depositLeverage).toBe(10);
+    expect(metrics.winRatePercent).toBe(50);
   });
 });
 
