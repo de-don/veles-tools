@@ -72,3 +72,27 @@ export const fetchAllActiveDeals = async (params?: FetchAllParams): Promise<Acti
 
   return collected;
 };
+
+export const closeActiveDeal = async (dealId: number): Promise<void> => {
+  if (!Number.isFinite(dealId)) {
+    throw new Error('Некорректный идентификатор сделки.');
+  }
+
+  const url = buildApiUrl(`/api/cycles/${Math.trunc(dealId)}/close`);
+
+  const response = await proxyHttpRequest<{ ok?: boolean }>({
+    url,
+    init: {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        accept: 'application/json, text/plain, */*',
+      },
+    },
+  });
+
+  if (!response.ok) {
+    const errorMessage = resolveProxyErrorMessage(response);
+    throw new Error(errorMessage);
+  }
+};

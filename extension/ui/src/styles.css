@@ -436,6 +436,12 @@ body {
   color: #7a2e0e;
 }
 
+.banner--success {
+  background-color: #dcfce7;
+  border: 1px solid #22c55e;
+  color: #166534;
+}
+
 .table-container {
   overflow-x: auto;
 }
@@ -464,6 +470,129 @@ body {
 
 .table tbody tr:hover {
   background-color: #f1f5f9;
+}
+
+.active-deals__bot-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.active-deals__bot-link {
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.active-deals__bot-link:hover {
+  text-decoration: underline;
+}
+
+.active-deals__bot-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.active-deals__price-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.active-deals__price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.active-deals__price-label {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.active-deals__price-value {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.active-deals__date-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+}
+
+.active-deals__date-time {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.active-deals__date-day {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.active-deals__close-button {
+  width: 100%;
+  font-size: 12px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+}
+
+.active-deals__close-button--positive {
+  background-color: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.active-deals__close-button--positive:hover:not(:disabled) {
+  background-color: #bbf7d0;
+  border-color: #4ade80;
+}
+
+.active-deals__close-button--negative {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.active-deals__close-button--negative:hover:not(:disabled) {
+  background-color: #fecaca;
+  border-color: #f87171;
+}
+
+.active-deals__close-button--neutral {
+  background-color: #e2e8f0;
+  border-color: #cbd5f5;
+  color: #1f2937;
+}
+
+.active-deals__close-button--neutral:hover:not(:disabled) {
+  background-color: #cbd5f5;
+  border-color: #94a3b8;
+}
+
+.active-deals__close-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.active-deals__id-link {
+  color: #0f172a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.active-deals__id-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
 }
 
 .table__checkbox {
