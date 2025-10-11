@@ -1,9 +1,50 @@
-import type { BotStatus, BotsListFilters, BotsListParams, BotsListResponse } from '../types/bots';
+import type {
+  BotIdentifier,
+  BotStatus,
+  BotsListFilters,
+  BotsListParams,
+  BotsListResponse,
+} from '../types/bots';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
 import { buildApiUrl } from './baseUrl';
 
 const BOTS_ENDPOINT = buildApiUrl('/api/bots');
+
+const DEFAULT_REQUEST_HEADERS = {
+  accept: 'application/json, text/plain, */*',
+};
+
+const resolveBotId = (botId: BotIdentifier): string => {
+  const parsed = String(botId).trim();
+  if (!parsed) {
+    throw new Error('Некорректный идентификатор бота.');
+  }
+  return parsed;
+};
+
+const mergeHeaders = (headers?: HeadersInit): Record<string, string> => {
+  const base: Record<string, string> = { ...DEFAULT_REQUEST_HEADERS };
+  if (!headers) {
+    return base;
+  }
+
+  if (typeof Headers !== 'undefined' && headers instanceof Headers) {
+    headers.forEach((value, key) => {
+      base[key] = value;
+    });
+    return base;
+  }
+
+  if (Array.isArray(headers)) {
+    headers.forEach(([key, value]) => {
+      base[key] = value;
+    });
+    return base;
+  }
+
+  return { ...base, ...(headers as Record<string, string>) };
+};
 
 interface BotsFilterRequestPayload {
   tags?: string[];
@@ -52,16 +93,14 @@ const buildQueryString = (params: BotsListParams): string => {
 export const fetchBots = async (params: BotsListParams): Promise<BotsListResponse> => {
   const url = `${BOTS_ENDPOINT}?${buildQueryString(params)}`;
   const filtersPayload = buildFiltersPayload(params.filters);
+  const headers = mergeHeaders({'content-type': 'application/json'});
 
   const response = await proxyHttpRequest<BotsListResponse>({
     url,
     init: {
       method: 'PUT',
       credentials: 'include',
-      headers: {
-        accept: 'application/json, text/plain, */*',
-        'content-type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(filtersPayload),
     },
   });
@@ -78,4 +117,40 @@ export const fetchBots = async (params: BotsListParams): Promise<BotsListRespons
   }
 
   return payload;
+};
+
+const performBotAction = async (
+  botId: BotIdentifier,
+  init: RequestInit,
+  pathSuffix: string = '',
+): Promise<void> => {
+  const normalizedId = resolveBotId(botId);
+  const url = `${BOTS_ENDPOINT}/${normalizedId}${pathSuffix}`;
+  const headers = mergeHeaders(init.headers);
+
+  const response = await proxyHttpRequest<void>({
+    url,
+    init: {
+      ...init,
+      headers,
+      credentials: 'include',
+    },
+  });
+
+  if (!response.ok) {
+    const errorMessage = resolveProxyErrorMessage(response);
+    throw new Error(errorMessage);
+  }
+};
+
+export const deleteBot = async (botId: BotIdentifier): Promise<void> => {
+  await performBotAction(botId, { method: 'DELETE' });
+};
+
+export const stopBot = async (botId: BotIdentifier): Promise<void> => {
+  await performBotAction(botId, { method: 'POST' }, '/stop');
+};
+
+export const startBot = async (botId: BotIdentifier): Promise<void> => {
+  await performBotAction(botId, { method: 'POST' }, '/start');
 };

@@ -8,6 +8,7 @@ import type {BotAlgorithm, BotsListFilters, BotsListResponse, BotStatus, BotSumm
 import {BOT_STATUS_VALUES} from '../types/bots';
 import type {ApiKey} from '../types/apiKeys';
 import BacktestModal, {type BacktestVariant} from '../components/BacktestModal';
+import BulkActionsMenu from '../components/bots/BulkActionsMenu';
 import {parseSortDescriptor, serializeSortDescriptor} from '../lib/tableSort';
 import {resolveBotStatusColor} from '../lib/statusColors';
 import type {TableRowSelection} from 'antd/es/table/interface';
@@ -80,6 +81,7 @@ const BotsPage = ({extensionReady}: BotsPageProps) => {
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
     const [apiKeysLoading, setApiKeysLoading] = useState(false);
     const [apiKeysError, setApiKeysError] = useState<string | null>(null);
+    const [reloadCounter, setReloadCounter] = useState(0);
 
     useEffect(() => {
         if (!extensionReady) {
@@ -116,7 +118,7 @@ const BotsPage = ({extensionReady}: BotsPageProps) => {
         return () => {
             isActive = false;
         };
-    }, [extensionReady, page, pageSize, sort, appliedFilters]);
+    }, [extensionReady, page, pageSize, sort, appliedFilters, reloadCounter]);
 
     useEffect(() => {
         if (!extensionReady) {
@@ -177,6 +179,9 @@ const BotsPage = ({extensionReady}: BotsPageProps) => {
             })),
         [apiKeys],
     );
+    const forceReloadBots = useCallback(() => {
+        setReloadCounter((value) => value + 1);
+    }, []);
     const hasActiveFilters = useMemo(() => {
         return Boolean(
             appliedFilters.name ||
@@ -497,6 +502,11 @@ const BotsPage = ({extensionReady}: BotsPageProps) => {
                                     onClick={() => openModal('multiCurrency')}>
                                 Мультивалютный бэктест
                             </button>
+                            <BulkActionsMenu
+                                bots={selection}
+                                onReloadRequested={forceReloadBots}
+                                onSelectionUpdate={setSelection}
+                            />
                         </div>
                     </div>
                 )}
