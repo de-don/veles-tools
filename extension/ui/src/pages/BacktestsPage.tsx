@@ -227,7 +227,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
         return () => {
             isActive = false;
         };
-    }, [extensionReady, page, pageSize, sort]);
+    }, [extensionReady, page, pageSize]);
 
     useEffect(() => {
         if (!extensionReady) {
@@ -430,6 +430,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
             },
             {
                 title: 'Win rate',
+                dataIndex: 'winRateProfits',
                 key: 'winRate',
                 render: (_value, item) => {
                     const winRateValue = formatWinRate(item.winRateProfits ?? item.profits, item.winRateLosses ?? item.losses);
@@ -477,8 +478,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                 render: (_value, item) => durationFormatter(item.avgDuration),
             },
         ],
-        [],
-    );
+        []);
 
     const tablePagination = useMemo(
         () => ({
@@ -706,33 +706,6 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
         return `aggregation-metric__value ${value > 0 ? 'aggregation-metric__value--positive' : 'aggregation-metric__value--negative'}`;
     };
 
-    const resolveStatusLabel = (item: AggregationItemState): string => {
-        switch (item.status) {
-            case 'loading':
-                return 'Собирается…';
-            case 'success':
-                return 'Собрано';
-            case 'error':
-                return item.error ? `Ошибка: ${item.error}` : 'Ошибка';
-            default:
-                return 'Ожидает запуска';
-        }
-    };
-
-    const resolveStatusTone = (status: AggregationStatus): string => {
-        if (status === 'success') {
-            return 'aggregation-status aggregation-status--success';
-        }
-        if (status === 'error') {
-            return 'aggregation-status aggregation-status--error';
-        }
-        if (status === 'loading') {
-            return 'aggregation-status aggregation-status--loading';
-        }
-        return 'aggregation-status aggregation-status--idle';
-    };
-
-
     const runAggregation = async () => {
         if (aggregationState.running) {
             return;
@@ -841,6 +814,24 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
         });
     }, []);
 
+    const resolveSortableNumber = (value: number | null | undefined): number => {
+        return typeof value === 'number' && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+    };
+
+    const buildMetricNumberSorter = (selector: (metrics: BacktestAggregationMetrics) => number | null | undefined) =>
+        (a: AggregationItemState, b: AggregationItemState) => {
+            const aValue = resolveSortableNumber(a.metrics ? selector(a.metrics) : null);
+            const bValue = resolveSortableNumber(b.metrics ? selector(b.metrics) : null);
+            return aValue - bValue;
+        };
+
+    const buildMetricStringSorter = (selector: (metrics: BacktestAggregationMetrics) => string | null | undefined) =>
+        (a: AggregationItemState, b: AggregationItemState) => {
+            const aValue = a.metrics ? selector(a.metrics) ?? '' : '';
+            const bValue = b.metrics ? selector(b.metrics) ?? '' : '';
+            return aValue.localeCompare(bValue, 'ru');
+        };
+
     const aggregationColumns: ColumnsType<AggregationItemState> = useMemo(
         () => [
             {
@@ -863,32 +854,38 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                 },
             },
             {
-                title: 'ID',
-                dataIndex: 'id',
-                key: 'id',
-                render: (value: number) => (
-                    <a href={`https://veles.finance/cabinet/backtests/${value}`} target="_blank"
-                       rel="noreferrer noopener">
-                        {value}
-                    </a>
-                ),
-            },
-            {
-                title: 'Название',
-                dataIndex: 'metrics',
+                title: 'Бэктест',
                 key: 'name',
-                render: (_metrics, record) => record.metrics?.name ?? '—',
+                sorter: (a, b) => {
+                    const aName = a.metrics?.name ?? '';
+                    const bName = b.metrics?.name ?? '';
+                    return aName.localeCompare(bName, 'ru');
+                },
+                render: (_metrics, record) => (
+                    <div>
+                        <div>{record.metrics?.name ?? '—'}</div>
+                        <div className="panel__description">
+                            ID:{' '}
+                            <a href={`https://veles.finance/cabinet/backtests/${record.id}`} target="_blank"
+                               rel="noreferrer noopener">
+                                {record.id}
+                            </a>
+                        </div>
+                    </div>
+                ),
             },
             {
                 title: 'Пара',
                 dataIndex: 'metrics',
                 key: 'symbol',
+                sorter: buildMetricStringSorter((metrics) => metrics.symbol),
                 render: (_metrics, record) => record.metrics?.symbol ?? '—',
             },
             {
                 title: 'Депозит',
                 dataIndex: 'metrics',
                 key: 'deposit',
+                sorter: buildMetricNumberSorter((metrics) => metrics.depositAmount ?? null),
                 render: (_metrics, record) => {
                     if (!record.metrics) {
                         return '—';
@@ -903,6 +900,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                 title: 'Плечо',
                 dataIndex: 'metrics',
                 key: 'leverage',
+                sorter: buildMetricNumberSorter((metrics) => metrics.depositLeverage ?? null),
                 render: (_metrics, record) => {
                     if (!record.metrics) {
                         return '—';
@@ -914,6 +912,7 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                 title: 'Win rate',
                 dataIndex: 'metrics',
                 key: 'winRate',
+                sorter: buildMetricNumberSorter((metrics) => metrics.winRatePercent ?? null),
                 render: (_metrics, record) => {
                     if (!record.metrics) {
                         return '—';
@@ -925,59 +924,60 @@ const BacktestsPage = ({extensionReady}: BacktestsPageProps) => {
                 title: 'P&L',
                 dataIndex: 'metrics',
                 key: 'pnl',
+                sorter: buildMetricNumberSorter((metrics) => metrics.pnl),
                 render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.pnl) : '—'),
             },
             {
                 title: 'Net / день',
                 dataIndex: 'metrics',
                 key: 'netPerDay',
+                sorter: buildMetricNumberSorter((metrics) => metrics.avgNetPerDay),
                 render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.avgNetPerDay) : '—'),
             },
             {
                 title: 'Сделки',
                 dataIndex: 'metrics',
                 key: 'deals',
+                sorter: buildMetricNumberSorter((metrics) => metrics.totalDeals),
                 render: (_metrics, record) => (record.metrics ? formatAggregationInteger(record.metrics.totalDeals) : '—'),
             },
             {
                 title: 'Avg длит. (д)',
                 dataIndex: 'metrics',
                 key: 'avgDuration',
+                sorter: buildMetricNumberSorter((metrics) => metrics.avgTradeDurationDays),
                 render: (_metrics, record) => (record.metrics ? `${formatAggregationValue(record.metrics.avgTradeDurationDays)} д` : '—'),
             },
             {
                 title: 'Дни без торговли',
                 dataIndex: 'metrics',
                 key: 'downtime',
+                sorter: buildMetricNumberSorter((metrics) => metrics.downtimeDays),
                 render: (_metrics, record) => (record.metrics ? `${formatAggregationValue(record.metrics.downtimeDays)} д` : '—'),
             },
             {
                 title: 'Макс. просадка',
                 dataIndex: 'metrics',
                 key: 'maxDrawdown',
+                sorter: buildMetricNumberSorter((metrics) => metrics.maxDrawdown),
                 render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxDrawdown) : '—'),
             },
             {
                 title: 'Макс. МПУ',
                 dataIndex: 'metrics',
                 key: 'maxMPU',
+                sorter: buildMetricNumberSorter((metrics) => metrics.maxMPU),
                 render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxMPU) : '—'),
             },
             {
                 title: 'Макс. МПП',
                 dataIndex: 'metrics',
                 key: 'maxMPP',
+                sorter: buildMetricNumberSorter((metrics) => metrics.maxMPP),
                 render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxMPP) : '—'),
             },
-            {
-                title: 'Статус',
-                dataIndex: 'status',
-                key: 'status',
-                render: (_value, record) => <span
-                    className={resolveStatusTone(record.status)}>{resolveStatusLabel(record)}</span>,
-            },
         ],
-        [toggleAggregationInclude, resolveStatusLabel, resolveStatusTone],
+        [toggleAggregationInclude],
     );
 
     const aggregationRowClassName = useCallback((record: AggregationItemState) => {
