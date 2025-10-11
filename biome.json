@@ -18,23 +18,25 @@
   },
   "formatter": {
     "enabled": true,
-    "indentStyle": "tab"
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
   },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
-        "style": {
-            "noDescendingSpecificity": "off"
-        },
-        "correctness": {
-          "useUniqueElementIds": "off"
-        }
+      "style": {
+        "noDescendingSpecificity": "off"
+      },
+      "correctness": {
+        "useUniqueElementIds": "off"
+      }
     }
   },
   "javascript": {
     "formatter": {
-      "quoteStyle": "double"
+      "quoteStyle": "single"
     }
   },
   "assist": {
@@ -47,9 +49,7 @@
   },
   "overrides": [
     {
-      "includes": [
-        "**/*.test.ts"
-      ],
+      "includes": ["**/*.test.ts"],
       "linter": {
         "rules": {
           "suspicious": {

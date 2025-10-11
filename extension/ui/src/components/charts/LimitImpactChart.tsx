@@ -1,9 +1,6 @@
-import { memo, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import {
-  createLimitImpactChartOptions,
-  type LimitImpactPoint,
-} from '../../lib/chartOptions';
+import { memo, useMemo } from 'react';
+import { createLimitImpactChartOptions, type LimitImpactPoint } from '../../lib/chartOptions';
 
 interface LimitImpactChartProps {
   points: LimitImpactPoint[];
@@ -11,10 +8,7 @@ interface LimitImpactChartProps {
 }
 
 const LimitImpactChartComponent = ({ points, className }: LimitImpactChartProps) => {
-  const option = useMemo(
-    () => createLimitImpactChartOptions(points),
-    [points],
-  );
+  const option = useMemo(() => createLimitImpactChartOptions(points), [points]);
 
   return (
     <ReactECharts

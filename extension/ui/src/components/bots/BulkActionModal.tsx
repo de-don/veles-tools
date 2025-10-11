@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Checkbox, Modal, Progress, Typography } from 'antd';
 import type { ButtonProps } from 'antd/es/button';
 import type { ProgressProps } from 'antd/es/progress';
-import type { TradingBot, BotIdentifier } from '../../types/bots';
+import { useEffect, useMemo, useState } from 'react';
+import type { BotIdentifier, TradingBot } from '../../types/bots';
 
 const { Paragraph, Text } = Typography;
 
@@ -48,10 +48,7 @@ const pickErrorMessage = (error: unknown): string => {
   return String(error);
 };
 
-const buildProgressStatus = (
-  isRunning: boolean,
-  result: BulkActionResult | null,
-): ProgressProps['status'] => {
+const buildProgressStatus = (isRunning: boolean, result: BulkActionResult | null): ProgressProps['status'] => {
   if (isRunning) {
     return 'active';
   }
@@ -207,18 +204,12 @@ const BulkActionModal = ({
         <Text type="secondary">
           {progressLabel}: {processedCount} из {totalBots}
         </Text>
-        <Progress
-          percent={percent}
-          status={progressStatus}
-          style={{ marginTop: 8 }}
-        />
+        <Progress percent={percent} status={progressStatus} style={{ marginTop: 8 }} />
       </div>
 
       <div style={{ marginTop: 16 }}>
         {isRunning && <Text>{copy.runningMessage}</Text>}
-        {isCompleted && !hasFailures && (
-          <Alert type="success" message={copy.successMessage} showIcon />
-        )}
+        {isCompleted && !hasFailures && <Alert type="success" message={copy.successMessage} showIcon />}
         {isCompleted && hasFailures && (
           <Alert
             type="error"

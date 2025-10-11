@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+
 // @ts-check
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
-import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 const versionArg = process.argv[2];
 
@@ -53,7 +54,7 @@ if (itemsToArchive.length === 0) {
 const zipArgs = ['-r', archivePath, ...itemsToArchive, '-x', '*.DS_Store'];
 const zipResult = spawnSync('zip', zipArgs, {
   cwd: extensionDir,
-  stdio: 'inherit'
+  stdio: 'inherit',
 });
 
 if (zipResult.error instanceof Error) {

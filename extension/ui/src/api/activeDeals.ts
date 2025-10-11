@@ -1,6 +1,6 @@
-import type { ActiveDeal, ActiveDealsQueryParams, ActiveDealsResponse } from '../types/activeDeals';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import type { ActiveDeal, ActiveDealsQueryParams, ActiveDealsResponse } from '../types/activeDeals';
 import { buildApiUrl } from './baseUrl';
 
 const ACTIVE_DEALS_ENDPOINT = buildApiUrl('/api/cycles/active');
@@ -20,9 +20,7 @@ const buildQueryString = (params?: ActiveDealsQueryParams): string => {
   return query.toString();
 };
 
-export const fetchActiveDeals = async (
-  params?: ActiveDealsQueryParams,
-): Promise<ActiveDealsResponse> => {
+export const fetchActiveDeals = async (params?: ActiveDealsQueryParams): Promise<ActiveDealsResponse> => {
   const url = `${ACTIVE_DEALS_ENDPOINT}?${buildQueryString(params)}`;
 
   const response = await proxyHttpRequest<ActiveDealsResponse>({

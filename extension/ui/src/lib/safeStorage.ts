@@ -60,4 +60,3 @@ export const removeStorageValue = (key: string): boolean => {
     return false;
   }
 };
-

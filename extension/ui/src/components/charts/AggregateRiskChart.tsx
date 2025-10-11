@@ -1,10 +1,7 @@
-import { memo, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
+import { memo, useMemo } from 'react';
 import type { AggregateRiskSeries } from '../../lib/backtestAggregation';
-import {
-  createAggregateRiskChartOptions,
-  type DataZoomRange,
-} from '../../lib/chartOptions';
+import { createAggregateRiskChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 
 interface AggregateRiskChartProps {
   series: AggregateRiskSeries;
@@ -40,16 +37,8 @@ const extractRangeFromEvent = (event: DataZoomEventParams): DataZoomRange => {
   };
 };
 
-const AggregateRiskChartComponent = ({
-  series,
-  className,
-  dataZoomRange,
-  onDataZoom,
-}: AggregateRiskChartProps) => {
-  const option = useMemo(
-    () => createAggregateRiskChartOptions(series, dataZoomRange),
-    [series, dataZoomRange],
-  );
+const AggregateRiskChartComponent = ({ series, className, dataZoomRange, onDataZoom }: AggregateRiskChartProps) => {
+  const option = useMemo(() => createAggregateRiskChartOptions(series, dataZoomRange), [series, dataZoomRange]);
 
   const onEvents = useMemo(() => {
     if (!onDataZoom) {

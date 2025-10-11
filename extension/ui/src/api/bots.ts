@@ -1,13 +1,7 @@
-import type {
-  BotIdentifier,
-  BotStatus,
-  BotsListFilters,
-  BotsListParams,
-  BotsListResponse,
-} from '../types/bots';
-import type { BacktestConfig } from '../types/backtests';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import type { BacktestConfig } from '../types/backtests';
+import type { BotIdentifier, BotStatus, BotsListFilters, BotsListParams, BotsListResponse } from '../types/bots';
 import { buildApiUrl } from './baseUrl';
 
 const BOTS_ENDPOINT = buildApiUrl('/api/bots');
@@ -105,7 +99,7 @@ const buildQueryString = (params: BotsListParams): string => {
 export const fetchBots = async (params: BotsListParams): Promise<BotsListResponse> => {
   const url = `${BOTS_ENDPOINT}?${buildQueryString(params)}`;
   const filtersPayload = buildFiltersPayload(params.filters);
-  const headers = mergeHeaders({'content-type': 'application/json'});
+  const headers = mergeHeaders({ 'content-type': 'application/json' });
 
   const response = await proxyHttpRequest<BotsListResponse>({
     url,
@@ -131,11 +125,7 @@ export const fetchBots = async (params: BotsListParams): Promise<BotsListRespons
   return payload;
 };
 
-const performBotAction = async (
-  botId: BotIdentifier,
-  init: RequestInit,
-  pathSuffix: string = '',
-): Promise<void> => {
+const performBotAction = async (botId: BotIdentifier, init: RequestInit, pathSuffix: string = ''): Promise<void> => {
   const normalizedId = resolveBotId(botId);
   const url = `${BOTS_ENDPOINT}/${normalizedId}${pathSuffix}`;
   const headers = mergeHeaders(init.headers);

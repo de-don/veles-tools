@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchBots } from '../bots';
-import type { BotsListResponse } from '../../types/bots';
 import { proxyHttpRequest } from '../../lib/extensionMessaging';
+import type { BotsListResponse } from '../../types/bots';
 import { buildApiUrl } from '../baseUrl';
+import { fetchBots } from '../bots';
 
 vi.mock('../../lib/extensionMessaging', () => ({
   proxyHttpRequest: vi.fn(),
@@ -76,7 +76,11 @@ describe('fetchBots', () => {
   });
 
   it('throws with server error message', async () => {
-    mockedProxy.mockResolvedValue({ ok: false, error: 'Forbidden', status: 403 } as any);
+    mockedProxy.mockResolvedValue({
+      ok: false,
+      error: 'Forbidden',
+      status: 403,
+    } as any);
 
     await expect(
       fetchBots({

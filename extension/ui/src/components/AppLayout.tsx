@@ -1,7 +1,7 @@
-import { NavLink } from 'react-router-dom';
 import { type PropsWithChildren, useState } from 'react';
-import { APP_NAME, APP_VERSION } from '../config/version';
+import { NavLink } from 'react-router-dom';
 import logo from '../assets/logo.png';
+import { APP_NAME, APP_VERSION } from '../config/version';
 import SupportProjectModal from './SupportProjectModal';
 
 interface AppLayoutProps extends PropsWithChildren {
@@ -20,8 +20,7 @@ export interface ConnectionStatus {
 
 const REPOSITORY_URL = 'https://github.com/de-don/veles-tools';
 const AUTHOR_URL = 'https://t.me/dontsov';
-const CHROME_WEBSTORE_URL =
-  'https://chromewebstore.google.com/detail/veles-tools/hgfhapnhcnncjplmjkbbljhjpcjilbgm';
+const CHROME_WEBSTORE_URL = 'https://chromewebstore.google.com/detail/veles-tools/hgfhapnhcnncjplmjkbbljhjpcjilbgm';
 
 const formatTimestamp = (timestamp: number | null) => {
   if (!timestamp) {
@@ -48,8 +47,8 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
             Главная
           </NavLink>
           <NavLink
-              to="/active-deals"
-              className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}
+            to="/active-deals"
+            className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}
           >
             Активные сделки
           </NavLink>
@@ -72,11 +71,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           </div>
         )}
         <div className="sidebar__controls">
-          <button
-            type="button"
-            className="button sidebar__support-button"
-            onClick={() => setSupportModalOpen(true)}
-          >
+          <button type="button" className="button sidebar__support-button" onClick={() => setSupportModalOpen(true)}>
             Поддержать проект
           </button>
           <div className={`status status--${connectionStatus.ok ? 'online' : 'offline'}`}>
@@ -84,7 +79,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
               <div className="status__details">
                 <div className="status__label">Связь с вкладкой</div>
                 <div className="status__value">
-                  {connectionStatus.ok ? 'активна' : connectionStatus.error ?? 'нет соединения'}
+                  {connectionStatus.ok ? 'активна' : (connectionStatus.error ?? 'нет соединения')}
                 </div>
                 <div className="status__meta">
                   Обновлено: {formatTimestamp(connectionStatus.lastChecked)}
@@ -104,12 +99,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
             )}
           </div>
           <div className="sidebar__meta">
-            <a
-              className="sidebar__meta-link"
-              href={CHROME_WEBSTORE_URL}
-              target="_blank"
-              rel="noreferrer noopener"
-            >
+            <a className="sidebar__meta-link" href={CHROME_WEBSTORE_URL} target="_blank" rel="noreferrer noopener">
               Расширение в Chrome Web Store
             </a>
             <a className="sidebar__meta-link" href={REPOSITORY_URL} target="_blank" rel="noreferrer noopener">

@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { TableProps } from 'antd';
 import { Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import type { TableProps } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type BotStrategy, fetchBotStrategy } from '../api/backtestRunner';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
-import { fetchBotStrategy, type BotStrategy } from '../api/backtestRunner';
-import { useImportedBots, type ImportedBotEntry } from '../context/ImportedBotsContext';
-import { BOT_STATUS_VALUES, type BotStatus, type BotSummary } from '../types/bots';
+import { type ImportedBotEntry, useImportedBots } from '../context/ImportedBotsContext';
 import { resolveBotStatusColor } from '../lib/statusColors';
+import { BOT_STATUS_VALUES, type BotStatus, type BotSummary } from '../types/bots';
 
 interface ImportBotsPageProps {
   extensionReady: boolean;
@@ -117,16 +117,16 @@ const parseAliasInput = (raw: string): string[] => {
     .map((token) => token.trim())
     .filter(Boolean);
 
-  const normalized = tokens
-    .map(normalizeAliasCandidate)
-    .filter((item): item is string => Boolean(item));
+  const normalized = tokens.map(normalizeAliasCandidate).filter((item): item is string => Boolean(item));
 
   return deduplicate(normalized);
 };
 
 const buildImportedEntry = (alias: string, strategy: BotStrategy): ImportedBotEntry => {
-  const name = typeof strategy.name === 'string' && strategy.name.trim().length > 0 ? strategy.name.trim() : `Бот ${alias}`;
-  const exchange = typeof strategy.exchange === 'string' && strategy.exchange.trim().length > 0 ? strategy.exchange.trim() : '—';
+  const name =
+    typeof strategy.name === 'string' && strategy.name.trim().length > 0 ? strategy.name.trim() : `Бот ${alias}`;
+  const exchange =
+    typeof strategy.exchange === 'string' && strategy.exchange.trim().length > 0 ? strategy.exchange.trim() : '—';
   const rawStatus = typeof strategy.status === 'string' ? strategy.status.trim() : null;
   const status = normalizeStatusValue(rawStatus);
   const substatus = (() => {
@@ -351,7 +351,10 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
         key: 'status',
         render: (_value, entry) => (
           <div>
-            <Tag color={resolveBotStatusColor(entry.summary.status)} style={{ marginBottom: entry.summary.substatus ? 4 : 0 }}>
+            <Tag
+              color={resolveBotStatusColor(entry.summary.status)}
+              style={{ marginBottom: entry.summary.substatus ? 4 : 0 }}
+            >
               {entry.summary.status}
             </Tag>
             {entry.summary.substatus && <div className="panel__description">{entry.summary.substatus}</div>}
@@ -398,12 +401,15 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
     }
   }, [extensionReady, isImporting]);
 
-  const openModal = useCallback((variant: BacktestVariant) => {
-    if (selection.size === 0) {
-      return;
-    }
-    setActiveModal(variant);
-  }, [selection.size]);
+  const openModal = useCallback(
+    (variant: BacktestVariant) => {
+      if (selection.size === 0) {
+        return;
+      }
+      setActiveModal(variant);
+    },
+    [selection.size],
+  );
 
   const closeModal = useCallback(() => {
     setActiveModal(null);
@@ -415,7 +421,9 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
     <section className="page">
       <header className="page__header">
         <h1 className="page__title">Импорт ботов</h1>
-        <p className="page__subtitle">Вставьте ссылки или идентификаторы, чтобы загрузить конфигурации ботов по общему доступу.</p>
+        <p className="page__subtitle">
+          Вставьте ссылки или идентификаторы, чтобы загрузить конфигурации ботов по общему доступу.
+        </p>
       </header>
 
       {!extensionReady && (
@@ -427,7 +435,8 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
       <div className="panel">
         <h2 className="panel__title">Добавление новых ботов</h2>
         <p className="panel__description">
-          Поддерживаются ссылки вида https://veles.finance/share/&lt;код&gt;, разделённые запятой или с новой строки. Можно вставлять сами коды.
+          Поддерживаются ссылки вида https://veles.finance/share/&lt;код&gt;, разделённые запятой или с новой строки.
+          Можно вставлять сами коды.
         </p>
         <textarea
           className="input"
@@ -441,14 +450,24 @@ https://veles.finance/share/q1w2e`}
           <button type="button" className="button" onClick={handleImport} disabled={!extensionReady || isImporting}>
             {isImporting ? 'Импортируем…' : 'Импортировать'}
           </button>
-          <button type="button" className="button button--ghost" onClick={() => setInputValue('')} disabled={isImporting}>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setInputValue('')}
+            disabled={isImporting}
+          >
             Очистить поле
           </button>
         </div>
         {logs.length > 0 && (
           <ul className="panel__list" style={{ marginTop: 16 }}>
             {logs.map((log) => (
-              <li key={log.id} style={{ color: log.kind === 'error' ? '#ef4444' : log.kind === 'success' ? '#10b981' : '#94a3b8' }}>
+              <li
+                key={log.id}
+                style={{
+                  color: log.kind === 'error' ? '#ef4444' : log.kind === 'success' ? '#10b981' : '#94a3b8',
+                }}
+              >
                 {log.message}
               </li>
             ))}

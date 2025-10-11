@@ -100,10 +100,7 @@ export const calculateZoomRangeForPreset = (
   } satisfies DataZoomRange;
 };
 
-export const areZoomRangesEqual = (
-  left?: DataZoomRange,
-  right?: DataZoomRange,
-): boolean => {
+export const areZoomRangesEqual = (left?: DataZoomRange, right?: DataZoomRange): boolean => {
   const leftStart = left?.start ?? undefined;
   const leftEnd = left?.end ?? undefined;
   const rightStart = right?.start ?? undefined;

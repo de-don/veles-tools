@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildBotCreationPayload } from '../backtestBotPayload';
 import type { BacktestStatisticsDetail } from '../../types/backtests';
+import { buildBotCreationPayload } from '../backtestBotPayload';
 
 const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): BacktestStatisticsDetail => ({
   id: overrides.id ?? 1,
@@ -49,7 +49,12 @@ const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): Backtes
   maeAbsolute: overrides.maeAbsolute ?? 0,
   commissionBase: overrides.commissionBase ?? 0,
   commissionQuote: overrides.commissionQuote ?? 0,
-  deposit: overrides.deposit ?? { amount: 500, leverage: 5, marginType: 'CROSS', currency: 'BBB' },
+  deposit: overrides.deposit ?? {
+    amount: 500,
+    leverage: 5,
+    marginType: 'CROSS',
+    currency: 'BBB',
+  },
   pullUp: overrides.pullUp ?? 1,
   portion: overrides.portion ?? 2,
   profit: overrides.profit ?? null,
@@ -76,7 +81,12 @@ const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): Backtes
 describe('buildBotCreationPayload', () => {
   it('applies overrides for deposit and api key', () => {
     const detail = buildDetail({
-      deposit: { amount: 1000, leverage: 8, marginType: 'ISOLATED', currency: 'BBB' },
+      deposit: {
+        amount: 1000,
+        leverage: 8,
+        marginType: 'ISOLATED',
+        currency: 'BBB',
+      },
     });
 
     const payload = buildBotCreationPayload(detail, {

@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildBacktestPayload,
-  composeSymbol,
-  resolveQuoteCurrency,
-} from '../backtestRunner';
 import type { BotStrategy } from '../backtestRunner';
+import { buildBacktestPayload, composeSymbol, resolveQuoteCurrency } from '../backtestRunner';
 
 const buildStrategy = (overrides: Partial<BotStrategy> = {}): BotStrategy => ({
   id: 'bot-1',

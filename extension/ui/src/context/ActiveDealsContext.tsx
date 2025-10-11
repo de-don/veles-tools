@@ -1,35 +1,29 @@
 import {
   createContext,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
 } from 'react';
-import { fetchAllActiveDeals, ACTIVE_DEALS_DEFAULT_SIZE } from '../api/activeDeals';
-import { aggregateDeals, type ActiveDealsAggregation } from '../lib/activeDeals';
+import { ACTIVE_DEALS_DEFAULT_SIZE, fetchAllActiveDeals } from '../api/activeDeals';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
+import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
+import { type ActiveDealsRefreshInterval, DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
+import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import type { DataZoomRange } from '../lib/chartOptions';
-import type { ActiveDeal } from '../types/activeDeals';
-import {
-  DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
-  type ActiveDealsRefreshInterval,
-} from '../lib/activeDealsPolling';
-import {
-  readActiveDealsPreferences,
-  writeActiveDealsPreferences,
-} from '../storage/activeDealsPreferencesStore';
+import { readActiveDealsPreferences, writeActiveDealsPreferences } from '../storage/activeDealsPreferencesStore';
 import {
   clearActiveDealsSnapshot,
   readActiveDealsSnapshot,
   writeActiveDealsSnapshot,
 } from '../storage/activeDealsStore';
-import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
+import type { ActiveDeal } from '../types/activeDeals';
 
 interface DealsState {
   aggregation: ActiveDealsAggregation | null;
@@ -39,7 +33,11 @@ interface DealsState {
   lastUpdated: number | null;
 }
 
-const createEmptySeries = (): PortfolioEquitySeries => ({ points: [], minValue: 0, maxValue: 0 });
+const createEmptySeries = (): PortfolioEquitySeries => ({
+  points: [],
+  minValue: 0,
+  maxValue: 0,
+});
 
 const buildSeriesWithPoint = (
   current: PortfolioEquitySeries | null,
@@ -149,7 +147,9 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     }
 
     try {
-      const deals = await fetchAllActiveDeals({ size: ACTIVE_DEALS_DEFAULT_SIZE });
+      const deals = await fetchAllActiveDeals({
+        size: ACTIVE_DEALS_DEFAULT_SIZE,
+      });
       const aggregation = aggregateDeals(deals);
       const timestamp = Date.now();
       handleDealsResponse(deals, aggregation, timestamp);
@@ -265,7 +265,18 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       zoomPreset,
       setZoomPreset,
     }),
-    [dealsState, pnlSeries, loading, error, refreshInterval, updateRefreshInterval, fetchDeals, resetHistory, zoomRange, zoomPreset],
+    [
+      dealsState,
+      pnlSeries,
+      loading,
+      error,
+      refreshInterval,
+      updateRefreshInterval,
+      fetchDeals,
+      resetHistory,
+      zoomRange,
+      zoomPreset,
+    ],
   );
 
   return <ActiveDealsContext.Provider value={contextValue}>{children}</ActiveDealsContext.Provider>;
@@ -278,4 +289,3 @@ export const useActiveDeals = (): ActiveDealsContextValue => {
   }
   return context;
 };
-

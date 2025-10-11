@@ -1,9 +1,4 @@
-import type {
-  BarSeriesOption,
-  DataZoomComponentOption,
-  EChartsOption,
-  LineSeriesOption,
-} from 'echarts';
+import type { BarSeriesOption, DataZoomComponentOption, EChartsOption, LineSeriesOption } from 'echarts';
 import type {
   AggregateRiskSeries,
   DailyConcurrencyRecord,
@@ -64,10 +59,7 @@ export interface DataZoomRange {
   end?: number;
 }
 
-const applyRange = (
-  base: DataZoomComponentOption,
-  range?: DataZoomRange,
-): DataZoomComponentOption => {
+const applyRange = (base: DataZoomComponentOption, range?: DataZoomRange): DataZoomComponentOption => {
   if (!range) {
     return base;
   }
@@ -219,10 +211,7 @@ export const createPortfolioEquityChartOptions = (
   } satisfies EChartsOption;
 };
 
-export const createAggregateRiskChartOptions = (
-  series: AggregateRiskSeries,
-  range?: DataZoomRange,
-): EChartsOption => {
+export const createAggregateRiskChartOptions = (series: AggregateRiskSeries, range?: DataZoomRange): EChartsOption => {
   const riskData = series.points.map((point) => [point.time, point.value]);
 
   const riskSeries: LineSeriesOption = {
@@ -307,9 +296,7 @@ export interface LimitImpactPoint {
   aggregateMPU: number;
 }
 
-export const createLimitImpactChartOptions = (
-  points: LimitImpactPoint[],
-): EChartsOption => {
+export const createLimitImpactChartOptions = (points: LimitImpactPoint[]): EChartsOption => {
   const categories = points.map((point) => point.label);
 
   const pnlSeries: LineSeriesOption = {
@@ -401,9 +388,7 @@ export const createLimitImpactChartOptions = (
 type BarMarkLine = NonNullable<BarSeriesOption['markLine']>;
 type BarMarkLineData = NonNullable<BarMarkLine['data']>;
 
-const buildConcurrencyMarkLine = (
-  stats?: DailyConcurrencyStats,
-): BarSeriesOption['markLine'] => {
+const buildConcurrencyMarkLine = (stats?: DailyConcurrencyStats): BarSeriesOption['markLine'] => {
   if (!stats) {
     return undefined;
   }

@@ -1,11 +1,11 @@
 import { DeleteOutlined, DownOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
-import { Button, Dropdown, message } from 'antd';
 import type { MenuProps } from 'antd';
+import { Button, Dropdown, message } from 'antd';
 import type { ButtonProps } from 'antd/es/button';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useCallback, useMemo, useState } from 'react';
-import type { TradingBot } from '../../types/bots';
 import { deleteBot, startBot, stopBot } from '../../api/bots';
+import type { TradingBot } from '../../types/bots';
 import BulkActionModal, { type BulkActionCopy, type BulkActionResult } from './BulkActionModal';
 
 type BulkActionKey = 'delete' | 'stop' | 'start';
@@ -189,11 +189,7 @@ const BulkActionsMenu = ({ bots, onReloadRequested, onSelectionUpdate }: BulkAct
   return (
     <>
       {contextHolder}
-      <Dropdown
-        menu={{ items: menuItems, onClick: handleMenuClick }}
-        trigger={['click']}
-        disabled={bots.length === 0}
-      >
+      <Dropdown menu={{ items: menuItems, onClick: handleMenuClick }} trigger={['click']} disabled={bots.length === 0}>
         <Button icon={<DownOutlined />}>Массовые операции</Button>
       </Dropdown>
 

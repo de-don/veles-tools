@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateDeals, computeDealMetrics } from '../activeDeals';
 import type { ActiveDeal } from '../../types/activeDeals';
+import { aggregateDeals, computeDealMetrics } from '../activeDeals';
 
 const createDeal = (overrides: Partial<ActiveDeal>): ActiveDeal => ({
   id: 1,

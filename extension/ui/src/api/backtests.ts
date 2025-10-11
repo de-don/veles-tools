@@ -1,3 +1,11 @@
+import { proxyHttpRequest } from '../lib/extensionMessaging';
+import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import {
+  readCachedBacktestCycles,
+  readCachedBacktestDetail,
+  writeCachedBacktestCycles,
+  writeCachedBacktestDetail,
+} from '../storage/backtestCache';
 import type {
   BacktestCommissionsConfig,
   BacktestCycle,
@@ -10,15 +18,7 @@ import type {
   PaginatedResponse,
 } from '../types/backtests';
 import type { StrategyCondition } from '../types/bots';
-import { proxyHttpRequest } from '../lib/extensionMessaging';
-import { resolveProxyErrorMessage } from '../lib/httpErrors';
 import { buildApiUrl } from './baseUrl';
-import {
-  readCachedBacktestCycles,
-  readCachedBacktestDetail,
-  writeCachedBacktestCycles,
-  writeCachedBacktestDetail,
-} from '../storage/backtestCache';
 
 const BACKTESTS_ENDPOINT = buildApiUrl('/api/backtests/statistics');
 const BACKTESTS_CORE_ENDPOINT = buildApiUrl('/api/backtests');
@@ -55,11 +55,9 @@ const hasDepositData = (detail: BacktestStatisticsDetail | null | undefined): bo
     return false;
   }
   return (
-    deposit.amount !== null && deposit.amount !== undefined
-  ) || (
-    deposit.leverage !== null && deposit.leverage !== undefined
-  ) || (
-    deposit.marginType !== null && deposit.marginType !== undefined
+    (deposit.amount !== null && deposit.amount !== undefined) ||
+    (deposit.leverage !== null && deposit.leverage !== undefined) ||
+    (deposit.marginType !== null && deposit.marginType !== undefined)
   );
 };
 

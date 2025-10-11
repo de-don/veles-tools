@@ -1,8 +1,5 @@
 import type { CreateBotPayload } from '../api/bots';
-import type {
-  BacktestDepositConfig,
-  BacktestStatisticsDetail,
-} from '../types/backtests';
+import type { BacktestDepositConfig, BacktestStatisticsDetail } from '../types/backtests';
 
 export interface BotCreationOverrides {
   apiKeyId: number;
@@ -23,8 +20,9 @@ const buildDepositConfig = (
   detailDeposit: BacktestDepositConfig | undefined | null,
   overrides: BotCreationOverrides,
 ): BacktestDepositConfig => {
-  const normalizedMarginType = sanitizeMarginType(overrides.marginType)
-    ?? (typeof detailDeposit?.marginType === 'string' ? detailDeposit.marginType : null);
+  const normalizedMarginType =
+    sanitizeMarginType(overrides.marginType) ??
+    (typeof detailDeposit?.marginType === 'string' ? detailDeposit.marginType : null);
   const currency =
     typeof detailDeposit?.currency === 'string' && detailDeposit.currency.trim().length > 0
       ? detailDeposit.currency.trim()
@@ -57,9 +55,8 @@ export const buildBotCreationPayload = (
 ): CreateBotPayload => {
   const symbols = deriveSymbols(detail);
   const deposit = buildDepositConfig(detail.deposit ?? null, overrides);
-  const name = typeof detail.name === 'string' && detail.name.trim().length > 0
-    ? detail.name.trim()
-    : `Backtest ${detail.id}`;
+  const name =
+    typeof detail.name === 'string' && detail.name.trim().length > 0 ? detail.name.trim() : `Backtest ${detail.id}`;
   const symbol =
     typeof detail.symbol === 'string' && detail.symbol.trim().length > 0
       ? detail.symbol.trim()

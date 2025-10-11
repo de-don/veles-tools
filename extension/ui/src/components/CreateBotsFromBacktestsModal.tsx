@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Checkbox, Input, Modal, Select } from 'antd';
 import type { SelectProps } from 'antd';
-import type { BacktestStatisticsDetail } from '../types/backtests';
-import type { ApiKey } from '../types/apiKeys';
+import { Checkbox, Input, Modal, Select } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import { fetchApiKeys } from '../api/apiKeys';
-import { createBot, startBot } from '../api/bots';
-import { buildBotCreationPayload, type BotCreationOverrides } from '../lib/backtestBotPayload';
 import type { CreateBotResponse } from '../api/bots';
+import { createBot, startBot } from '../api/bots';
+import { type BotCreationOverrides, buildBotCreationPayload } from '../lib/backtestBotPayload';
+import type { ApiKey } from '../types/apiKeys';
+import type { BacktestStatisticsDetail } from '../types/backtests';
 
 export interface BacktestBotTarget {
   id: number;
@@ -78,7 +78,14 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
       })
       .catch((apiError: unknown) => {
         const message = apiError instanceof Error ? apiError.message : String(apiError);
-        setLogs((prev) => [...prev, { id: createLogId(), level: 'error', message: `Не удалось загрузить API-ключи: ${message}` }]);
+        setLogs((prev) => [
+          ...prev,
+          {
+            id: createLogId(),
+            level: 'error',
+            message: `Не удалось загрузить API-ключи: ${message}`,
+          },
+        ]);
       })
       .finally(() => {
         setApiKeysLoading(false);
@@ -221,7 +228,9 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
       destroyOnClose
     >
       <div className="form-field">
-        <label className="form-label" htmlFor="create-bots-api-key">API-ключ</label>
+        <label className="form-label" htmlFor="create-bots-api-key">
+          API-ключ
+        </label>
         <Select<number>
           id="create-bots-api-key"
           showSearch
@@ -239,9 +248,18 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         />
       </div>
 
-      <div className="form-grid" style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
+      <div
+        className="form-grid"
+        style={{
+          display: 'grid',
+          gap: 12,
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        }}
+      >
         <div className="form-field">
-          <label className="form-label" htmlFor="create-bots-deposit">Депозит</label>
+          <label className="form-label" htmlFor="create-bots-deposit">
+            Депозит
+          </label>
           <Input
             id="create-bots-deposit"
             value={depositAmount}
@@ -251,7 +269,9 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
           />
         </div>
         <div className="form-field">
-          <label className="form-label" htmlFor="create-bots-leverage">Плечо</label>
+          <label className="form-label" htmlFor="create-bots-leverage">
+            Плечо
+          </label>
           <Input
             id="create-bots-leverage"
             value={depositLeverage}
@@ -261,7 +281,9 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
           />
         </div>
         <div className="form-field">
-          <label className="form-label" htmlFor="create-bots-margin">Маржа</label>
+          <label className="form-label" htmlFor="create-bots-margin">
+            Маржа
+          </label>
           <Select<string>
             id="create-bots-margin"
             value={marginType}
@@ -281,7 +303,11 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         Запустить после создания
       </Checkbox>
 
-      {error && <div className="form-error" style={{ marginTop: 12 }}>{error}</div>}
+      {error && (
+        <div className="form-error" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
 
       {isRunning && (
         <div className="run-log" style={{ marginTop: 16 }}>
@@ -297,14 +323,22 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
       )}
 
       {logs.length > 0 && (
-        <div style={{ marginTop: 16, maxHeight: 200, overflowY: 'auto', border: '1px solid #1f2937', borderRadius: 6, padding: 12 }}>
+        <div
+          style={{
+            marginTop: 16,
+            maxHeight: 200,
+            overflowY: 'auto',
+            border: '1px solid #1f2937',
+            borderRadius: 6,
+            padding: 12,
+          }}
+        >
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {logs.map((entry) => (
               <li
                 key={entry.id}
                 style={{
-                  color:
-                    entry.level === 'error' ? '#f87171' : entry.level === 'success' ? '#34d399' : '#cbd5f5',
+                  color: entry.level === 'error' ? '#f87171' : entry.level === 'success' ? '#34d399' : '#cbd5f5',
                   marginBottom: 6,
                   fontFamily: 'monospace',
                   whiteSpace: 'pre-wrap',
@@ -317,7 +351,14 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         </div>
       )}
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: 8,
+          marginTop: 20,
+        }}
+      >
         <button type="button" className="button button--ghost" onClick={handleCancel} disabled={isRunning}>
           Отменить
         </button>

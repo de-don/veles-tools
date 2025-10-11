@@ -1,9 +1,9 @@
-import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
 import {
-  DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
   type ActiveDealsRefreshInterval,
+  DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
   isActiveDealsRefreshInterval,
 } from '../lib/activeDealsPolling';
+import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
 
 const STORAGE_KEY = 'veles-active-deals-preferences-v1';
 
@@ -37,9 +37,7 @@ export const readActiveDealsPreferences = (): ActiveDealsPreferences | null => {
   return null;
 };
 
-export const writeActiveDealsPreferences = (
-  preferences: ActiveDealsPreferences,
-): ActiveDealsPreferences => {
+export const writeActiveDealsPreferences = (preferences: ActiveDealsPreferences): ActiveDealsPreferences => {
   const payload: ActiveDealsPreferences = {
     refreshInterval: isActiveDealsRefreshInterval(preferences.refreshInterval)
       ? preferences.refreshInterval

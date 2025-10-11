@@ -1,8 +1,8 @@
-import { readStorageValue, removeStorageValue, writeStorageValue } from '../lib/safeStorage';
-import type { ActiveDeal } from '../types/activeDeals';
+import { type ActiveDealsZoomPreset, isActiveDealsZoomPreset } from '../lib/activeDealsZoom';
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import type { DataZoomRange } from '../lib/chartOptions';
-import { isActiveDealsZoomPreset, type ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
+import { readStorageValue, removeStorageValue, writeStorageValue } from '../lib/safeStorage';
+import type { ActiveDeal } from '../types/activeDeals';
 
 const STORAGE_KEY = 'veles-active-deals-state-v1';
 
@@ -23,7 +23,11 @@ const isPortfolioEquitySeries = (value: unknown): value is PortfolioEquitySeries
   if (value === null || typeof value !== 'object') {
     return false;
   }
-  const candidate = value as { points?: unknown; minValue?: unknown; maxValue?: unknown };
+  const candidate = value as {
+    points?: unknown;
+    minValue?: unknown;
+    maxValue?: unknown;
+  };
   if (!Array.isArray(candidate.points)) {
     return false;
   }
@@ -43,7 +47,12 @@ const isActiveDeal = (value: unknown): value is ActiveDeal => {
   if (value === null || typeof value !== 'object') {
     return false;
   }
-  const deal = value as { id?: unknown; createdAt?: unknown; orders?: unknown; botName?: unknown };
+  const deal = value as {
+    id?: unknown;
+    createdAt?: unknown;
+    orders?: unknown;
+    botName?: unknown;
+  };
   if (typeof deal.id !== 'number' || typeof deal.createdAt !== 'string') {
     return false;
   }

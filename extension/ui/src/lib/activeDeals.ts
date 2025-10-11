@@ -15,9 +15,7 @@ interface OrderContribution {
   cost: number;
 }
 
-const accumulateOrderContribution = (
-  order: ActiveDealOrder,
-): OrderContribution | null => {
+const accumulateOrderContribution = (order: ActiveDealOrder): OrderContribution | null => {
   if (!EXECUTED_ORDER_STATUSES.has(order.status)) {
     return null;
   }

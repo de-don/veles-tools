@@ -1,10 +1,7 @@
-import { memo, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
+import { memo, useMemo } from 'react';
 import type { PortfolioEquitySeries } from '../../lib/backtestAggregation';
-import {
-  createPortfolioEquityChartOptions,
-  type DataZoomRange,
-} from '../../lib/chartOptions';
+import { createPortfolioEquityChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 
 interface PortfolioEquityChartProps {
   series: PortfolioEquitySeries;
@@ -40,16 +37,8 @@ const extractRangeFromEvent = (event: DataZoomEventParams): DataZoomRange => {
   };
 };
 
-const PortfolioEquityChartComponent = ({
-  series,
-  className,
-  dataZoomRange,
-  onDataZoom,
-}: PortfolioEquityChartProps) => {
-  const option = useMemo(
-    () => createPortfolioEquityChartOptions(series, dataZoomRange),
-    [series, dataZoomRange],
-  );
+const PortfolioEquityChartComponent = ({ series, className, dataZoomRange, onDataZoom }: PortfolioEquityChartProps) => {
+  const option = useMemo(() => createPortfolioEquityChartOptions(series, dataZoomRange), [series, dataZoomRange]);
 
   const onEvents = useMemo(() => {
     if (!onDataZoom) {

@@ -1,5 +1,5 @@
 :root {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #0f172a;
   background-color: #f5f7fb;
 }
@@ -209,7 +209,6 @@ body {
   padding: 10px 12px;
 }
 
-
 .app__content {
   flex: 1;
   padding: 32px 40px;
@@ -281,7 +280,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
   color: inherit;
 }
 
@@ -538,7 +539,10 @@ body {
   font-size: 12px;
   padding: 6px 10px;
   border: 1px solid transparent;
-  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  transition:
+    background-color 0.2s ease-in-out,
+    color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out;
 }
 
 .active-deals__close-button--positive {
@@ -880,7 +884,9 @@ body {
   font-size: 12px;
   padding: 4px 12px;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .form-preset-button:hover:not(:disabled) {
@@ -1017,7 +1023,9 @@ body {
   font-weight: 600;
   color: #475467;
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .tabs__trigger:hover:not(:disabled) {
@@ -1099,7 +1107,7 @@ body {
   border-radius: 8px;
   border: 1px solid #cbd5f5;
   background-color: #fff;
-  font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', ui-monospace, monospace;
+  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", ui-monospace, monospace;
   font-size: 13px;
   color: #0f172a;
 }
@@ -1335,7 +1343,10 @@ body {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .chart-zoom-presets__button:not(.chart-zoom-presets__button--active):hover {
