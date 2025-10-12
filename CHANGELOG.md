@@ -1,3 +1,23 @@
+## [1.5.0](https://github.com/de-don/veles-tools/compare/v1.4.0...v1.5.0) (2025-10-12)
+
+### Features
+
+* **active-deals:** add executed and total orders metrics ([9506701](https://github.com/de-don/veles-tools/commit/9506701205007fedeaad9e134fc154c95b625c89))
+* **active-deals:** always watch active deals even when the other section opened ([d5c9cdc](https://github.com/de-don/veles-tools/commit/d5c9cdc87aa7876e394818709190e288179a737f))
+* **active-deals:** enhance deals table with detailed actions, bot links, and formatted data ([cce48ab](https://github.com/de-don/veles-tools/commit/cce48ab336e2153f9c24bb326bd5c726dca8d716))
+* **active-deals:** persist refresh interval preferences ([9d09bbf](https://github.com/de-don/veles-tools/commit/9d09bbf91ba645f21ba34f07fe753fc7e010b35b))
+* add support project modal ([a8e682f](https://github.com/de-don/veles-tools/commit/a8e682fd4a7fc1fd960c52f6dc9782db784eedb0))
+* **backtests:** add aggregate risk chart to visualize cumulative potential drawdowns ([455ac1e](https://github.com/de-don/veles-tools/commit/455ac1ec2d02e55f9ffe86861229dde2e79c1098))
+* **backtests:** add bot creation from backtests with bulk actions ([ee93554](https://github.com/de-don/veles-tools/commit/ee93554b8043a6d0b219731aa0e2c3f7ea906f88))
+* **backtests:** add concurrency limit for trade aggregation ([1e1e2be](https://github.com/de-don/veles-tools/commit/1e1e2bef9f1d92c8241db8b6d5112b15405f40ad))
+* **backtests:** add deposit and leverage data to metrics, display win rate ([0da1f03](https://github.com/de-don/veles-tools/commit/0da1f033ac22d1318cad282e158927905736370f))
+* **backtests:** add limit impact chart to analyze bot limit effects on P&L and risk metrics ([c79e6f5](https://github.com/de-don/veles-tools/commit/c79e6f53a7b805c81341e4bdb4408f8297c090ae))
+* **backtests:** add sortable columns ([4c1c6e9](https://github.com/de-don/veles-tools/commit/4c1c6e9d23bc77333d8238ff3346dbb5a02df59f))
+* **backtests:** display win/loss rates and max/mean trade duration ([d8226d0](https://github.com/de-don/veles-tools/commit/d8226d002e95a5307874f5bfe4276fa7d4fe856a))
+* **backtests:** update row selection for aggregation table ([48da450](https://github.com/de-don/veles-tools/commit/48da450ffc20bc1bd44ec63b411cd1d2e5e62cd1))
+* **bots:** add bulk actions for bots management ([b1d3dd3](https://github.com/de-don/veles-tools/commit/b1d3dd3ab57e10befdc3f3ad13f69933ebe733d0))
+* integrate Ant Design tables ([c019b28](https://github.com/de-don/veles-tools/commit/c019b280f02df328da2d6e2515cf619ac1af50e6))
+
 ## [1.4.0](https://github.com/de-don/veles-tools/compare/v1.3.1...v1.4.0) (2025-10-10)
 
 ### Features
