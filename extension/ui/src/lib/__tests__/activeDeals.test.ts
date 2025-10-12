@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateDeals, computeDealMetrics } from '../activeDeals';
 import type { ActiveDeal } from '../../types/activeDeals';
+import { aggregateDeals, computeDealMetrics } from '../activeDeals';
 
 const createDeal = (overrides: Partial<ActiveDeal>): ActiveDeal => ({
   id: 1,
@@ -56,6 +56,8 @@ describe('activeDeals metrics', () => {
     expect(metrics.exposure).toBeCloseTo(100);
     expect(metrics.pnl).toBeCloseTo(10);
     expect(metrics.pnlPercent).toBeCloseTo(10);
+    expect(metrics.executedOrdersCount).toBe(1);
+    expect(metrics.totalOrdersCount).toBe(1);
   });
 
   it('computes metrics for a short position', () => {
@@ -87,6 +89,8 @@ describe('activeDeals metrics', () => {
     expect(metrics.exposure).toBeCloseTo(100);
     expect(metrics.pnl).toBeCloseTo(10);
     expect(metrics.pnlPercent).toBeCloseTo(10);
+    expect(metrics.executedOrdersCount).toBe(1);
+    expect(metrics.totalOrdersCount).toBe(1);
   });
 
   it('aggregates positions and sorts by pnl', () => {
@@ -144,5 +148,7 @@ describe('activeDeals metrics', () => {
     expect(metrics.netQuantity).toBeCloseTo(3);
     expect(metrics.averageEntryPrice).toBeCloseTo(86.6666667, 4);
     expect(metrics.exposure).toBeCloseTo(260);
+    expect(metrics.executedOrdersCount).toBe(2);
+    expect(metrics.totalOrdersCount).toBe(2);
   });
 });

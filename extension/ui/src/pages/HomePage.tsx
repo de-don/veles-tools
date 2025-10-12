@@ -4,16 +4,26 @@ import { APP_NAME, APP_VERSION } from '../config/version';
 const completedHighlights: string[] = [
   'Мультизапуск бэктестов для любых ботов.',
   'Детальные метрики с агрегацией и графиком одновременных позиций.',
+  'Отслеживание активных позиций и их закрытие',
+  'Массовый запуск и остановка ботов',
   'Импорт пользовательских ботов с локальным хранилищем стратегий и быстрым доступом.',
 ];
 
 const roadmapHighlights: string[] = [
   'Фильтры и сортировки для списков ботов и бэктестов.',
+  'Экспорт и импорт ботов и бэктестов.',
   'Дополнительные визуализации и метрики для анализа результатов.',
-  'Группы символов, группы ботов и конфигурируемые таблицы для гибкой аналитики.',
+  'Группы символов, ботов и бектестов.',
+  'Конфигурируемые таблицы для гибкой аналитики.',
+  'Новый дизайн и улучшенный UX.',
 ];
 
 const quickLinks = [
+  {
+    to: '/active-deals',
+    label: 'Активные сделки',
+    description: 'Отслеживайте и управляйте открытыми позициями.',
+  },
   {
     to: '/bots',
     label: 'Мои боты',
@@ -75,7 +85,8 @@ const HomePage = () => {
       <header className="page__header">
         <h1 className="page__title">{APP_NAME}</h1>
         <p className="page__subtitle">
-          Veles Tools — рабочая панель для управления мультизапусками бэктестов и ботами veles.finance. Текущая версия — v{APP_VERSION}.
+          Veles Tools — рабочая панель для управления мультизапусками бэктестов и ботами veles.finance. Текущая версия —
+          v{APP_VERSION}.
         </p>
       </header>
 
@@ -100,7 +111,7 @@ const HomePage = () => {
 
       <div className="home-grid">
         <div className="panel">
-          <h2 className="panel__title">Что уже реализовано</h2>
+          <h2 className="panel__title">Функционал</h2>
           <ul className="panel__list">
             {completedHighlights.map((item) => (
               <li key={item}>{item}</li>

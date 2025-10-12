@@ -6,6 +6,8 @@
     "dev": "vite --config extension/ui/vite.config.ts",
     "build": "vite build --config extension/ui/vite.config.ts",
     "preview": "vite preview --config extension/ui/vite.config.ts",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
     "typecheck": "tsc --project extension/ui/tsconfig.json --noEmit",
     "test": "vitest run --config extension/ui/vitest.config.ts",
     "test:watch": "vitest --config extension/ui/vitest.config.ts",
@@ -13,6 +15,8 @@
     "release": "npx -y -p semantic-release -p @semantic-release/commit-analyzer -p @semantic-release/release-notes-generator -p conventional-changelog-conventionalcommits -p @semantic-release/changelog -p @semantic-release/exec -p @semantic-release/git -p @semantic-release/github -p @semantic-release/npm semantic-release"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "antd": "^5.27.4",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
     "react": "^18.2.0",
@@ -20,6 +24,7 @@
     "react-router-dom": "^7.9.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.5",
     "@types/chrome": "^0.0.255",
     "@types/node": "^22.10.2",
     "@types/react": "^18.2.37",

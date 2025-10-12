@@ -73,7 +73,7 @@
     }
   });
 
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (!message || typeof message !== 'object') {
       return false;
     }
@@ -81,7 +81,10 @@
     if (message.source === BACKGROUND_SOURCE && message.action === 'proxy-request') {
       const { requestId, payload } = message;
       if (!requestId || !payload) {
-        sendResponse({ accepted: false, error: 'Некорректный формат запроса.' });
+        sendResponse({
+          accepted: false,
+          error: 'Некорректный формат запроса.',
+        });
         return false;
       }
 

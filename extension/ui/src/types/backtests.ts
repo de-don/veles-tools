@@ -1,8 +1,61 @@
+import type { StrategyCondition } from './bots';
+
 export interface BacktestStatisticsListResponse {
   totalElements: number;
   totalPages: number;
   pageNumber: number;
   content: BacktestStatistics[];
+}
+
+export interface BacktestDepositConfig {
+  amount: number | string | null;
+  leverage: number | string | null;
+  marginType: string | null;
+  currency?: string | null;
+}
+
+export interface BacktestCommissionsConfig {
+  maker: number | null;
+  taker: number | null;
+}
+
+type BacktestJsonPrimitive = string | number | boolean | null;
+
+export type BacktestJsonValue =
+  | BacktestJsonPrimitive
+  | BacktestJsonValue[]
+  | { [key: string]: BacktestJsonValue | undefined };
+
+export type BacktestSettings = Record<string, BacktestJsonValue | undefined> | null;
+
+export interface BacktestProfitConfig {
+  type: string;
+  currency: string;
+  checkPnl: number | null;
+  conditions: StrategyCondition[] | null;
+}
+
+export interface BacktestConfig {
+  id: number;
+  name: string;
+  symbol: string | null;
+  exchange: string | null;
+  algorithm: string | null;
+  pullUp: number | null;
+  portion: number | null;
+  profit: BacktestProfitConfig | null;
+  deposit: BacktestDepositConfig | null;
+  settings: BacktestSettings;
+  conditions: StrategyCondition[] | null;
+  from: string | null;
+  to: string | null;
+  status: string | null;
+  commissions: BacktestCommissionsConfig | null;
+  public: boolean | null;
+  useWicks: boolean | null;
+  cursor: string | null;
+  includePosition: boolean | null;
+  symbols: string[] | null;
 }
 
 export interface BacktestStatistics {
@@ -52,6 +105,7 @@ export interface BacktestStatistics {
   maeAbsolute: number | null;
   commissionBase: number | null;
   commissionQuote: number | null;
+  deposit?: BacktestDepositConfig | null;
 }
 
 export interface BacktestsListParams {
@@ -61,6 +115,19 @@ export interface BacktestsListParams {
 }
 
 export interface BacktestStatisticsDetail extends BacktestStatistics {
+  pullUp?: number | null;
+  portion?: number | null;
+  profit?: BacktestProfitConfig | null;
+  deposit?: BacktestDepositConfig | null;
+  settings?: BacktestSettings;
+  conditions?: StrategyCondition[] | null;
+  commissions?: BacktestCommissionsConfig | null;
+  public?: boolean | null;
+  useWicks?: boolean | null;
+  cursor?: string | null;
+  includePosition?: boolean | null;
+  symbols?: string[] | null;
+  status?: string | null;
   start?: string | null;
   end?: string | null;
   periodStart?: string | null;
@@ -98,9 +165,9 @@ export interface BacktestOrder {
 
 export interface BacktestCycle {
   id: number;
-  status: string;
-  substatus?: string | null;
-  exchange?: string | null;
+  status: 'CANCELED' | 'FINISHED' | string;
+  substatus?: 'PULL_UP' | 'TAKE_PROFIT' | string | null;
+  exchange?: 'BYBIT_FUTURES' | string | null;
   symbol?: string | null;
   base?: string | null;
   quote?: string | null;

@@ -1,11 +1,4 @@
-export type ActiveDealStatus =
-  | 'STARTED'
-  | 'COMPLETED'
-  | 'TERMINATED'
-  | 'STOPPED'
-  | 'FAILED'
-  | 'PAUSED'
-  | 'PENDING';
+export type ActiveDealStatus = 'STARTED' | 'COMPLETED' | 'TERMINATED' | 'STOPPED' | 'FAILED' | 'PAUSED' | 'PENDING';
 
 export type ActiveDealAlgorithm = 'LONG' | 'SHORT';
 
@@ -20,13 +13,7 @@ export type ActiveDealOrderType =
 
 export type ActiveDealOrderSide = 'BUY' | 'SELL';
 
-export type ActiveDealOrderStatus =
-  | 'CREATED'
-  | 'EXECUTED'
-  | 'FILLED'
-  | 'PENDING'
-  | 'CANCELLED'
-  | 'FAILED';
+export type ActiveDealOrderStatus = 'CREATED' | 'EXECUTED' | 'FILLED' | 'PENDING' | 'CANCELLED' | 'FAILED';
 
 export interface ActiveDealPair {
   exchange: string;

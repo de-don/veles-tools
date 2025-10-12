@@ -1,14 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-import type {
-  BotIdentifier,
-  BotOrder,
-  BotSettings,
-  BotSummary,
-  BotStatus,
-  StrategyCondition,
-} from '../types/bots';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { BotStrategy, BotStrategyCommissions, BotStrategyPair } from '../api/backtestRunner';
 import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
+import type { BotIdentifier, BotOrder, BotSettings, BotStatus, BotSummary, StrategyCondition } from '../types/bots';
 
 export interface ImportedBotEntry {
   id: string;
@@ -112,9 +105,7 @@ const parseSettings = (raw: unknown): BotSettings | null => {
   }
   const baseOrder = parseOrder(raw.baseOrder);
   const orders = Array.isArray(raw.orders)
-    ? raw.orders
-        .map((order) => parseOrder(order))
-        .filter((order): order is BotOrder => Boolean(order))
+    ? raw.orders.map((order) => parseOrder(order)).filter((order): order is BotOrder => Boolean(order))
     : null;
 
   return {
@@ -327,7 +318,14 @@ export const ImportedBotsProvider = ({ children }: PropsWithChildren) => {
   );
 
   const value = useMemo<ImportedBotsContextValue>(
-    () => ({ bots, upsertBots, removeBot, clearAll, getStrategyById, getEntryById }),
+    () => ({
+      bots,
+      upsertBots,
+      removeBot,
+      clearAll,
+      getStrategyById,
+      getEntryById,
+    }),
     [bots, upsertBots, removeBot, clearAll, getStrategyById, getEntryById],
   );
 

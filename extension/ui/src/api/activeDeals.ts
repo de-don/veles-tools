@@ -1,6 +1,6 @@
-import type { ActiveDeal, ActiveDealsQueryParams, ActiveDealsResponse } from '../types/activeDeals';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import type { ActiveDeal, ActiveDealsQueryParams, ActiveDealsResponse } from '../types/activeDeals';
 import { buildApiUrl } from './baseUrl';
 
 const ACTIVE_DEALS_ENDPOINT = buildApiUrl('/api/cycles/active');
@@ -20,9 +20,7 @@ const buildQueryString = (params?: ActiveDealsQueryParams): string => {
   return query.toString();
 };
 
-export const fetchActiveDeals = async (
-  params?: ActiveDealsQueryParams,
-): Promise<ActiveDealsResponse> => {
+export const fetchActiveDeals = async (params?: ActiveDealsQueryParams): Promise<ActiveDealsResponse> => {
   const url = `${ACTIVE_DEALS_ENDPOINT}?${buildQueryString(params)}`;
 
   const response = await proxyHttpRequest<ActiveDealsResponse>({
@@ -71,4 +69,28 @@ export const fetchAllActiveDeals = async (params?: FetchAllParams): Promise<Acti
   }
 
   return collected;
+};
+
+export const closeActiveDeal = async (dealId: number): Promise<void> => {
+  if (!Number.isFinite(dealId)) {
+    throw new Error('Некорректный идентификатор сделки.');
+  }
+
+  const url = buildApiUrl(`/api/cycles/${Math.trunc(dealId)}/close`);
+
+  const response = await proxyHttpRequest<{ ok?: boolean }>({
+    url,
+    init: {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        accept: 'application/json, text/plain, */*',
+      },
+    },
+  });
+
+  if (!response.ok) {
+    const errorMessage = resolveProxyErrorMessage(response);
+    throw new Error(errorMessage);
+  }
 };

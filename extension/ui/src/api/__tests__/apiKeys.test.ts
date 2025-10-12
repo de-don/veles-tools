@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchApiKeys } from '../apiKeys';
-import type { ApiKeysListResponse } from '../../types/apiKeys';
 import { proxyHttpRequest } from '../../lib/extensionMessaging';
+import type { ApiKeysListResponse } from '../../types/apiKeys';
+import { fetchApiKeys } from '../apiKeys';
 import { buildApiUrl } from '../baseUrl';
 
 vi.mock('../../lib/extensionMessaging', () => ({
@@ -27,8 +27,22 @@ describe('fetchApiKeys', () => {
     const responsePayload = createResponse({
       totalElements: 2,
       content: [
-        { id: 1, name: 'Primary', exchange: 'BINANCE', accessKey: 'key', secretKey: 'sec', constraint: null },
-        { id: 2, name: 'Secondary', exchange: 'BYBIT', accessKey: 'key2', secretKey: 'sec2', constraint: null },
+        {
+          id: 1,
+          name: 'Primary',
+          exchange: 'BINANCE',
+          accessKey: 'key',
+          secretKey: 'sec',
+          constraint: null,
+        },
+        {
+          id: 2,
+          name: 'Secondary',
+          exchange: 'BYBIT',
+          accessKey: 'key2',
+          secretKey: 'sec2',
+          constraint: null,
+        },
       ],
     });
     mockedProxy.mockResolvedValue({ ok: true, body: responsePayload } as any);
@@ -57,7 +71,11 @@ describe('fetchApiKeys', () => {
   });
 
   it('throws with backend error message', async () => {
-    mockedProxy.mockResolvedValue({ ok: false, error: 'Unauthorized', status: 401 } as any);
+    mockedProxy.mockResolvedValue({
+      ok: false,
+      error: 'Unauthorized',
+      status: 401,
+    } as any);
 
     await expect(fetchApiKeys()).rejects.toThrow('Unauthorized');
   });

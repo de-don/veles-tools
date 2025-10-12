@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { TableProps } from 'antd';
+import { Table, Tag } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type BotStrategy, fetchBotStrategy } from '../api/backtestRunner';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
-import { fetchBotStrategy, type BotStrategy } from '../api/backtestRunner';
-import { useImportedBots, type ImportedBotEntry } from '../context/ImportedBotsContext';
+import { type ImportedBotEntry, useImportedBots } from '../context/ImportedBotsContext';
+import { resolveBotStatusColor } from '../lib/statusColors';
 import { BOT_STATUS_VALUES, type BotStatus, type BotSummary } from '../types/bots';
 
 interface ImportBotsPageProps {
@@ -65,7 +69,7 @@ const normalizeStatusValue = (value: string | null | undefined): BotStatus => {
 };
 
 const normalizeAliasCandidate = (candidate: string): string | null => {
-  const trimmed = candidate.trim().replace(/["'\[\]]/g, '');
+  const trimmed = candidate.trim().replace(/["'[\]]/g, '');
   if (!trimmed) {
     return null;
   }
@@ -113,16 +117,16 @@ const parseAliasInput = (raw: string): string[] => {
     .map((token) => token.trim())
     .filter(Boolean);
 
-  const normalized = tokens
-    .map(normalizeAliasCandidate)
-    .filter((item): item is string => Boolean(item));
+  const normalized = tokens.map(normalizeAliasCandidate).filter((item): item is string => Boolean(item));
 
   return deduplicate(normalized);
 };
 
 const buildImportedEntry = (alias: string, strategy: BotStrategy): ImportedBotEntry => {
-  const name = typeof strategy.name === 'string' && strategy.name.trim().length > 0 ? strategy.name.trim() : `Бот ${alias}`;
-  const exchange = typeof strategy.exchange === 'string' && strategy.exchange.trim().length > 0 ? strategy.exchange.trim() : '—';
+  const name =
+    typeof strategy.name === 'string' && strategy.name.trim().length > 0 ? strategy.name.trim() : `Бот ${alias}`;
+  const exchange =
+    typeof strategy.exchange === 'string' && strategy.exchange.trim().length > 0 ? strategy.exchange.trim() : '—';
   const rawStatus = typeof strategy.status === 'string' ? strategy.status.trim() : null;
   const status = normalizeStatusValue(rawStatus);
   const substatus = (() => {
@@ -164,6 +168,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
   const [selection, setSelection] = useState<SelectionMap>(new Map());
 
   const importedIds = useMemo(() => new Set(importedBots.map((entry) => entry.id)), [importedBots]);
+  const lastSelectedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     setSelection((prev) => {
@@ -175,7 +180,76 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
       }
       return next;
     });
+    lastSelectedKeyRef.current = null;
   }, [importedIds]);
+
+  const selectedRowKeys = useMemo(() => Array.from(selection.keys()), [selection]);
+
+  const handleRowSelect = useCallback(
+    (record: ImportedBotEntry, selected: boolean, shiftKey: boolean) => {
+      setSelection((prev) => {
+        const next = new Map(prev);
+        const applySelection = (entry: ImportedBotEntry) => {
+          if (selected) {
+            next.set(entry.id, entry.summary);
+          } else {
+            next.delete(entry.id);
+          }
+        };
+
+        if (shiftKey && lastSelectedKeyRef.current) {
+          const currentIndex = importedBots.findIndex((entry) => entry.id === record.id);
+          const lastIndex = importedBots.findIndex((entry) => entry.id === lastSelectedKeyRef.current);
+          if (currentIndex !== -1 && lastIndex !== -1) {
+            const [start, end] = currentIndex < lastIndex ? [currentIndex, lastIndex] : [lastIndex, currentIndex];
+            for (let index = start; index <= end; index += 1) {
+              applySelection(importedBots[index]);
+            }
+          } else {
+            applySelection(record);
+          }
+        } else {
+          applySelection(record);
+        }
+
+        return next;
+      });
+      lastSelectedKeyRef.current = record.id;
+    },
+    [importedBots],
+  );
+
+  const handleRowSelectAll = useCallback(
+    (selected: boolean) => {
+      if (selected) {
+        const next = new Map<string, BotSummary>();
+        importedBots.forEach((entry) => {
+          next.set(entry.id, entry.summary);
+        });
+        setSelection(next);
+      } else {
+        setSelection(new Map());
+      }
+      lastSelectedKeyRef.current = null;
+    },
+    [importedBots],
+  );
+
+  const rowSelection = useMemo<NonNullable<TableProps<ImportedBotEntry>['rowSelection']>>(
+    () => ({
+      type: 'checkbox',
+      preserveSelectedRowKeys: true,
+      selectedRowKeys,
+      onSelect: (record, selected, _selectedRows, nativeEvent) => {
+        const shiftKey = Boolean((nativeEvent as MouseEvent | KeyboardEvent | undefined)?.shiftKey);
+        handleRowSelect(record, selected, shiftKey);
+      },
+      onSelectAll: (checked: boolean) => {
+        handleRowSelectAll(checked);
+      },
+    }),
+    [selectedRowKeys, handleRowSelect, handleRowSelectAll],
+  );
 
   const selectedBotsList = useMemo(() => Array.from(selection.values()), [selection]);
   const totalSelected = selection.size;
@@ -187,32 +261,6 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
   const resetLogs = useCallback(() => {
     setLogs([]);
   }, []);
-
-  const toggleSelection = useCallback((entry: ImportedBotEntry) => {
-    const key = entry.id;
-    setSelection((prev) => {
-      const next = new Map(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.set(key, entry.summary);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleAllSelection = useCallback((checked: boolean) => {
-    setSelection((prev) => {
-      if (!checked) {
-        return new Map();
-      }
-      const next = new Map<string, BotSummary>();
-      for (const entry of importedBots) {
-        next.set(entry.id, entry.summary);
-      }
-      return next;
-    });
-  }, [importedBots]);
 
   const handleImport = useCallback(async () => {
     resetLogs();
@@ -266,6 +314,75 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
     [appendLog, removeBot],
   );
 
+  const tableColumns: ColumnsType<ImportedBotEntry> = useMemo(
+    () => [
+      {
+        title: 'Название',
+        dataIndex: ['summary', 'name'],
+        key: 'name',
+        render: (_value, entry) => (
+          <div>
+            <div>{entry.summary.name}</div>
+            <div className="panel__description">Код: {entry.alias}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'Биржа',
+        dataIndex: ['summary', 'exchange'],
+        key: 'exchange',
+        render: (_value, entry) => entry.summary.exchange,
+      },
+      {
+        title: 'Алгоритм',
+        dataIndex: ['summary', 'algorithm'],
+        key: 'algorithm',
+        render: (_value, entry) => entry.summary.algorithm,
+      },
+      {
+        title: 'Тикеры',
+        dataIndex: 'strategy',
+        key: 'symbols',
+        render: (_value, entry) => inferenceSymbols(entry.strategy),
+      },
+      {
+        title: 'Статус',
+        dataIndex: ['summary', 'status'],
+        key: 'status',
+        render: (_value, entry) => (
+          <div>
+            <Tag
+              color={resolveBotStatusColor(entry.summary.status)}
+              style={{ marginBottom: entry.summary.substatus ? 4 : 0 }}
+            >
+              {entry.summary.status}
+            </Tag>
+            {entry.summary.substatus && <div className="panel__description">{entry.summary.substatus}</div>}
+          </div>
+        ),
+      },
+      {
+        title: 'Действия',
+        key: 'actions',
+        render: (_value, entry) => (
+          <button type="button" className="button button--ghost" onClick={() => handleRemove(entry)}>
+            Удалить
+          </button>
+        ),
+      },
+    ],
+    [handleRemove],
+  );
+
+  const tablePagination = useMemo(
+    () => ({
+      defaultPageSize: 10,
+      showSizeChanger: true,
+      pageSizeOptions: ['10', '20', '50'],
+    }),
+    [],
+  );
+
   const handleClearAll = useCallback(() => {
     if (importedBots.length === 0) {
       return;
@@ -284,26 +401,29 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
     }
   }, [extensionReady, isImporting]);
 
-  const openModal = useCallback((variant: BacktestVariant) => {
-    if (selection.size === 0) {
-      return;
-    }
-    setActiveModal(variant);
-  }, [selection.size]);
+  const openModal = useCallback(
+    (variant: BacktestVariant) => {
+      if (selection.size === 0) {
+        return;
+      }
+      setActiveModal(variant);
+    },
+    [selection.size],
+  );
 
   const closeModal = useCallback(() => {
     setActiveModal(null);
   }, []);
 
   const hasImportedBots = importedBots.length > 0;
-  const allSelected = hasImportedBots && selection.size === importedBots.length;
-  const someSelected = selection.size > 0 && selection.size < importedBots.length;
 
   return (
     <section className="page">
       <header className="page__header">
         <h1 className="page__title">Импорт ботов</h1>
-        <p className="page__subtitle">Вставьте ссылки или идентификаторы, чтобы загрузить конфигурации ботов по общему доступу.</p>
+        <p className="page__subtitle">
+          Вставьте ссылки или идентификаторы, чтобы загрузить конфигурации ботов по общему доступу.
+        </p>
       </header>
 
       {!extensionReady && (
@@ -315,7 +435,8 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
       <div className="panel">
         <h2 className="panel__title">Добавление новых ботов</h2>
         <p className="panel__description">
-          Поддерживаются ссылки вида https://veles.finance/share/&lt;код&gt;, разделённые запятой или с новой строки. Можно вставлять сами коды.
+          Поддерживаются ссылки вида https://veles.finance/share/&lt;код&gt;, разделённые запятой или с новой строки.
+          Можно вставлять сами коды.
         </p>
         <textarea
           className="input"
@@ -329,14 +450,24 @@ https://veles.finance/share/q1w2e`}
           <button type="button" className="button" onClick={handleImport} disabled={!extensionReady || isImporting}>
             {isImporting ? 'Импортируем…' : 'Импортировать'}
           </button>
-          <button type="button" className="button button--ghost" onClick={() => setInputValue('')} disabled={isImporting}>
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setInputValue('')}
+            disabled={isImporting}
+          >
             Очистить поле
           </button>
         </div>
         {logs.length > 0 && (
           <ul className="panel__list" style={{ marginTop: 16 }}>
             {logs.map((log) => (
-              <li key={log.id} style={{ color: log.kind === 'error' ? '#ef4444' : log.kind === 'success' ? '#10b981' : '#94a3b8' }}>
+              <li
+                key={log.id}
+                style={{
+                  color: log.kind === 'error' ? '#ef4444' : log.kind === 'success' ? '#10b981' : '#94a3b8',
+                }}
+              >
                 {log.message}
               </li>
             ))}
@@ -361,66 +492,15 @@ https://veles.finance/share/q1w2e`}
 
         {hasImportedBots ? (
           <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th className="table__checkbox">
-                    <input
-                      type="checkbox"
-                      className="checkbox"
-                      checked={allSelected}
-                      ref={(node) => {
-                        if (node) {
-                          node.indeterminate = someSelected;
-                        }
-                      }}
-                      onChange={(event) => toggleAllSelection(event.target.checked)}
-                      aria-label="Выбрать всех импортированных ботов"
-                    />
-                  </th>
-                  <th>Название</th>
-                  <th>Биржа</th>
-                  <th>Алгоритм</th>
-                  <th>Тикеры</th>
-                  <th>Статус</th>
-                  <th>Действия</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importedBots.map((entry) => {
-                  const isChecked = selection.has(entry.id);
-                  return (
-                    <tr key={entry.id}>
-                      <td className="table__checkbox">
-                        <input
-                          type="checkbox"
-                          className="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSelection(entry)}
-                          aria-label={`Выбрать бота ${entry.summary.name}`}
-                        />
-                      </td>
-                      <td>
-                        <div>{entry.summary.name}</div>
-                        <div className="panel__description">Код: {entry.alias}</div>
-                      </td>
-                      <td>{entry.summary.exchange}</td>
-                      <td>{entry.summary.algorithm}</td>
-                      <td>{inferenceSymbols(entry.strategy)}</td>
-                      <td>
-                        <div>{entry.summary.status}</div>
-                        {entry.summary.substatus && <div className="panel__description">{entry.summary.substatus}</div>}
-                      </td>
-                      <td>
-                        <button type="button" className="button button--ghost" onClick={() => handleRemove(entry)}>
-                          Удалить
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <Table<ImportedBotEntry>
+              columns={tableColumns}
+              dataSource={importedBots}
+              rowKey={(entry) => entry.id}
+              rowSelection={rowSelection}
+              pagination={tablePagination}
+              locale={{ emptyText: 'Импортированных ботов нет.' }}
+              scroll={{ x: true }}
+            />
           </div>
         ) : (
           <div className="empty-state">Ещё нет импортированных ботов.</div>

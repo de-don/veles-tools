@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  MS_IN_DAY,
-  computeBacktestMetrics,
-  summarizeAggregations,
-} from '../backtestAggregation';
-import type {
-  BacktestCycle,
-  BacktestOrder,
-  BacktestStatisticsDetail,
-} from '../../types/backtests';
+import type { BacktestCycle, BacktestOrder, BacktestStatisticsDetail } from '../../types/backtests';
+import { computeBacktestMetrics, MS_IN_DAY, summarizeAggregations } from '../backtestAggregation';
 
-const buildDetail = (
-  overrides: Partial<BacktestStatisticsDetail> = {},
-): BacktestStatisticsDetail => ({
+const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): BacktestStatisticsDetail => ({
   id: 1,
   name: 'Base Backtest',
   date: '2024-01-01T00:00:00Z',
@@ -44,8 +34,8 @@ const buildDetail = (
   losses: 0,
   breakevens: 0,
   pullUps: 0,
-  winRateProfits: 0,
-  winRateLosses: 0,
+  winRateProfits: null,
+  winRateLosses: null,
   totalDeals: 0,
   minGrid: 0,
   maxGrid: 0,
@@ -59,13 +49,11 @@ const buildDetail = (
   maeAbsolute: 0,
   commissionBase: 0,
   commissionQuote: 0,
+  deposit: null,
   ...overrides,
 });
 
-const buildCycle = (
-  overrides: Partial<BacktestCycle> = {},
-  orders: BacktestOrder[] | null = [],
-): BacktestCycle => ({
+const buildCycle = (overrides: Partial<BacktestCycle> = {}, orders: BacktestOrder[] | null = []): BacktestCycle => ({
   id: 1,
   status: 'FINISHED',
   date: '2024-01-01T00:00:00Z',
@@ -115,7 +103,6 @@ const buildMetricsWithRiskWindow = ({
   );
 };
 
-
 describe('computeBacktestMetrics', () => {
   it('aggregates statistics and cycles into consistent metrics', () => {
     const stats = buildDetail({
@@ -132,6 +119,14 @@ describe('computeBacktestMetrics', () => {
       avgDuration: 3600,
       from: '2024-01-01T00:00:00Z',
       to: '2024-01-10T00:00:00Z',
+      deposit: {
+        amount: 2500,
+        leverage: 5,
+        marginType: 'CROSS',
+        currency: 'USDT',
+      },
+      winRateProfits: 2,
+      winRateLosses: 1,
     });
 
     const cycles: BacktestCycle[] = [
@@ -184,6 +179,10 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.maxDrawdown).toBe(40);
     expect(metrics.maxMPU).toBe(45);
     expect(metrics.maxMPP).toBe(120);
+    expect(metrics.depositAmount).toBe(2500);
+    expect(metrics.depositLeverage).toBe(5);
+    expect(metrics.depositCurrency).toBe('USDT');
+    expect(metrics.winRatePercent).toBeCloseTo((2 / 3) * 100, 6);
     expect(metrics.concurrencyIntervals).toHaveLength(4);
     expect(metrics.concurrencyIntervals[0].start).toBe(new Date('2024-01-02T22:00:00Z').getTime());
     expect(metrics.concurrencyIntervals[0].end).toBe(new Date('2024-01-03T00:00:00Z').getTime());
@@ -227,10 +226,7 @@ describe('computeBacktestMetrics', () => {
         mfeAbsolute: 50,
         maeAbsolute: -20,
       },
-      [
-        { createdAt: '2024-02-02T08:00:00Z' },
-        { executedAt: '2024-02-02T09:30:00Z' },
-      ],
+      [{ createdAt: '2024-02-02T08:00:00Z' }, { executedAt: '2024-02-02T09:30:00Z' }],
     );
 
     const finishedWithoutOrders = buildCycle({
@@ -267,7 +263,12 @@ describe('computeBacktestMetrics', () => {
     expect(secondInterval.start).toBeLessThanOrEqual(thirdInterval.start);
 
     expect(metrics.trades).toHaveLength(2);
-    expect(metrics.trades[0]).toMatchObject({ id: 501, net: 75, mfe: 50, mae: 0 });
+    expect(metrics.trades[0]).toMatchObject({
+      id: 501,
+      net: 75,
+      mfe: 50,
+      mae: 20,
+    });
     expect(metrics.trades[1]).toMatchObject({ id: 502, net: 0, mfe: 0 });
 
     expect(metrics.maxMPP).toBe(50);
@@ -278,7 +279,34 @@ describe('computeBacktestMetrics', () => {
 
     const uniqueDayIndices = new Set(metrics.activeDayIndices);
     expect(uniqueDayIndices.size).toBe(metrics.activeDayIndices.length);
-    expect(metrics.activeDayIndices[0]).toBeLessThanOrEqual(metrics.activeDayIndices[metrics.activeDayIndices.length - 1]);
+    expect(metrics.activeDayIndices[0]).toBeLessThanOrEqual(
+      metrics.activeDayIndices[metrics.activeDayIndices.length - 1],
+    );
+    expect(metrics.depositAmount).toBeNull();
+    expect(metrics.depositLeverage).toBeNull();
+    expect(metrics.winRatePercent).toBeCloseTo((3 / 4) * 100, 6);
+  });
+
+  it('normalizes textual deposit configuration values', () => {
+    const stats = buildDetail({
+      id: 909,
+      winRateProfits: 5,
+      winRateLosses: 5,
+      deposit: {
+        amount: '1 250,75 USDT' as unknown as number,
+        leverage: '10x' as unknown as number,
+        marginType: 'ISOLATED',
+        currency: null,
+      },
+      quote: 'USDT',
+    });
+
+    const metrics = computeBacktestMetrics(stats, []);
+
+    expect(metrics.depositAmount).toBeCloseTo(1250.75, 6);
+    expect(metrics.depositCurrency).toBe('USDT');
+    expect(metrics.depositLeverage).toBe(10);
+    expect(metrics.winRatePercent).toBe(50);
   });
 });
 
@@ -297,6 +325,7 @@ describe('summarizeAggregations', () => {
     expect(summary.avgTradeDurationDays).toBe(0);
     expect(summary.avgMaxDrawdown).toBe(0);
     expect(summary.aggregateDrawdown).toBe(0);
+    expect(summary.aggregateMPU).toBe(0);
     expect(summary.maxConcurrent).toBe(0);
     expect(summary.avgConcurrent).toBe(0);
     expect(summary.noTradeDays).toBe(0);
@@ -308,7 +337,12 @@ describe('summarizeAggregations', () => {
       p95: 0,
       limits: { p75: 0, p90: 0, p95: 0 },
     });
-    expect(summary.portfolioEquity).toEqual({ points: [], minValue: 0, maxValue: 0 });
+    expect(summary.portfolioEquity).toEqual({
+      points: [],
+      minValue: 0,
+      maxValue: 0,
+    });
+    expect(summary.aggregateRiskSeries).toEqual({ points: [], maxValue: 0 });
   });
 
   it('aggregates multiple backtests into portfolio-level metrics', () => {
@@ -395,16 +429,19 @@ describe('summarizeAggregations', () => {
     expect(summary.totalDeals).toBe(metricsA.totalDeals + metricsB.totalDeals);
     expect(summary.avgPnlPerDeal).toBeCloseTo(summary.totalPnl / summary.totalDeals, 10);
     expect(summary.avgPnlPerBacktest).toBeCloseTo(summary.totalPnl / summary.totalSelected, 10);
-    expect(summary.avgNetPerDay).toBeCloseTo((metricsA.avgNetPerDay + metricsB.avgNetPerDay) / summary.totalSelected, 10);
+    expect(summary.avgNetPerDay).toBeCloseTo(
+      (metricsA.avgNetPerDay + metricsB.avgNetPerDay) / summary.totalSelected,
+      10,
+    );
     expect(summary.avgTradeDurationDays).toBeCloseTo(
-      (metricsA.totalTradeDurationSec + metricsB.totalTradeDurationSec)
-        / summary.totalDeals
-        / 86400,
+      (metricsA.totalTradeDurationSec + metricsB.totalTradeDurationSec) / summary.totalDeals / 86400,
       6,
     );
     expect(summary.avgMaxDrawdown).toBeCloseTo((metricsA.maxDrawdown + metricsB.maxDrawdown) / 2, 6);
     expect(summary.aggregateDrawdown).toBeGreaterThanOrEqual(Math.max(metricsA.maxDrawdown, metricsB.maxDrawdown));
     expect(summary.aggregateMPU).toBeGreaterThanOrEqual(Math.max(metricsA.maxMPU, metricsB.maxMPU));
+    expect(summary.aggregateRiskSeries.maxValue).toBe(summary.aggregateMPU);
+    expect(summary.aggregateRiskSeries.points.length).toBeGreaterThan(0);
     expect(summary.maxConcurrent).toBeGreaterThanOrEqual(2);
     expect(summary.avgConcurrent).toBeGreaterThan(0);
     expect(summary.noTradeDays).toBeGreaterThan(0);
@@ -468,6 +505,7 @@ describe('summarizeAggregations', () => {
     const summary = summarizeAggregations([metricsA, metricsB, metricsC]);
 
     expect(summary.aggregateMPU).toBe(55);
+    expect(summary.aggregateRiskSeries.maxValue).toBe(55);
   });
 
   it('sums concurrent risk spikes including instantaneous windows', () => {
@@ -502,6 +540,7 @@ describe('summarizeAggregations', () => {
     const summary = summarizeAggregations([metricsA, metricsB, metricsC, metricsD]);
 
     expect(summary.aggregateMPU).toBe(38);
+    expect(summary.aggregateRiskSeries.maxValue).toBe(38);
   });
 
   it('ignores cycles without risk contribution when computing aggregate MPU', () => {
@@ -534,6 +573,7 @@ describe('summarizeAggregations', () => {
     const summary = summarizeAggregations([metricsA, zeroRiskMetrics]);
 
     expect(summary.aggregateMPU).toBe(25);
+    expect(summary.aggregateRiskSeries.maxValue).toBe(25);
   });
 
   it('computes aggregate MPU across overlapping risk intervals', () => {
@@ -590,6 +630,7 @@ describe('summarizeAggregations', () => {
     const summary = summarizeAggregations([metricsA, metricsB]);
 
     expect(summary.aggregateMPU).toBeCloseTo(30);
+    expect(summary.aggregateRiskSeries.maxValue).toBeCloseTo(30);
   });
 
   it('calculates noTradeDays across sparse activity windows', () => {
@@ -794,12 +835,102 @@ describe('summarizeAggregations', () => {
     expect(summary.dailyConcurrency.stats.p75).toBe(2);
     expect(summary.dailyConcurrency.stats.p90).toBe(2);
     expect(summary.dailyConcurrency.stats.p95).toBe(2);
-    expect(summary.dailyConcurrency.stats.limits).toEqual({ p75: 2, p90: 2, p95: 2 });
+    expect(summary.dailyConcurrency.stats.limits).toEqual({
+      p75: 2,
+      p90: 2,
+      p95: 2,
+    });
 
     expect(summary.portfolioEquity.points).toHaveLength(6);
     expect(summary.portfolioEquity.points[0].value).toBe(0);
     const lastPoint = summary.portfolioEquity.points[summary.portfolioEquity.points.length - 1];
     expect(lastPoint.value).toBe(40);
     expect(summary.portfolioEquity.minValue).toBeLessThanOrEqual(summary.portfolioEquity.maxValue);
+  });
+
+  it('respects concurrency limits by skipping overlapping trades', () => {
+    const alphaMetrics = computeBacktestMetrics(
+      buildDetail({
+        id: 301,
+        name: 'Alpha',
+        netQuote: 180,
+        netQuotePerDay: 18,
+        profits: 3,
+        losses: 0,
+        totalDeals: 3,
+        avgDuration: 7200,
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-01-03T00:00:00Z',
+      }),
+      [
+        buildCycle({
+          id: 1,
+          date: '2024-01-01T02:00:00Z',
+          duration: 7200,
+          netQuote: 100,
+        }),
+        buildCycle({
+          id: 2,
+          date: '2024-01-01T04:00:01Z',
+          duration: 7200,
+          netQuote: 50,
+        }),
+        buildCycle({
+          id: 3,
+          date: '2024-01-02T04:00:00Z',
+          duration: 3600,
+          netQuote: 30,
+        }),
+      ],
+    );
+
+    const betaMetrics = computeBacktestMetrics(
+      buildDetail({
+        id: 302,
+        name: 'Beta',
+        netQuote: 80,
+        netQuotePerDay: 8,
+        profits: 1,
+        losses: 0,
+        totalDeals: 1,
+        avgDuration: 7200,
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-01-02T00:00:00Z',
+      }),
+      [
+        buildCycle({
+          id: 10,
+          date: '2024-01-01T03:00:00Z',
+          duration: 7200,
+          netQuote: 80,
+        }),
+      ],
+    );
+
+    const metricsList = [alphaMetrics, betaMetrics];
+    const unlimitedSummary = summarizeAggregations(metricsList);
+    const boundedSummary = summarizeAggregations(metricsList, {
+      maxConcurrentBots: 1,
+    });
+    const relaxedSummary = summarizeAggregations(metricsList, {
+      maxConcurrentBots: 5,
+    });
+
+    expect(relaxedSummary).toEqual(unlimitedSummary);
+
+    expect(unlimitedSummary.aggregateRiskSeries.maxValue).toBe(unlimitedSummary.aggregateMPU);
+    expect(boundedSummary.aggregateRiskSeries.maxValue).toBe(boundedSummary.aggregateMPU);
+    expect(unlimitedSummary.aggregateRiskSeries.points.length).toBeGreaterThan(0);
+
+    expect(boundedSummary.totalDeals).toBeLessThan(unlimitedSummary.totalDeals);
+    expect(boundedSummary.totalPnl).toBeLessThan(unlimitedSummary.totalPnl);
+    expect(boundedSummary.totalDeals).toBe(3);
+    expect(boundedSummary.totalPnl).toBe(180);
+    expect(boundedSummary.totalProfits).toBe(3);
+    expect(boundedSummary.totalLosses).toBe(0);
+    expect(boundedSummary.maxConcurrent).toBeLessThanOrEqual(1);
+    expect(boundedSummary.dailyConcurrency.records.every((record) => record.maxCount <= 1)).toBe(true);
+    expect(boundedSummary.noTradeDays).toBeGreaterThanOrEqual(unlimitedSummary.noTradeDays);
+    expect(relaxedSummary.noTradeDays).toBe(unlimitedSummary.noTradeDays);
   });
 });

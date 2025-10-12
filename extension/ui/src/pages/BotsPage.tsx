@@ -1,17 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { fetchBots } from '../api/bots';
+import type { TableProps } from 'antd';
+import { Table, Tag } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import type { TableRowSelection } from 'antd/es/table/interface';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchApiKeys } from '../api/apiKeys';
-import type {
-  BotAlgorithm,
-  BotStatus,
-  BotSummary,
-  BotsListFilters,
-  BotsListResponse,
-  TradingBot,
-} from '../types/bots';
-import { BOT_STATUS_VALUES } from '../types/bots';
-import type { ApiKey } from '../types/apiKeys';
+import { fetchBots } from '../api/bots';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
+import BulkActionsMenu from '../components/bots/BulkActionsMenu';
+import { resolveBotStatusColor } from '../lib/statusColors';
+import { parseSortDescriptor, serializeSortDescriptor } from '../lib/tableSort';
+import type { ApiKey } from '../types/apiKeys';
+import type { BotAlgorithm, BotStatus, BotSummary, BotsListFilters, BotsListResponse, TradingBot } from '../types/bots';
+import { BOT_STATUS_VALUES } from '../types/bots';
 
 interface BotsPageProps {
   extensionReady: boolean;
@@ -19,15 +19,6 @@ interface BotsPageProps {
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_SORT = 'createdAt,desc';
-
-const SORT_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'createdAt,desc', label: 'Дата создания ↓' },
-  { value: 'createdAt,asc', label: 'Дата создания ↑' },
-  { value: 'updatedAt,desc', label: 'Дата обновления ↓' },
-  { value: 'updatedAt,asc', label: 'Дата обновления ↑' },
-  { value: 'name,asc', label: 'Название A→Я' },
-  { value: 'name,desc', label: 'Название Я→A' },
-];
 
 const STATUS_OPTIONS: readonly BotStatus[] = BOT_STATUS_VALUES;
 
@@ -61,9 +52,7 @@ const formatExchangeLabel = (exchange: string): string => {
     .trim();
 };
 
-type SelectionMap = Map<string, BotSummary>;
-
-const createSummary = (bot: TradingBot): BotSummary => ({
+const _createSummary = (bot: TradingBot): BotSummary => ({
   id: bot.id,
   name: bot.name,
   exchange: bot.exchange,
@@ -80,9 +69,8 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const [data, setData] = useState<BotsListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selection, setSelection] = useState<SelectionMap>(new Map());
+  const [selection, setSelection] = useState<TradingBot[]>([]);
   const [activeModal, setActiveModal] = useState<BacktestVariant | null>(null);
-  const selectAllRef = useRef<HTMLInputElement | null>(null);
   const [nameFilter, setNameFilter] = useState('');
   const [apiKeyFilter, setApiKeyFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<BotStatus | ''>('');
@@ -92,8 +80,11 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [apiKeysLoading, setApiKeysLoading] = useState(false);
   const [apiKeysError, setApiKeysError] = useState<string | null>(null);
+  const [reloadCounter, setReloadCounter] = useState(0);
 
   useEffect(() => {
+    void reloadCounter;
+
     if (!extensionReady) {
       setData(null);
       setLoading(false);
@@ -128,11 +119,11 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     return () => {
       isActive = false;
     };
-  }, [extensionReady, page, pageSize, sort, appliedFilters]);
+  }, [extensionReady, page, pageSize, sort, appliedFilters, reloadCounter]);
 
   useEffect(() => {
     if (!extensionReady) {
-      setSelection(new Map());
+      setSelection([]);
       setActiveModal(null);
     }
   }, [extensionReady]);
@@ -175,24 +166,21 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   }, [extensionReady]);
 
   useEffect(() => {
-    setSelection(new Map());
+    setSelection([]);
     setActiveModal(null);
-  }, [appliedFilters]);
+  }, []);
 
-  const totalSelected = selection.size;
-  const bots = data?.content ?? [];
-  const totalPages = data?.totalPages ?? 0;
-  const selectedBotsList = useMemo(() => Array.from(selection.values()), [selection]);
   const apiKeyOptions = useMemo(
     () =>
       apiKeys.map((key) => ({
         value: String(key.id),
-        label: key.name
-          ? `${key.name} · ${formatExchangeLabel(key.exchange)}`
-          : `#${key.id}`,
+        label: key.name ? `${key.name} · ${formatExchangeLabel(key.exchange)}` : `#${key.id}`,
       })),
     [apiKeys],
   );
+  const forceReloadBots = useCallback(() => {
+    setReloadCounter((value) => value + 1);
+  }, []);
   const hasActiveFilters = useMemo(() => {
     return Boolean(
       appliedFilters.name ||
@@ -202,80 +190,133 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     );
   }, [appliedFilters]);
   const hasFilterDraft =
-    nameFilter.trim().length > 0 ||
-    apiKeyFilter !== '' ||
-    Boolean(statusFilter) ||
-    Boolean(algorithmFilter);
+    nameFilter.trim().length > 0 || apiKeyFilter !== '' || Boolean(statusFilter) || Boolean(algorithmFilter);
   const isResetDisabled = !hasActiveFilters && !hasFilterDraft;
 
-  const currentPageSelectedCount = useMemo(() => {
-    if (bots.length === 0) {
-      return 0;
-    }
-    return bots.filter((bot) => selection.has(String(bot.id))).length;
-  }, [bots, selection]);
+  const selectedRowKeys = useMemo(() => selection.map((s) => s.id), [selection]);
 
-  const allCurrentSelected = bots.length > 0 && currentPageSelectedCount === bots.length;
-  const someCurrentSelected = currentPageSelectedCount > 0 && currentPageSelectedCount < bots.length;
+  const totalSelected = selection.length;
+  const bots = data?.content ?? [];
+  const totalElements = data?.totalElements ?? bots.length;
 
-  useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = someCurrentSelected;
-    }
-  }, [someCurrentSelected, allCurrentSelected]);
+  const currentSortDescriptor = useMemo(() => parseSortDescriptor(sort), [sort]);
 
-  const toggleBotSelection = (bot: TradingBot) => {
-    const key = String(bot.id);
-    setSelection((prev) => {
-      const next = new Map(prev);
-      if (next.has(key)) {
-        next.delete(key);
+  const rowSelection: TableRowSelection<TradingBot> = {
+    selectedRowKeys,
+    type: 'checkbox',
+    preserveSelectedRowKeys: true,
+    onChange: (_nextSelectedRowKeys, nextSelectedRows) => {
+      setSelection(nextSelectedRows);
+    },
+  };
+
+  const handleTableChange = useCallback<NonNullable<TableProps<TradingBot>['onChange']>>(
+    (pagination, _filters, sorter) => {
+      const nextPageSize = pagination?.pageSize ?? pageSize;
+      const isPageSizeChanged = nextPageSize !== pageSize;
+      if (isPageSizeChanged) {
+        setPageSize(nextPageSize);
+        setPage(0);
       } else {
-        next.set(key, createSummary(bot));
-      }
-      return next;
-    });
-  };
-
-  const toggleCurrentPageSelection = (checked: boolean) => {
-    setSelection((prev) => {
-      const next = new Map(prev);
-      if (!checked) {
-        bots.forEach((bot) => {
-          next.delete(String(bot.id));
-        });
-        return next;
+        const pageIndex = Math.max((pagination?.current ?? 1) - 1, 0);
+        setPage(pageIndex);
       }
 
-      bots.forEach((bot) => {
-        next.set(String(bot.id), createSummary(bot));
-      });
-      return next;
-    });
-  };
-
-  const handlePageChange = (direction: 'prev' | 'next') => {
-    setPage((current) => {
-      if (direction === 'prev') {
-        return Math.max(current - 1, 0);
+      if (!Array.isArray(sorter)) {
+        if (sorter?.order && typeof sorter.field === 'string') {
+          setSort(
+            serializeSortDescriptor({
+              field: sorter.field,
+              order: sorter.order,
+            }),
+          );
+        } else if (!sorter?.order) {
+          setSort(DEFAULT_SORT);
+        }
       }
-      if (!data) {
-        return current + 1;
-      }
-      return Math.min(current + 1, Math.max(data.totalPages - 1, 0));
-    });
-  };
+    },
+    [pageSize],
+  );
 
-  const handlePageSizeChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const value = Number(event.target.value) || PAGE_SIZE_OPTIONS[0];
-    setPageSize(value);
-    setPage(0);
-  };
+  const columns: ColumnsType<TradingBot> = useMemo(
+    () => [
+      {
+        title: 'Название',
+        dataIndex: 'name',
+        key: 'name',
+        sorter: true,
+        sortOrder: currentSortDescriptor?.field === 'name' ? currentSortDescriptor.order : undefined,
+        render: (_value, botRecord) => (
+          <div>
+            <div>{botRecord.name}</div>
+            <div className="panel__description">ID: {botRecord.id}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'Биржа',
+        dataIndex: 'exchange',
+        key: 'exchange',
+        render: (value: string) => formatExchangeLabel(value),
+      },
+      {
+        title: 'Алгоритм',
+        dataIndex: 'algorithm',
+        key: 'algorithm',
+        render: (value: BotAlgorithm) => formatAlgorithmLabel(value),
+      },
+      {
+        title: 'Статус',
+        dataIndex: 'status',
+        key: 'status',
+        render: (_value, botRecord) => (
+          <div>
+            <Tag color={resolveBotStatusColor(botRecord.status)} style={{ marginBottom: botRecord.substatus ? 4 : 0 }}>
+              {formatStatusLabel(botRecord.status)}
+            </Tag>
+            {botRecord.substatus && <div className="panel__description">{botRecord.substatus}</div>}
+          </div>
+        ),
+      },
+      {
+        title: 'Тикеры',
+        dataIndex: 'symbols',
+        key: 'symbols',
+        render: (value: string[]) => (value && value.length > 0 ? value.join(', ') : '—'),
+      },
+      {
+        title: 'Создан',
+        dataIndex: 'createdAt',
+        key: 'createdAt',
+        sorter: true,
+        sortOrder: currentSortDescriptor?.field === 'createdAt' ? currentSortDescriptor.order : undefined,
+        render: (value: string | null | undefined) => (value ? new Date(value).toLocaleString() : '—'),
+      },
+      {
+        title: 'Обновлён',
+        dataIndex: 'updatedAt',
+        key: 'updatedAt',
+        sorter: true,
+        sortOrder: currentSortDescriptor?.field === 'updatedAt' ? currentSortDescriptor.order : undefined,
+        render: (value: string | null | undefined) => (value ? new Date(value).toLocaleString() : '—'),
+      },
+    ],
+    [currentSortDescriptor],
+  );
 
-  const handleSortChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setSort(event.target.value);
-    setPage(0);
-  };
+  const tablePagination = useMemo(
+    () => ({
+      current: page + 1,
+      pageSize,
+      showSizeChanger: true,
+      pageSizeOptions: PAGE_SIZE_OPTIONS.map((option) => String(option)),
+      total: totalElements,
+      showTotal: (total: number, range: [number, number]) => `${range[0]}–${range[1]} из ${total}`,
+    }),
+    [page, pageSize, totalElements],
+  );
+
+  const selectedBotsList = useMemo(() => Array.from(selection.values()), [selection]);
 
   const handleFiltersApply = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -362,21 +403,6 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
 
         <form className="panel__filters" onSubmit={handleFiltersApply}>
           <div className="filter-field">
-            <label htmlFor="bots-sort">Сортировка</label>
-            <select
-              id="bots-sort"
-              className="select"
-              value={sort}
-              onChange={handleSortChange}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="filter-field">
             <label htmlFor="bots-filter-name">Название</label>
             <input
               id="bots-filter-name"
@@ -455,7 +481,12 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
             <button type="submit" className="button">
               Применить
             </button>
-            <button type="button" className="button button--ghost" onClick={handleFiltersReset} disabled={isResetDisabled}>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={handleFiltersReset}
+              disabled={isResetDisabled}
+            >
               Сбросить фильтры
             </button>
           </div>
@@ -476,107 +507,27 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
               <button type="button" className="button button--secondary" onClick={() => openModal('multiCurrency')}>
                 Мультивалютный бэктест
               </button>
+              <BulkActionsMenu bots={selection} onReloadRequested={forceReloadBots} onSelectionUpdate={setSelection} />
             </div>
           </div>
         )}
 
         <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th className="table__checkbox">
-                  <input
-                    type="checkbox"
-                    className="checkbox"
-                    ref={selectAllRef}
-                    checked={allCurrentSelected}
-                    aria-label="Выбрать все на странице"
-                    onChange={(event) => toggleCurrentPageSelection(event.target.checked)}
-                    disabled={bots.length === 0}
-                  />
-                </th>
-                <th>Название</th>
-                <th>Биржа</th>
-                <th>Алгоритм</th>
-                <th>Статус</th>
-                <th>Тикеры</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="loader">Загружаем данные…</div>
-                  </td>
-                </tr>
-              )}
-              {!loading && bots.length === 0 && (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="empty-state">Нет данных для отображения.</div>
-                  </td>
-                </tr>
-              )}
-              {!loading &&
-                bots.map((bot) => {
-                  const key = String(bot.id);
-                  const isChecked = selection.has(key);
-                  return (
-                    <tr key={bot.id}>
-                      <td className="table__checkbox">
-                        <input
-                          type="checkbox"
-                          className="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleBotSelection(bot)}
-                          aria-label={`Выбрать бота ${bot.name}`}
-                        />
-                      </td>
-                      <td>
-                        <div>{bot.name}</div>
-                        <div className="panel__description">ID: {bot.id}</div>
-                      </td>
-                      <td>{bot.exchange}</td>
-                      <td>{bot.algorithm}</td>
-                      <td>
-                        <div>{bot.status}</div>
-                        {bot.substatus && <div className="panel__description">{bot.substatus}</div>}
-                      </td>
-                      <td>{bot.symbols.join(', ')}</td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="pagination">
-          <div className="pagination__info">Страница {page + 1} из {Math.max(totalPages, 1)}</div>
-          <div className="pagination__controls">
-            <div className="pagination__page-size">
-              <label className="pagination__page-size-label" htmlFor="bots-page-size">
-                На странице:
-              </label>
-              <select id="bots-page-size" className="select" value={pageSize} onChange={handlePageSizeChange}>
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button type="button" className="button button--ghost" onClick={() => handlePageChange('prev')} disabled={page === 0 || loading}>
-              Назад
-            </button>
-            <button
-              type="button"
-              className="button"
-              onClick={() => handlePageChange('next')}
-              disabled={loading || totalPages === 0 || page + 1 >= totalPages}
-            >
-              Далее
-            </button>
-          </div>
+          <Table<TradingBot>
+            columns={columns}
+            dataSource={bots}
+            rowKey={(botRecord) => botRecord.id}
+            rowSelection={rowSelection}
+            pagination={tablePagination}
+            loading={loading}
+            onChange={handleTableChange}
+            scroll={{ x: true }}
+            size="middle"
+            locale={{
+              emptyText: loading ? 'Загружаем данные…' : 'Нет данных для отображения.',
+            }}
+            sticky
+          />
         </div>
 
         {error && <div className="banner banner--warning">Ошибка загрузки: {error}</div>}
@@ -591,7 +542,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
           <div className="empty-state">Выберите одного или несколько ботов в таблице.</div>
         ) : (
           <ul className="panel__list--compact">
-            {Array.from(selection.values()).map((bot) => (
+            {selection.map((bot) => (
               <li key={bot.id}>
                 <span className="chip">
                   <strong>{bot.name}</strong>
@@ -607,9 +558,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         )}
       </div>
 
-      {activeModal && (
-        <BacktestModal variant={activeModal} selectedBots={selectedBotsList} onClose={closeModal} />
-      )}
+      {activeModal && <BacktestModal variant={activeModal} selectedBots={selectedBotsList} onClose={closeModal} />}
     </section>
   );
 };

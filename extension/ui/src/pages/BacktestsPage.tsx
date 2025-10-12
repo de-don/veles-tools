@@ -1,17 +1,26 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktests, fetchBacktestCycles, fetchBacktestDetails } from '../api/backtests';
-import type { BacktestStatistics, BacktestStatisticsListResponse } from '../types/backtests';
-import {
-  computeBacktestMetrics,
-  summarizeAggregations,
-  type AggregationSummary,
-  type BacktestAggregationMetrics,
-} from '../lib/backtestAggregation';
+import { DownOutlined } from '@ant-design/icons';
+import type { MenuProps, TableProps } from 'antd';
+import { Dropdown, Table } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import type { TableRowSelection } from 'antd/es/table/interface';
+import type { Key } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktestCycles, fetchBacktestDetails, fetchBacktests } from '../api/backtests';
+import CreateBotsFromBacktestsModal, { type BacktestBotTarget } from '../components/CreateBotsFromBacktestsModal';
+import { AggregateRiskChart } from '../components/charts/AggregateRiskChart';
 import { DailyConcurrencyChart } from '../components/charts/DailyConcurrencyChart';
+import { LimitImpactChart } from '../components/charts/LimitImpactChart';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
-import { Tabs, type TabItem } from '../components/ui/Tabs';
+import { type TabItem, Tabs } from '../components/ui/Tabs';
+import {
+  type AggregationSummary,
+  type BacktestAggregationMetrics,
+  computeBacktestMetrics,
+  summarizeAggregations,
+} from '../lib/backtestAggregation';
 import { readCachedBacktestCycles, readCachedBacktestDetail } from '../storage/backtestCache';
+import type { BacktestStatistics, BacktestStatisticsDetail, BacktestStatisticsListResponse } from '../types/backtests';
 
 interface BacktestsPageProps {
   extensionReady: boolean;
@@ -19,32 +28,6 @@ interface BacktestsPageProps {
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const DEFAULT_SORT = 'date,desc';
-
-type SelectionMap = Map<number, BacktestSelection>;
-
-interface BacktestSelection {
-  id: number;
-  name: string;
-  symbol: string;
-  exchange: string;
-  quote: string;
-  profitQuote: number | null;
-  netQuote: number | null;
-  from?: string | null;
-  to?: string | null;
-}
-
-const createSummary = (item: BacktestStatistics): BacktestSelection => ({
-  id: item.id,
-  name: item.name,
-  symbol: item.symbol,
-  exchange: item.exchange,
-  quote: item.quote,
-  profitQuote: item.profitQuote,
-  netQuote: item.netQuote,
-  from: item.from,
-  to: item.to,
-});
 
 const logBacktestsError = (context: string, error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
@@ -93,6 +76,51 @@ const formatPercent = (value: number | null) => {
   return `${percentageFormatter.format(value)}%`;
 };
 
+const formatLeverage = (value: number | null) => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    return '—';
+  }
+  return `${numberFormatter.format(value)}x`;
+};
+
+const formatDateRu = (value: string | null | undefined) => {
+  if (!value) {
+    return '—';
+  }
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    return '—';
+  }
+  return new Date(timestamp).toLocaleDateString('ru-RU');
+};
+
+const resolveDealCount = (value: number | null): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 0;
+  }
+  return value > 0 ? value : 0;
+};
+
+const formatWinRate = (wins: number | null, losses: number | null) => {
+  const winsCount = resolveDealCount(wins);
+  const lossesCount = resolveDealCount(losses);
+  const completedDeals = winsCount + lossesCount;
+  if (completedDeals <= 0) {
+    return '—';
+  }
+  return formatPercent((winsCount / completedDeals) * 100);
+};
+
+const formatLossRate = (losses: number | null, wins: number | null) => {
+  const lossesCount = resolveDealCount(losses);
+  const winsCount = resolveDealCount(wins);
+  const completedDeals = winsCount + lossesCount;
+  if (completedDeals <= 0) {
+    return '—';
+  }
+  return formatPercent((lossesCount / completedDeals) * 100);
+};
+
 type AggregationStatus = 'idle' | 'loading' | 'success' | 'error';
 
 interface AggregationItemState {
@@ -100,6 +128,7 @@ interface AggregationItemState {
   status: AggregationStatus;
   included: boolean;
   metrics?: BacktestAggregationMetrics;
+  detail?: BacktestStatisticsDetail;
   error?: string;
 }
 
@@ -152,8 +181,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   const [data, setData] = useState<BacktestStatisticsListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selection, setSelection] = useState<SelectionMap>(new Map());
-  const selectAllRef = useRef<HTMLInputElement | null>(null);
+  const [selection, setSelection] = useState<BacktestStatistics[]>([]);
   const [aggregationState, setAggregationState] = useState<AggregationState>({
     items: new Map(),
     running: false,
@@ -162,6 +190,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     lastRunAt: null,
   });
   const [activeAggregationTab, setActiveAggregationTab] = useState<string>('metrics');
+  const [botLimit, setBotLimit] = useState<number | null>(null);
 
   useEffect(() => {
     if (!extensionReady) {
@@ -202,7 +231,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
   useEffect(() => {
     if (!extensionReady) {
-      setSelection(new Map());
+      setSelection([]);
       setAggregationState({
         items: new Map(),
         running: false,
@@ -214,29 +243,78 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   }, [extensionReady]);
 
   const items = data?.content ?? [];
-  const totalPages = data?.totalPages ?? 0;
-  const totalSelected = selection.size;
-
-  const currentPageSelectedCount = useMemo(() => {
-    if (items.length === 0) {
-      return 0;
-    }
-    return items.filter((item) => selection.has(item.id)).length;
-  }, [items, selection]);
-
-  const allCurrentSelected = items.length > 0 && currentPageSelectedCount === items.length;
-  const someCurrentSelected = currentPageSelectedCount > 0 && currentPageSelectedCount < items.length;
+  const totalElements = data?.totalElements ?? items.length;
+  const totalSelected = selection.length;
 
   useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = someCurrentSelected;
+    if (totalSelected === 0) {
+      setBotLimit(null);
+      return;
     }
-  }, [someCurrentSelected, allCurrentSelected]);
+
+    setBotLimit((previous) => {
+      if (previous === null) {
+        return totalSelected;
+      }
+      if (previous > totalSelected) {
+        return totalSelected;
+      }
+      if (previous < 1) {
+        return 1;
+      }
+      return previous;
+    });
+  }, [totalSelected]);
+
+  const handleBotLimitChange = useCallback(
+    (nextValue: number) => {
+      if (totalSelected === 0) {
+        setBotLimit(null);
+        return;
+      }
+      const maxAllowed = totalSelected;
+      const clamped = Math.min(Math.max(Math.floor(nextValue), 1), maxAllowed);
+      setBotLimit((previous) => {
+        if (previous === clamped) {
+          return previous;
+        }
+        return clamped;
+      });
+    },
+    [totalSelected],
+  );
+
+  const selectedRowKeys = useMemo(() => selection.map((s) => s.id), [selection]);
+
+  const rowSelection: TableRowSelection<BacktestStatistics> = {
+    selectedRowKeys,
+    type: 'checkbox',
+    preserveSelectedRowKeys: true,
+    onChange: (_nextSelectedRowKeys, nextSelectedRows) => {
+      setSelection(nextSelectedRows);
+    },
+  };
+
+  const handleTableChange = useCallback<NonNullable<TableProps<BacktestStatistics>['onChange']>>(
+    (pagination) => {
+      const nextPageSize = pagination?.pageSize ?? pageSize;
+      const pageIndex = Math.max((pagination?.current ?? 1) - 1, 0);
+      const isPageSizeChanged = nextPageSize !== pageSize;
+
+      if (isPageSizeChanged) {
+        setPageSize(nextPageSize);
+        setPage(0);
+      } else {
+        setPage(pageIndex);
+      }
+    },
+    [pageSize],
+  );
 
   useEffect(() => {
     setAggregationState((prev) => {
       const nextItems = new Map<number, AggregationItemState>();
-      selection.forEach((_, id) => {
+      selection.forEach(({ id }) => {
         const existing = prev.items.get(id);
         if (existing) {
           nextItems.set(id, existing);
@@ -266,57 +344,202 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     });
   }, [selection]);
 
-  const toggleSelection = (item: BacktestStatistics) => {
-    setSelection((prev) => {
-      const next = new Map(prev);
-      if (next.has(item.id)) {
-        next.delete(item.id);
-      } else {
-        next.set(item.id, createSummary(item));
-      }
-      return next;
-    });
-  };
+  const columns: ColumnsType<BacktestStatistics> = useMemo(
+    () => [
+      {
+        title: 'Название',
+        dataIndex: 'name',
+        key: 'name',
+        width: 240,
+        fixed: 'left',
+        render: (_value, item) => (
+          <div>
+            <div>{item.name}</div>
+            <div className="panel__description">
+              ID:{' '}
+              <a href={`https://veles.finance/cabinet/backtests/${item.id}`} target="_blank" rel="noreferrer noopener">
+                {item.id}
+              </a>
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Период',
+        dataIndex: 'date',
+        key: 'date',
+        render: (_value, item) => (
+          <div>
+            <div>{formatDateRu(item.from)}</div>
+            <div className="panel__description">до {formatDateRu(item.to)}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'Биржа',
+        dataIndex: 'exchange',
+        key: 'exchange',
+      },
+      {
+        title: 'Пара',
+        dataIndex: 'symbol',
+        key: 'symbol',
+        render: (_value, item) => (
+          <div>
+            <div>{item.symbol}</div>
+            <div className="panel__description">{item.algorithm}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'Прибыль',
+        dataIndex: 'profitQuote',
+        key: 'profitQuote',
+        render: (_value, item) => (
+          <div>
+            <div>{formatAmount(item.profitQuote, item.quote)}</div>
+            <div className="panel__description">Base: {formatAmount(item.profitBase, item.base)}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'Net / день',
+        dataIndex: 'netQuote',
+        key: 'netQuote',
+        render: (_value, item) => (
+          <div>
+            <div>{formatAmount(item.netQuote, item.quote)}</div>
+            <div className="panel__description">в день: {formatAmount(item.netQuotePerDay, item.quote)}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'Число сделок',
+        dataIndex: 'totalDeals',
+        key: 'totalDeals',
+        render: (_value, item) => (
+          <div>
+            <div>{item.totalDeals ?? '—'}</div>
+            <div className="panel__description">
+              P/L/B: {item.profits ?? 0}/{item.losses ?? 0}/{item.breakevens ?? 0}
+            </div>
+          </div>
+        ),
+      },
+      {
+        title: 'Win rate',
+        dataIndex: 'winRateProfits',
+        key: 'winRate',
+        render: (_value, item) => {
+          const winRateValue = formatWinRate(item.winRateProfits ?? item.profits, item.winRateLosses ?? item.losses);
+          const lossRateValue = formatLossRate(item.winRateLosses ?? item.losses, item.winRateProfits ?? item.profits);
+          return (
+            <div>
+              <div>{winRateValue}</div>
+              <div className="panel__description">Loss: {lossRateValue}</div>
+            </div>
+          );
+        },
+      },
+      {
+        title: 'МПУ',
+        dataIndex: 'maeAbsolute',
+        key: 'maeAbsolute',
+        render: (_value, item) => (
+          <div>
+            <div>{formatAmount(item.maeAbsolute, item.quote)}</div>
+            <div className="panel__description">{formatPercent(item.maePercent)}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'МПП',
+        dataIndex: 'mfeAbsolute',
+        key: 'mfeAbsolute',
+        render: (_value, item) => (
+          <div>
+            <div>{formatAmount(item.mfeAbsolute, item.quote)}</div>
+            <div className="panel__description">{formatPercent(item.mfePercent)}</div>
+          </div>
+        ),
+      },
+      {
+        title: 'Макс время в сделке',
+        dataIndex: 'maxDuration',
+        key: 'maxDuration',
+        render: (_value, item) => durationFormatter(item.maxDuration),
+      },
+      {
+        title: 'Среднее время в сделке',
+        dataIndex: 'avgDuration',
+        key: 'avgDuration',
+        render: (_value, item) => durationFormatter(item.avgDuration),
+      },
+    ],
+    [],
+  );
 
-  const toggleCurrentPageSelection = (checked: boolean) => {
-    setSelection((prev) => {
-      const next = new Map(prev);
-      if (!checked) {
-        items.forEach((item) => {
-          next.delete(item.id);
-        });
-        return next;
-      }
-
-      items.forEach((item) => {
-        next.set(item.id, createSummary(item));
-      });
-      return next;
-    });
-  };
-
-  const handlePageChange = (direction: 'prev' | 'next') => {
-    setPage((current) => {
-      if (direction === 'prev') {
-        return Math.max(current - 1, 0);
-      }
-      if (!data) {
-        return current + 1;
-      }
-      return Math.min(current + 1, Math.max(data.totalPages - 1, 0));
-    });
-  };
-
-  const handlePageSizeChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const value = Number(event.target.value) || PAGE_SIZE_OPTIONS[0];
-    setPageSize(value);
-    setPage(0);
-  };
+  const tablePagination = useMemo(
+    () => ({
+      current: page + 1,
+      pageSize,
+      total: totalElements,
+      showSizeChanger: true,
+      pageSizeOptions: PAGE_SIZE_OPTIONS.map((option) => String(option)),
+      showTotal: (total: number, range: [number, number]) => `${range[0]}–${range[1]} из ${total}`,
+    }),
+    [page, pageSize, totalElements],
+  );
 
   const aggregationItems = useMemo(() => Array.from(aggregationState.items.values()), [aggregationState.items]);
 
+  const includedActionableTargets = useMemo<BacktestBotTarget[]>(
+    () =>
+      aggregationItems
+        .filter((item) => item.status === 'success' && item.included && item.detail)
+        .map((item) => ({
+          id: item.id,
+          detail: item.detail as BacktestStatisticsDetail,
+        })),
+    [aggregationItems],
+  );
+
+  const [botCreationOpen, setBotCreationOpen] = useState(false);
+  const [botCreationTargets, setBotCreationTargets] = useState<BacktestBotTarget[]>([]);
+
+  const handleOpenBotCreation = useCallback(() => {
+    if (includedActionableTargets.length === 0) {
+      return;
+    }
+    setBotCreationTargets(includedActionableTargets);
+    setBotCreationOpen(true);
+  }, [includedActionableTargets]);
+
+  const handleBotCreationClose = useCallback(() => {
+    setBotCreationOpen(false);
+    setBotCreationTargets([]);
+  }, []);
+
+  const botActionsMenu = useMemo<MenuProps>(
+    () => ({
+      items: [
+        {
+          key: 'create-bots',
+          label: 'Создать ботов',
+          disabled: includedActionableTargets.length === 0,
+        },
+      ],
+      onClick: ({ key }) => {
+        if (key === 'create-bots') {
+          handleOpenBotCreation();
+        }
+      },
+    }),
+    [handleOpenBotCreation, includedActionableTargets.length],
+  );
+
   const pendingCachedEntries = useMemo(() => {
-    const entries: Array<[number, BacktestSelection]> = [];
+    const entries: Array<[number, BacktestStatistics]> = [];
     selection.forEach((summary, id) => {
       const stateItem = aggregationState.items.get(id);
       if (!stateItem || stateItem.status !== 'idle' || stateItem.metrics) {
@@ -348,7 +571,11 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         const from = summary.from ?? detail.from ?? null;
         const to = summary.to ?? detail.to ?? null;
 
-        const cycles = await readCachedBacktestCycles(id, { from, to, pageSize: DEFAULT_CYCLES_PAGE_SIZE });
+        const cycles = await readCachedBacktestCycles(id, {
+          from,
+          to,
+          pageSize: DEFAULT_CYCLES_PAGE_SIZE,
+        });
         if (!cycles || cancelled) {
           if (cancelled) {
             return;
@@ -369,6 +596,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
             status: 'success',
             included: existing.included ?? true,
             metrics,
+            detail,
             error: undefined,
           });
           return { ...prev, items: nextItems };
@@ -389,21 +617,21 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   );
 
   const includedMetrics = useMemo(
-    () =>
-      collectedItems
-        .filter((item) => item.included)
-        .map((item) => item.metrics as BacktestAggregationMetrics),
+    () => collectedItems.filter((item) => item.included).map((item) => item.metrics as BacktestAggregationMetrics),
     [collectedItems],
   );
 
   const hasFetchedMetrics = collectedItems.length > 0;
+  const canAdjustLimit = includedMetrics.length > 0;
+  const limitDisabled = !canAdjustLimit || aggregationState.running;
 
   const aggregationSummary = useMemo<AggregationSummary | null>(() => {
     if (includedMetrics.length === 0) {
       return null;
     }
-    return summarizeAggregations(includedMetrics);
-  }, [includedMetrics]);
+    const limit = botLimit;
+    return summarizeAggregations(includedMetrics, typeof limit === 'number' ? { maxConcurrentBots: limit } : undefined);
+  }, [includedMetrics, botLimit]);
 
   const aggregationErrors = useMemo(
     () => aggregationItems.filter((item) => item.status === 'error' && item.error),
@@ -420,6 +648,9 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   const dailyConcurrencyRecords = aggregationSummary?.dailyConcurrency.records ?? [];
   const dailyConcurrencyStats = aggregationSummary?.dailyConcurrency.stats;
 
+  const aggregateRiskSeries = aggregationSummary?.aggregateRiskSeries ?? null;
+  const aggregateRiskPeak = aggregationSummary ? aggregationSummary.aggregateMPU : null;
+
   const portfolioEquitySeries = aggregationSummary?.portfolioEquity ?? null;
   const portfolioFinalValue = useMemo(() => {
     if (!portfolioEquitySeries || portfolioEquitySeries.points.length === 0) {
@@ -429,6 +660,47 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     return lastPoint.value;
   }, [portfolioEquitySeries]);
 
+  const limitImpactPoints = useMemo(() => {
+    if (includedMetrics.length === 0) {
+      return [];
+    }
+
+    const metricsList = includedMetrics;
+    const total = metricsList.length;
+    if (total === 0) {
+      return [];
+    }
+
+    const items = [] as {
+      label: string;
+      totalPnl: number;
+      aggregateDrawdown: number;
+      aggregateMPU: number;
+    }[];
+
+    for (let limit = 1; limit <= total; limit += 1) {
+      const summary = summarizeAggregations(metricsList, {
+        maxConcurrentBots: limit,
+      });
+      items.push({
+        label: `${limit}`,
+        totalPnl: summary.totalPnl,
+        aggregateDrawdown: summary.aggregateDrawdown,
+        aggregateMPU: summary.aggregateMPU,
+      });
+    }
+
+    const unlimitedSummary = summarizeAggregations(metricsList);
+    items.push({
+      label: '∞',
+      totalPnl: unlimitedSummary.totalPnl,
+      aggregateDrawdown: unlimitedSummary.aggregateDrawdown,
+      aggregateMPU: unlimitedSummary.aggregateMPU,
+    });
+
+    return items;
+  }, [includedMetrics]);
+
   const resolveTrendClass = (value: number): string => {
     if (!Number.isFinite(value) || Math.abs(value) <= 1e-9) {
       return 'aggregation-metric__value aggregation-metric__value--neutral';
@@ -436,37 +708,11 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     return `aggregation-metric__value ${value > 0 ? 'aggregation-metric__value--positive' : 'aggregation-metric__value--negative'}`;
   };
 
-  const resolveStatusLabel = (item: AggregationItemState): string => {
-    switch (item.status) {
-      case 'loading':
-        return 'Собирается…';
-      case 'success':
-        return 'Собрано';
-      case 'error':
-        return item.error ? `Ошибка: ${item.error}` : 'Ошибка';
-      default:
-        return 'Ожидает запуска';
-    }
-  };
-
-  const resolveStatusTone = (status: AggregationStatus): string => {
-    if (status === 'success') {
-      return 'aggregation-status aggregation-status--success';
-    }
-    if (status === 'error') {
-      return 'aggregation-status aggregation-status--error';
-    }
-    if (status === 'loading') {
-      return 'aggregation-status aggregation-status--loading';
-    }
-    return 'aggregation-status aggregation-status--idle';
-  };
-
   const runAggregation = async () => {
     if (aggregationState.running) {
       return;
     }
-    const targets = Array.from(selection.keys());
+    const targets = selection.map((s) => s.id);
     if (targets.length === 0) {
       return;
     }
@@ -510,6 +756,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
               ...current,
               status: 'success',
               metrics,
+              detail: details,
               error: undefined,
             });
             return { ...prev, items: nextItems, completed: nextCompleted };
@@ -545,8 +792,8 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
   const resetAggregation = () => {
     const nextItems = new Map<number, AggregationItemState>();
-    selection.forEach((_, id) => {
-      nextItems.set(id, { id, status: 'idle', included: true });
+    selection.forEach((stat) => {
+      nextItems.set(stat.id, { id: stat.id, status: 'idle', included: true });
     });
     setAggregationState({
       items: nextItems,
@@ -557,24 +804,211 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     });
   };
 
-  const toggleAggregationInclude = (id: number) => {
+  const aggregationSelectedRowKeys = useMemo(
+    () =>
+      aggregationItems
+        .filter((item) => item.status === 'success' && item.metrics && item.included)
+        .map((item) => item.id),
+    [aggregationItems],
+  );
+
+  const handleAggregationSelectionChange = (_newSelectedRowKeys: Key[], nextSelectedRows: AggregationItemState[]) => {
+    const selectedIds = new Set<number>(nextSelectedRows.map((r) => r.id));
+
     setAggregationState((prev) => {
-      const current = prev.items.get(id);
-      if (!current || current.status !== 'success' || !current.metrics) {
+      let changed = false;
+      const nextItems = new Map<number, AggregationItemState>();
+
+      prev.items.forEach((item, key) => {
+        if (item.status === 'success' && item.metrics) {
+          const shouldInclude = selectedIds.has(key);
+          if (item.included !== shouldInclude) {
+            changed = true;
+            nextItems.set(key, { ...item, included: shouldInclude });
+          } else {
+            nextItems.set(key, item);
+          }
+        } else {
+          nextItems.set(key, item);
+        }
+      });
+
+      if (!changed) {
         return prev;
       }
-      const nextItems = new Map(prev.items);
-      nextItems.set(id, { ...current, included: !current.included });
+
       return { ...prev, items: nextItems };
     });
   };
+
+  const aggregationRowSelection: TableRowSelection<AggregationItemState> = {
+    selectedRowKeys: aggregationSelectedRowKeys,
+    onChange: handleAggregationSelectionChange,
+    getCheckboxProps: (record) => ({
+      disabled: record.status !== 'success' || !record.metrics,
+    }),
+  };
+
+  const resolveSortableNumber = (value: number | null | undefined): number => {
+    return typeof value === 'number' && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+  };
+
+  const buildMetricNumberSorter =
+    (selector: (metrics: BacktestAggregationMetrics) => number | null | undefined) =>
+    (a: AggregationItemState, b: AggregationItemState) => {
+      const aValue = resolveSortableNumber(a.metrics ? selector(a.metrics) : null);
+      const bValue = resolveSortableNumber(b.metrics ? selector(b.metrics) : null);
+      return aValue - bValue;
+    };
+
+  const buildMetricStringSorter =
+    (selector: (metrics: BacktestAggregationMetrics) => string | null | undefined) =>
+    (a: AggregationItemState, b: AggregationItemState) => {
+      const aValue = a.metrics ? (selector(a.metrics) ?? '') : '';
+      const bValue = b.metrics ? (selector(b.metrics) ?? '') : '';
+      return aValue.localeCompare(bValue, 'ru');
+    };
+
+  const aggregationColumns: ColumnsType<AggregationItemState> = [
+    {
+      title: 'Бэктест',
+      key: 'name',
+      sorter: (a, b) => {
+        const aName = a.metrics?.name ?? '';
+        const bName = b.metrics?.name ?? '';
+        return aName.localeCompare(bName, 'ru');
+      },
+      render: (_metrics, record) => (
+        <div>
+          <div>{record.metrics?.name ?? '—'}</div>
+          <div className="panel__description">
+            ID:{' '}
+            <a href={`https://veles.finance/cabinet/backtests/${record.id}`} target="_blank" rel="noreferrer noopener">
+              {record.id}
+            </a>
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Пара',
+      dataIndex: 'metrics',
+      key: 'symbol',
+      sorter: buildMetricStringSorter((metrics) => metrics.symbol),
+      render: (_metrics, record) => record.metrics?.symbol ?? '—',
+    },
+    {
+      title: 'Депозит',
+      dataIndex: 'metrics',
+      key: 'deposit',
+      sorter: buildMetricNumberSorter((metrics) => metrics.depositAmount ?? null),
+      render: (_metrics, record) => {
+        if (!record.metrics) {
+          return '—';
+        }
+        return formatAmount(record.metrics.depositAmount, record.metrics.depositCurrency ?? undefined);
+      },
+    },
+    {
+      title: 'Плечо',
+      dataIndex: 'metrics',
+      key: 'leverage',
+      sorter: buildMetricNumberSorter((metrics) => metrics.depositLeverage ?? null),
+      render: (_metrics, record) => {
+        if (!record.metrics) {
+          return '—';
+        }
+        return formatLeverage(record.metrics.depositLeverage);
+      },
+    },
+    {
+      title: 'Win rate',
+      dataIndex: 'metrics',
+      key: 'winRate',
+      sorter: buildMetricNumberSorter((metrics) => metrics.winRatePercent ?? null),
+      render: (_metrics, record) => {
+        if (!record.metrics) {
+          return '—';
+        }
+        return formatPercent(record.metrics.winRatePercent);
+      },
+    },
+    {
+      title: 'P&L',
+      dataIndex: 'metrics',
+      key: 'pnl',
+      sorter: buildMetricNumberSorter((metrics) => metrics.pnl),
+      render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.pnl) : '—'),
+    },
+    {
+      title: 'Net / день',
+      dataIndex: 'metrics',
+      key: 'netPerDay',
+      sorter: buildMetricNumberSorter((metrics) => metrics.avgNetPerDay),
+      render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.avgNetPerDay) : '—'),
+    },
+    {
+      title: 'Сделки',
+      dataIndex: 'metrics',
+      key: 'deals',
+      sorter: buildMetricNumberSorter((metrics) => metrics.totalDeals),
+      render: (_metrics, record) => (record.metrics ? formatAggregationInteger(record.metrics.totalDeals) : '—'),
+    },
+    {
+      title: 'Avg длит. (д)',
+      dataIndex: 'metrics',
+      key: 'avgDuration',
+      sorter: buildMetricNumberSorter((metrics) => metrics.avgTradeDurationDays),
+      render: (_metrics, record) =>
+        record.metrics ? `${formatAggregationValue(record.metrics.avgTradeDurationDays)} д` : '—',
+    },
+    {
+      title: 'Дни без торговли',
+      dataIndex: 'metrics',
+      key: 'downtime',
+      sorter: buildMetricNumberSorter((metrics) => metrics.downtimeDays),
+      render: (_metrics, record) => (record.metrics ? `${formatAggregationValue(record.metrics.downtimeDays)} д` : '—'),
+    },
+    {
+      title: 'Макс. просадка',
+      dataIndex: 'metrics',
+      key: 'maxDrawdown',
+      sorter: buildMetricNumberSorter((metrics) => metrics.maxDrawdown),
+      render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxDrawdown) : '—'),
+    },
+    {
+      title: 'Макс. МПУ',
+      dataIndex: 'metrics',
+      key: 'maxMPU',
+      sorter: buildMetricNumberSorter((metrics) => metrics.maxMPU),
+      render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxMPU) : '—'),
+    },
+    {
+      title: 'Макс. МПП',
+      dataIndex: 'metrics',
+      key: 'maxMPP',
+      sorter: buildMetricNumberSorter((metrics) => metrics.maxMPP),
+      render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxMPP) : '—'),
+    },
+  ];
+
+  const aggregationRowClassName = useCallback((record: AggregationItemState) => {
+    const classes = ['aggregation-table__row'];
+    const canToggle = record.status === 'success' && Boolean(record.metrics);
+    const isIncluded = canToggle && record.included;
+    if (!isIncluded) {
+      classes.push('aggregation-table__row--inactive');
+    }
+    return classes.join(' ');
+  }, []);
 
   return (
     <section className="page">
       <header className="page__header">
         <h1 className="page__title">Бэктесты</h1>
         <p className="page__subtitle">
-          Журнал завершённых бэктестов с ключевыми метриками, пагинацией и возможностью выбирать результаты для дальнейшей обработки.
+          Журнал завершённых бэктестов с ключевыми метриками, пагинацией и возможностью выбирать результаты для
+          дальнейшей обработки.
         </p>
       </header>
 
@@ -586,138 +1020,21 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
       <div className="panel">
         <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th className="table__checkbox">
-                  <input
-                    type="checkbox"
-                    className="checkbox"
-                    ref={selectAllRef}
-                    checked={allCurrentSelected}
-                    aria-label="Выбрать все на странице"
-                    onChange={(event) => toggleCurrentPageSelection(event.target.checked)}
-                    disabled={items.length === 0}
-                  />
-                </th>
-                <th>Название</th>
-                <th>Период</th>
-                <th>Средняя длит.</th>
-                <th>Биржа</th>
-                <th>Пара</th>
-                <th>Прибыль</th>
-                <th>Net / день</th>
-                <th>Сделки</th>
-                <th>Win rate</th>
-                <th>MFE / MAE</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={11}>
-                    <div className="loader">Загружаем данные…</div>
-                  </td>
-                </tr>
-              )}
-              {!loading && items.length === 0 && (
-                <tr>
-                  <td colSpan={11}>
-                    <div className="empty-state">Нет данных для отображения.</div>
-                  </td>
-                </tr>
-              )}
-              {!loading &&
-                items.map((item) => {
-                  const isChecked = selection.has(item.id);
-                  return (
-                    <tr key={item.id}>
-                      <td className="table__checkbox">
-                        <input
-                          type="checkbox"
-                          className="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSelection(item)}
-                          aria-label={`Выбрать бэктест ${item.name}`}
-                        />
-                      </td>
-                      <td>
-                        <div>{item.name}</div>
-                        <div className="panel__description">
-                          ID:{' '}
-                          <a
-                            href={`https://veles.finance/cabinet/backtests/${item.id}`}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                          >
-                            {item.id}
-                          </a>
-                        </div>
-                      </td>
-                      <td>
-                        <div>{new Date(item.from).toLocaleDateString()}</div>
-                        <div className="panel__description">до {new Date(item.to).toLocaleDateString()}</div>
-                      </td>
-                      <td>{durationFormatter(item.avgDuration)}</td>
-                      <td>{item.exchange}</td>
-                      <td>
-                        <div>{item.symbol}</div>
-                        <div className="panel__description">{item.algorithm}</div>
-                      </td>
-                      <td>
-                        <div>{formatAmount(item.profitQuote, item.quote)}</div>
-                        <div className="panel__description">Base: {formatAmount(item.profitBase, item.base)}</div>
-                      </td>
-                      <td>
-                        <div>{formatAmount(item.netQuote, item.quote)}</div>
-                        <div className="panel__description">в день: {formatAmount(item.netQuotePerDay, item.quote)}</div>
-                      </td>
-                      <td>
-                        <div>Всего: {item.totalDeals ?? '—'}</div>
-                        <div className="panel__description">P/L/B: {item.profits ?? 0}/{item.losses ?? 0}/{item.breakevens ?? 0}</div>
-                      </td>
-                      <td>
-                        <div>{formatPercent(item.winRateProfits)}</div>
-                        <div className="panel__description">Loss: {formatPercent(item.winRateLosses)}</div>
-                      </td>
-                      <td>
-                        <div>MFE: {formatPercent(item.mfePercent)}</div>
-                        <div className="panel__description">MAE: {formatPercent(item.maePercent)}</div>
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="pagination">
-          <div className="pagination__info">Страница {page + 1} из {Math.max(totalPages, 1)}</div>
-          <div className="pagination__controls">
-            <div className="pagination__page-size">
-              <label className="pagination__page-size-label" htmlFor="backtests-page-size">
-                На странице:
-              </label>
-              <select id="backtests-page-size" className="select" value={pageSize} onChange={handlePageSizeChange}>
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button type="button" className="button button--ghost" onClick={() => handlePageChange('prev')} disabled={page === 0 || loading}>
-              Назад
-            </button>
-            <button
-              type="button"
-              className="button"
-              onClick={() => handlePageChange('next')}
-              disabled={loading || totalPages === 0 || page + 1 >= totalPages}
-            >
-              Далее
-            </button>
-          </div>
+          <Table<BacktestStatistics>
+            columns={columns}
+            dataSource={items}
+            rowKey={(item) => item.id}
+            pagination={tablePagination}
+            rowSelection={rowSelection}
+            loading={loading}
+            onChange={handleTableChange}
+            scroll={{ x: 1400 }}
+            size="middle"
+            locale={{
+              emptyText: loading ? 'Загружаем данные…' : 'Нет данных для отображения.',
+            }}
+            sticky
+          />
         </div>
 
         {error && <div className="banner banner--warning">Ошибка загрузки: {error}</div>}
@@ -732,7 +1049,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
           <div className="empty-state">Выберите один или несколько бэктестов в таблице.</div>
         ) : (
           <ul className="panel__list--compact">
-            {Array.from(selection.values()).map((item) => (
+            {selection.map((item) => (
               <li key={item.id}>
                 <span className="chip">
                   <strong>{item.name}</strong>
@@ -749,9 +1066,23 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
                     {item.symbol}
                   </span>
                 </span>
-                <span style={{ marginLeft: 8, color: '#94a3b8' }}>{formatAmount(item.profitQuote, item.quote)}</span>
+                <span
+                  style={{
+                    marginLeft: 8,
+                    color: '#94a3b8',
+                  }}
+                >
+                  {formatAmount(item.profitQuote, item.quote)}
+                </span>
                 {item.netQuote !== null && (
-                  <span style={{ marginLeft: 8, color: '#94a3b8' }}>Net: {formatAmount(item.netQuote, item.quote)}</span>
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      color: '#94a3b8',
+                    }}
+                  >
+                    Net: {formatAmount(item.netQuote, item.quote)}
+                  </span>
                 )}
               </li>
             ))}
@@ -764,10 +1095,20 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
           <div>
             <h2 className="panel__title">Детальная статистика</h2>
             <p className="panel__description">
-              Соберите расширенную статистику выбранных бэктестов для анализа агрегированных метрик и одновременных позиций.
+              Соберите расширенную статистику выбранных бэктестов для анализа агрегированных метрик и одновременных
+              позиций.
             </p>
           </div>
           <div className="panel__actions">
+            <Dropdown
+              menu={botActionsMenu}
+              trigger={['click']}
+              disabled={aggregationState.running || includedActionableTargets.length === 0}
+            >
+              <button type="button" className="button button--ghost">
+                Действия <DownOutlined style={{ marginLeft: 6 }} />
+              </button>
+            </Dropdown>
             <button
               type="button"
               className="button button--ghost"
@@ -780,7 +1121,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
               type="button"
               className="button"
               onClick={runAggregation}
-              disabled={!extensionReady || aggregationState.running || selection.size === 0}
+              disabled={!extensionReady || aggregationState.running || totalSelected === 0}
             >
               {aggregationState.running ? 'Собираем…' : 'Собрать статистику'}
             </button>
@@ -811,9 +1152,44 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
             <div>Ошибки при сборе статистики:</div>
             <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
               {aggregationErrors.map((item) => (
-                <li key={item.id}>ID {item.id}: {item.error}</li>
+                <li key={item.id}>
+                  ID {item.id}: {item.error}
+                </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {botLimit !== null && totalSelected > 0 && (
+          <div className="aggregation-controls">
+            <label className="aggregation-controls__label" htmlFor="aggregation-bot-limit">
+              Блокировка по ботам
+              <InfoTooltip text="Максимальное количество ботов, которые могут вести сделки одновременно. Если все слоты заняты, новые сделки будут пропущены до освобождения места." />
+            </label>
+            <div className="aggregation-controls__inputs">
+              <input
+                id="aggregation-bot-limit"
+                type="range"
+                min={1}
+                max={totalSelected}
+                value={botLimit}
+                onChange={(event) => handleBotLimitChange(Number(event.target.value))}
+                className="aggregation-controls__slider"
+                disabled={limitDisabled}
+              />
+              <input
+                type="number"
+                min={1}
+                max={totalSelected}
+                value={botLimit}
+                onChange={(event) => handleBotLimitChange(Number(event.target.value))}
+                className="aggregation-controls__number"
+                disabled={limitDisabled}
+              />
+              <div className="aggregation-controls__value">
+                {botLimit} из {totalSelected}
+              </div>
+            </div>
           </div>
         )}
 
@@ -822,206 +1198,306 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
             className="aggregation-tabs"
             activeTabId={activeAggregationTab}
             onTabChange={setActiveAggregationTab}
-            items={[
-              {
-                id: 'metrics',
-                label: 'Показатели',
-                    content: (
-                  <div className="aggregation-summary">
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Бэктестов в статистике
-                        <InfoTooltip text="Количество бэктестов, включённых в расчёт агрегированных показателей." />
-                      </div>
-                      <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.totalSelected)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Суммарный P&amp;L
-                        <InfoTooltip text="Совокупный результат всех включённых бэктестов в выбранной валюте." />
-                      </div>
-                      <div className={resolveTrendClass(aggregationSummary.totalPnl)}>{formatSignedAmount(aggregationSummary.totalPnl)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Avg P&amp;L / сделка
-                        <InfoTooltip text="Средний результат одной сделки по всем включённым бэктестам." />
-                      </div>
-                      <div className={resolveTrendClass(aggregationSummary.avgPnlPerDeal)}>{formatSignedAmount(aggregationSummary.avgPnlPerDeal)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Avg P&amp;L / бэктест
-                        <InfoTooltip text="Средний итог на один бэктест в агрегированной выборке." />
-                      </div>
-                      <div className={resolveTrendClass(aggregationSummary.avgPnlPerBacktest)}>{formatSignedAmount(aggregationSummary.avgPnlPerBacktest)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Средняя эффективность (Net/день)
-                        <InfoTooltip text="Средний дневной результат по всем бэктестам, включённым в агрегированную статистику." />
-                      </div>
-                      <div className={resolveTrendClass(aggregationSummary.avgNetPerDay)}>{formatSignedAmount(aggregationSummary.avgNetPerDay)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Сделки (P/L/Σ)
-                        <InfoTooltip text="Количество сделок и распределение по прибыльным, убыточным и нейтральным операциям." />
-                      </div>
-                      <div className="aggregation-metric__value aggregation-metric__value--muted">
-                        {formatAggregationInteger(aggregationSummary.totalDeals)}
-                        <span className="aggregation-metric__sub">
-                          {' '}P:{formatAggregationInteger(aggregationSummary.totalProfits)} / L:{formatAggregationInteger(aggregationSummary.totalLosses)}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Средняя длительность сделки (дни)
-                        <InfoTooltip text="Средняя продолжительность сделок в днях среди включённых бэктестов." />
-                      </div>
-                      <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.avgTradeDurationDays)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Средняя макс. просадка
-                        <InfoTooltip text="Средняя максимальная просадка по каждому бэктесту; отрицательные значения указывают глубину падения." />
-                      </div>
-                      <div className={resolveTrendClass(-Math.abs(aggregationSummary.avgMaxDrawdown))}>{formatAggregationValue(aggregationSummary.avgMaxDrawdown)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Макс. суммарная просадка
-                        <InfoTooltip text="Максимальное падение совокупного портфеля, составленного из всех включённых бэктестов. Это максимальный зафиксированный убыток от вашего портфеля в какой то момент бектеста. Например при срабатывании нескольких стопов подряд." />
-                      </div>
-                      <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateDrawdown))}>{formatAggregationValue(aggregationSummary.aggregateDrawdown)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Макс. суммарное МПУ
-                        <InfoTooltip text="Максимальная одновременная просадка по всем бэктестам, учитывая пересечения сделок. Такое значение нереализованного P&L вы бы увидели в самый худший день за период бектестов" />
-                      </div>
-                      <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateMPU))}>{formatAggregationValue(aggregationSummary.aggregateMPU)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Макс. одновременно открытых
-                        <InfoTooltip text="Пиковое количество одновременных позиций в любой день по всем бэктестам." />
-                      </div>
-                      <div className="aggregation-metric__value">{formatAggregationInteger(aggregationSummary.maxConcurrent)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Среднее одновременно открытых
-                        <InfoTooltip text="Среднее число одновременных позиций за весь период наблюдений." />
-                      </div>
-                      <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.avgConcurrent)}</div>
-                    </div>
-                    <div className="aggregation-metric">
-                      <div className="aggregation-metric__label">
-                        Дни без торговли
-                        <InfoTooltip text="Количество дней без сделок в совокупном календаре выбранных бэктестов." />
-                      </div>
-                      <div className="aggregation-metric__value">{formatAggregationValue(aggregationSummary.noTradeDays)}</div>
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                id: 'portfolio-equity',
-                label: 'P&L портфеля',
-                content: (
-                  <div className="aggregation-equity">
-                    <div className="aggregation-equity__header">
-                      <h3 className="aggregation-equity__title">Суммарный P&L портфеля</h3>
-                      <p className="aggregation-equity__subtitle">
-                        Чёрная линия показывает изменение совокупного результата выбранных бэктестов.
-                      </p>
-                    </div>
-                    <div className="aggregation-equity__metrics">
+            items={
+              [
+                {
+                  id: 'metrics',
+                  label: 'Показатели',
+                  content: (
+                    <div className="aggregation-summary">
                       <div className="aggregation-metric">
                         <div className="aggregation-metric__label">
-                          Итоговый P&L
-                          <InfoTooltip text="Значение последней точки кривой портфельного P&L на основе выбранных бэктестов." />
+                          Бэктестов в статистике
+                          <InfoTooltip text="Количество бэктестов, включённых в расчёт агрегированных показателей." />
                         </div>
-                        <div className={portfolioFinalValue !== null ? resolveTrendClass(portfolioFinalValue) : 'aggregation-metric__value aggregation-metric__value--muted'}>
-                          {portfolioFinalValue !== null ? formatSignedAmount(portfolioFinalValue) : '—'}
+                        <div className="aggregation-metric__value">
+                          {formatAggregationInteger(aggregationSummary.totalSelected)}
                         </div>
-                      </div>
-                    </div>
-                    <div className="aggregation-equity__chart">
-                      {portfolioEquitySeries && portfolioEquitySeries.points.length > 0 ? (
-                        <PortfolioEquityChart
-                          series={portfolioEquitySeries}
-                          className="aggregation-equity__canvas"
-                        />
-                      ) : (
-                        <div className="aggregation-equity__empty">Нет данных для построения графика.</div>
-                      )}
-                    </div>
-                  </div>
-                ),
-              },
-              {
-                id: 'daily-concurrency',
-                label: 'Активные позиции',
-                content: (
-                  <div className="aggregation-concurrency">
-                    <div className="aggregation-concurrency__header">
-                      <h3 className="aggregation-concurrency__title">Активные позиции по дням</h3>
-                      <p className="aggregation-concurrency__subtitle">
-                        Распределение дневных пиков помогает подобрать лимит одновременно открытых позиций.
-                      </p>
-                    </div>
-                    <div className="aggregation-concurrency__metrics">
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Средний дневной пик
-                          <InfoTooltip text="Среднее значение дневного максимума активных позиций по совокупности бэктестов." />
-                        </div>
-                        <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.meanMax ?? 0)}</div>
                       </div>
                       <div className="aggregation-metric">
                         <div className="aggregation-metric__label">
-                          P75
-                          <InfoTooltip text="75-й перцентиль дневных максимумов активных позиций." />
+                          Суммарный P&amp;L
+                          <InfoTooltip text="Совокупный результат всех включённых бэктестов в выбранной валюте." />
                         </div>
-                        <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p75 ?? 0)}</div>
+                        <div className={resolveTrendClass(aggregationSummary.totalPnl)}>
+                          {formatSignedAmount(aggregationSummary.totalPnl)}
+                        </div>
                       </div>
                       <div className="aggregation-metric">
                         <div className="aggregation-metric__label">
-                          P90
-                          <InfoTooltip text="90-й перцентиль дневных максимумов активных позиций." />
+                          Avg P&amp;L / сделка
+                          <InfoTooltip text="Средний результат одной сделки по всем включённым бэктестам." />
                         </div>
-                        <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p90 ?? 0)}</div>
+                        <div className={resolveTrendClass(aggregationSummary.avgPnlPerDeal)}>
+                          {formatSignedAmount(aggregationSummary.avgPnlPerDeal)}
+                        </div>
                       </div>
                       <div className="aggregation-metric">
                         <div className="aggregation-metric__label">
-                          P95
-                          <InfoTooltip text="95-й перцентиль дневных максимумов активных позиций." />
+                          Avg P&amp;L / бэктест
+                          <InfoTooltip text="Средний итог на один бэктест в агрегированной выборке." />
                         </div>
-                        <div className="aggregation-metric__value">{formatAggregationValue(dailyConcurrencyStats?.p95 ?? 0)}</div>
+                        <div className={resolveTrendClass(aggregationSummary.avgPnlPerBacktest)}>
+                          {formatSignedAmount(aggregationSummary.avgPnlPerBacktest)}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Средняя эффективность (Net/день)
+                          <InfoTooltip text="Средний дневной результат по всем бэктестам, включённым в агрегированную статистику." />
+                        </div>
+                        <div className={resolveTrendClass(aggregationSummary.avgNetPerDay)}>
+                          {formatSignedAmount(aggregationSummary.avgNetPerDay)}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Сделки (P/L/Σ)
+                          <InfoTooltip text="Количество сделок и распределение по прибыльным, убыточным и нейтральным операциям." />
+                        </div>
+                        <div className="aggregation-metric__value aggregation-metric__value--muted">
+                          {formatAggregationInteger(aggregationSummary.totalDeals)}
+                          <span className="aggregation-metric__sub">
+                            {' '}
+                            P:
+                            {formatAggregationInteger(aggregationSummary.totalProfits)} / L:
+                            {formatAggregationInteger(aggregationSummary.totalLosses)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Средняя длительность сделки (дни)
+                          <InfoTooltip text="Средняя продолжительность сделок в днях среди включённых бэктестов." />
+                        </div>
+                        <div className="aggregation-metric__value">
+                          {formatAggregationValue(aggregationSummary.avgTradeDurationDays)}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Средняя макс. просадка
+                          <InfoTooltip text="Средняя максимальная просадка по каждому бэктесту; отрицательные значения указывают глубину падения." />
+                        </div>
+                        <div className={resolveTrendClass(-Math.abs(aggregationSummary.avgMaxDrawdown))}>
+                          {formatAggregationValue(aggregationSummary.avgMaxDrawdown)}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Макс. суммарная просадка
+                          <InfoTooltip text="Максимальное падение совокупного портфеля, составленного из всех включённых бэктестов. Это максимальный зафиксированный убыток от вашего портфеля в какой то момент бектеста. Например при срабатывании нескольких стопов подряд." />
+                        </div>
+                        <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateDrawdown))}>
+                          {formatAggregationValue(aggregationSummary.aggregateDrawdown)}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Макс. суммарное МПУ
+                          <InfoTooltip text="Максимальная одновременная просадка по всем бэктестам, учитывая пересечения сделок. Такое значение нереализованного P&L вы бы увидели в самый худший день за период бектестов" />
+                        </div>
+                        <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateMPU))}>
+                          {formatAggregationValue(aggregationSummary.aggregateMPU)}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Макс. одновременно открытых
+                          <InfoTooltip text="Пиковое количество одновременных позиций в любой день по всем бэктестам." />
+                        </div>
+                        <div className="aggregation-metric__value">
+                          {formatAggregationInteger(aggregationSummary.maxConcurrent)}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Среднее одновременно открытых
+                          <InfoTooltip text="Среднее число одновременных позиций за весь период наблюдений." />
+                        </div>
+                        <div className="aggregation-metric__value">
+                          {formatAggregationValue(aggregationSummary.avgConcurrent)}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
+                          Дни без торговли
+                          <InfoTooltip text="Количество дней без сделок в совокупном календаре выбранных бэктестов." />
+                        </div>
+                        <div className="aggregation-metric__value">
+                          {formatAggregationValue(aggregationSummary.noTradeDays)}
+                        </div>
                       </div>
                     </div>
-                    <div className="aggregation-concurrency__chart">
-                      {dailyConcurrencyRecords.length > 0 ? (
-                        <DailyConcurrencyChart
-                          records={dailyConcurrencyRecords}
-                          stats={dailyConcurrencyStats}
-                          className="aggregation-concurrency__canvas"
-                        />
-                      ) : (
-                        <div className="aggregation-concurrency__empty">Нет данных для построения графика.</div>
-                      )}
+                  ),
+                },
+                {
+                  id: 'portfolio-equity',
+                  label: 'P&L портфеля',
+                  content: (
+                    <div className="aggregation-equity">
+                      <div className="aggregation-equity__header">
+                        <h3 className="aggregation-equity__title">Суммарный P&L портфеля</h3>
+                        <p className="aggregation-equity__subtitle">
+                          Чёрная линия показывает изменение совокупного результата выбранных бэктестов.
+                        </p>
+                      </div>
+                      <div className="aggregation-equity__metrics">
+                        <div className="aggregation-metric">
+                          <div className="aggregation-metric__label">
+                            Итоговый P&L
+                            <InfoTooltip text="Значение последней точки кривой портфельного P&L на основе выбранных бэктестов." />
+                          </div>
+                          <div
+                            className={
+                              portfolioFinalValue !== null
+                                ? resolveTrendClass(portfolioFinalValue)
+                                : 'aggregation-metric__value aggregation-metric__value--muted'
+                            }
+                          >
+                            {portfolioFinalValue !== null ? formatSignedAmount(portfolioFinalValue) : '—'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="aggregation-equity__chart">
+                        {portfolioEquitySeries && portfolioEquitySeries.points.length > 0 ? (
+                          <PortfolioEquityChart series={portfolioEquitySeries} className="aggregation-equity__canvas" />
+                        ) : (
+                          <div className="aggregation-equity__empty">Нет данных для построения графика.</div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ),
-              },
-            ] satisfies TabItem[]}
+                  ),
+                },
+                {
+                  id: 'aggregate-risk',
+                  label: 'Суммарное МПУ',
+                  content: (
+                    <div className="aggregation-risk">
+                      <div className="aggregation-risk__header">
+                        <h3 className="aggregation-risk__title">Суммарное МПУ портфеля</h3>
+                        <p className="aggregation-risk__subtitle">
+                          График показывает, как менялась совокупная потенциальная просадка по выбранным бэктестам.
+                        </p>
+                      </div>
+                      <div className="aggregation-risk__metrics">
+                        <div className="aggregation-metric">
+                          <div className="aggregation-metric__label">
+                            Пиковое суммарное МПУ
+                            <InfoTooltip text="Максимальная совокупная просадка (MPU) в любой момент времени по всем выбранным бэктестам." />
+                          </div>
+                          <div
+                            className={
+                              aggregateRiskPeak !== null
+                                ? resolveTrendClass(-Math.abs(aggregateRiskPeak))
+                                : 'aggregation-metric__value aggregation-metric__value--muted'
+                            }
+                          >
+                            {aggregateRiskPeak !== null ? formatAggregationValue(aggregateRiskPeak) : '—'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="aggregation-risk__chart">
+                        {aggregateRiskSeries && aggregateRiskSeries.points.length > 0 ? (
+                          <AggregateRiskChart series={aggregateRiskSeries} className="aggregation-risk__canvas" />
+                        ) : (
+                          <div className="aggregation-risk__empty">Нет данных для построения графика.</div>
+                        )}
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  id: 'limit-impact',
+                  label: 'Влияние лимита',
+                  content: (
+                    <div className="aggregation-limit">
+                      <div className="aggregation-limit__header">
+                        <h3 className="aggregation-limit__title">Как влияет лимит по ботам</h3>
+                        <p className="aggregation-limit__subtitle">
+                          Сравниваем итоговый P&amp;L, максимальную совокупную просадку и МПУ при разных ограничениях на
+                          количество ботов.
+                        </p>
+                      </div>
+                      <div className="aggregation-limit__chart">
+                        {limitImpactPoints.length > 0 ? (
+                          <LimitImpactChart points={limitImpactPoints} className="aggregation-limit__canvas" />
+                        ) : (
+                          <div className="aggregation-limit__empty">Нет данных для построения графика.</div>
+                        )}
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  id: 'daily-concurrency',
+                  label: 'Активные позиции',
+                  content: (
+                    <div className="aggregation-concurrency">
+                      <div className="aggregation-concurrency__header">
+                        <h3 className="aggregation-concurrency__title">Активные позиции по дням</h3>
+                        <p className="aggregation-concurrency__subtitle">
+                          Распределение дневных пиков помогает подобрать лимит одновременно открытых позиций.
+                        </p>
+                      </div>
+                      <div className="aggregation-concurrency__metrics">
+                        <div className="aggregation-metric">
+                          <div className="aggregation-metric__label">
+                            Средний дневной пик
+                            <InfoTooltip text="Среднее значение дневного максимума активных позиций по совокупности бэктестов." />
+                          </div>
+                          <div className="aggregation-metric__value">
+                            {formatAggregationValue(dailyConcurrencyStats?.meanMax ?? 0)}
+                          </div>
+                        </div>
+                        <div className="aggregation-metric">
+                          <div className="aggregation-metric__label">
+                            P75
+                            <InfoTooltip text="75-й перцентиль дневных максимумов активных позиций." />
+                          </div>
+                          <div className="aggregation-metric__value">
+                            {formatAggregationValue(dailyConcurrencyStats?.p75 ?? 0)}
+                          </div>
+                        </div>
+                        <div className="aggregation-metric">
+                          <div className="aggregation-metric__label">
+                            P90
+                            <InfoTooltip text="90-й перцентиль дневных максимумов активных позиций." />
+                          </div>
+                          <div className="aggregation-metric__value">
+                            {formatAggregationValue(dailyConcurrencyStats?.p90 ?? 0)}
+                          </div>
+                        </div>
+                        <div className="aggregation-metric">
+                          <div className="aggregation-metric__label">
+                            P95
+                            <InfoTooltip text="95-й перцентиль дневных максимумов активных позиций." />
+                          </div>
+                          <div className="aggregation-metric__value">
+                            {formatAggregationValue(dailyConcurrencyStats?.p95 ?? 0)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="aggregation-concurrency__chart">
+                        {dailyConcurrencyRecords.length > 0 ? (
+                          <DailyConcurrencyChart
+                            records={dailyConcurrencyRecords}
+                            stats={dailyConcurrencyStats}
+                            className="aggregation-concurrency__canvas"
+                          />
+                        ) : (
+                          <div className="aggregation-concurrency__empty">Нет данных для построения графика.</div>
+                        )}
+                      </div>
+                    </div>
+                  ),
+                },
+              ] satisfies TabItem[]
+            }
           />
         ) : (
           <div className="empty-state">
-            {selection.size === 0
+            {totalSelected === 0
               ? 'Выберите минимум один бэктест, чтобы собрать статистику.'
               : aggregationState.running
                 ? 'Сбор статистики выполняется…'
@@ -1033,72 +1509,28 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
         {aggregationItems.length > 0 && (
           <div className="table-container">
-            <table className="table aggregation-table">
-              <thead>
-                <tr>
-                  <th className="aggregation-table__toggle">В статистике</th>
-                  <th>ID</th>
-                  <th>Название</th>
-                  <th>Пара</th>
-                  <th>P&amp;L</th>
-                  <th>Net / день</th>
-                  <th>Сделки</th>
-                  <th>Avg длит. (д)</th>
-                  <th>Дни без торговли</th>
-                  <th>Макс. просадка</th>
-                  <th>Макс. МПУ</th>
-                  <th>Макс. МПП</th>
-                  <th>Статус</th>
-                </tr>
-              </thead>
-              <tbody>
-                {aggregationItems.map((item) => {
-                  const metrics = item.metrics;
-                  const summary = selection.get(item.id);
-                  const canToggle = item.status === 'success' && Boolean(metrics);
-                  const isIncluded = canToggle && item.included;
-                  return (
-                    <tr key={item.id}>
-                      <td className="aggregation-table__toggle">
-                        <input
-                          type="checkbox"
-                          className="checkbox"
-                          checked={isIncluded}
-                          disabled={!canToggle}
-                          onChange={() => toggleAggregationInclude(item.id)}
-                          aria-label={`Включить статистику по бэктесту ${item.id}`}
-                        />
-                      </td>
-                      <td>
-                        <a
-                          href={`https://veles.finance/cabinet/backtests/${item.id}`}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                        >
-                          {item.id}
-                        </a>
-                      </td>
-                      <td>{metrics?.name ?? summary?.name ?? '—'}</td>
-                      <td>{metrics?.symbol ?? summary?.symbol ?? '—'}</td>
-                      <td>{metrics ? formatSignedAmount(metrics.pnl) : '—'}</td>
-                      <td>{metrics ? formatSignedAmount(metrics.avgNetPerDay) : '—'}</td>
-                      <td>{metrics ? formatAggregationInteger(metrics.totalDeals) : '—'}</td>
-                      <td>{metrics ? `${formatAggregationValue(metrics.avgTradeDurationDays)} д` : '—'}</td>
-                      <td>{metrics ? `${formatAggregationValue(metrics.downtimeDays)} д` : '—'}</td>
-                      <td>{metrics ? formatAggregationValue(metrics.maxDrawdown) : '—'}</td>
-                      <td>{metrics ? formatAggregationValue(metrics.maxMPU) : '—'}</td>
-                      <td>{metrics ? formatAggregationValue(metrics.maxMPP) : '—'}</td>
-                      <td>
-                        <span className={resolveStatusTone(item.status)}>{resolveStatusLabel(item)}</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <Table<AggregationItemState>
+              className="aggregation-table"
+              columns={aggregationColumns}
+              dataSource={aggregationItems}
+              rowKey={(item) => item.id}
+              rowSelection={aggregationRowSelection}
+              pagination={false}
+              size="small"
+              rowClassName={aggregationRowClassName}
+              loading={aggregationState.running}
+              locale={{ emptyText: 'Нет данных для отображения.' }}
+              scroll={{ x: true }}
+            />
           </div>
         )}
       </div>
+
+      <CreateBotsFromBacktestsModal
+        open={botCreationOpen}
+        targets={botCreationTargets}
+        onClose={handleBotCreationClose}
+      />
     </section>
   );
 };

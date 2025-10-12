@@ -1,10 +1,6 @@
+import type { BarSeriesOption, DataZoomComponentOption, EChartsOption, LineSeriesOption } from 'echarts';
 import type {
-  BarSeriesOption,
-  DataZoomComponentOption,
-  EChartsOption,
-  LineSeriesOption,
-} from 'echarts';
-import type {
+  AggregateRiskSeries,
   DailyConcurrencyRecord,
   DailyConcurrencyStats,
   PortfolioEquitySeries,
@@ -63,10 +59,7 @@ export interface DataZoomRange {
   end?: number;
 }
 
-const applyRange = (
-  base: DataZoomComponentOption,
-  range?: DataZoomRange,
-): DataZoomComponentOption => {
+const applyRange = (base: DataZoomComponentOption, range?: DataZoomRange): DataZoomComponentOption => {
   if (!range) {
     return base;
   }
@@ -218,12 +211,184 @@ export const createPortfolioEquityChartOptions = (
   } satisfies EChartsOption;
 };
 
+export const createAggregateRiskChartOptions = (series: AggregateRiskSeries, range?: DataZoomRange): EChartsOption => {
+  const riskData = series.points.map((point) => [point.time, point.value]);
+
+  const riskSeries: LineSeriesOption = {
+    name: 'Суммарное МПУ',
+    type: 'line',
+    showSymbol: false,
+    smooth: false,
+    lineStyle: {
+      color: 'rgba(220, 38, 38, 0.85)',
+      width: 1.6,
+    },
+    itemStyle: {
+      color: 'rgba(220, 38, 38, 0.85)',
+    },
+    areaStyle: {
+      color: 'rgba(220, 38, 38, 0.2)',
+    },
+    markLine: {
+      symbol: 'none',
+      lineStyle: {
+        color: '#94a3b8',
+        type: 'dashed',
+        width: 1,
+      },
+      label: {
+        formatter: '0',
+        color: '#475569',
+        backgroundColor: 'rgba(241, 245, 249, 0.8)',
+        padding: [2, 4],
+        borderRadius: 4,
+      },
+      data: [{ yAxis: 0 }],
+    },
+    emphasis: { focus: 'series' },
+    data: riskData,
+  } satisfies LineSeriesOption;
+
+  return {
+    animation: false,
+    grid: { left: 60, right: 24, top: 16, bottom: 92 },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      valueFormatter: (value) => formatNumber(Number(value)),
+      order: 'valueDesc',
+    },
+    legend: {
+      bottom: 0,
+      icon: 'roundRect',
+      data: ['Суммарное МПУ'],
+    },
+    xAxis: {
+      type: 'time',
+      axisLabel: {
+        formatter: (value) => dateTimeFormatter.format(new Date(value)),
+      },
+      splitLine: {
+        show: true,
+        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+      },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      axisLabel: {
+        formatter: (value) => formatNumber(Number(value)),
+      },
+      splitLine: {
+        show: true,
+        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+      },
+    },
+    dataZoom: buildDataZoomComponents(range),
+    series: [riskSeries],
+  } satisfies EChartsOption;
+};
+
+export interface LimitImpactPoint {
+  label: string;
+  totalPnl: number;
+  aggregateDrawdown: number;
+  aggregateMPU: number;
+}
+
+export const createLimitImpactChartOptions = (points: LimitImpactPoint[]): EChartsOption => {
+  const categories = points.map((point) => point.label);
+
+  const pnlSeries: LineSeriesOption = {
+    name: 'Суммарный P&L',
+    type: 'line',
+    smooth: false,
+    showSymbol: true,
+    symbolSize: 8,
+    lineStyle: {
+      color: '#1d4ed8',
+      width: 1.8,
+    },
+    itemStyle: {
+      color: '#1d4ed8',
+    },
+    emphasis: { focus: 'series' },
+    data: points.map((point) => point.totalPnl),
+  } satisfies LineSeriesOption;
+
+  const drawdownSeries: LineSeriesOption = {
+    name: 'Макс. суммарная просадка',
+    type: 'line',
+    smooth: false,
+    showSymbol: true,
+    symbolSize: 8,
+    lineStyle: {
+      color: '#dc2626',
+      width: 1.6,
+    },
+    itemStyle: {
+      color: '#dc2626',
+    },
+    emphasis: { focus: 'series' },
+    data: points.map((point) => point.aggregateDrawdown),
+  } satisfies LineSeriesOption;
+
+  const riskSeries: LineSeriesOption = {
+    name: 'Макс. суммарное МПУ',
+    type: 'line',
+    smooth: false,
+    showSymbol: true,
+    symbolSize: 8,
+    lineStyle: {
+      color: '#f97316',
+      width: 1.6,
+    },
+    itemStyle: {
+      color: '#f97316',
+    },
+    emphasis: { focus: 'series' },
+    data: points.map((point) => point.aggregateMPU),
+  } satisfies LineSeriesOption;
+
+  return {
+    animation: false,
+    grid: { left: 60, right: 24, top: 16, bottom: 76 },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      valueFormatter: (value) => formatNumber(Number(value)),
+      order: 'valueDesc',
+    },
+    legend: {
+      bottom: 0,
+      icon: 'roundRect',
+      data: ['Суммарный P&L', 'Макс. суммарная просадка', 'Макс. суммарное МПУ'],
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisLabel: {
+        formatter: (value) => `≤ ${value}`,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: (value) => formatNumber(Number(value)),
+      },
+      splitLine: {
+        show: true,
+        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+      },
+    },
+    series: [pnlSeries, drawdownSeries, riskSeries],
+  } satisfies EChartsOption;
+};
+
 type BarMarkLine = NonNullable<BarSeriesOption['markLine']>;
 type BarMarkLineData = NonNullable<BarMarkLine['data']>;
 
-const buildConcurrencyMarkLine = (
-  stats?: DailyConcurrencyStats,
-): BarSeriesOption['markLine'] => {
+const buildConcurrencyMarkLine = (stats?: DailyConcurrencyStats): BarSeriesOption['markLine'] => {
   if (!stats) {
     return undefined;
   }

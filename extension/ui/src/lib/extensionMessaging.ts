@@ -61,9 +61,17 @@ export const proxyHttpRequest = async <TBody = unknown>(
   return response;
 };
 
-export const pingConnection = async (): Promise<{ ok: boolean; error?: string; origin?: string | null }> => {
+export const pingConnection = async (): Promise<{
+  ok: boolean;
+  error?: string;
+  origin?: string | null;
+}> => {
   try {
-    const response = await sendRuntimeMessage<{ ok: boolean; error?: string; origin?: string | null }>({
+    const response = await sendRuntimeMessage<{
+      ok: boolean;
+      error?: string;
+      origin?: string | null;
+    }>({
       source: 'veles-ui',
       action: 'ping',
     });

@@ -1,6 +1,6 @@
-import type { ApiKey, ApiKeysListParams, ApiKeysListResponse } from '../types/apiKeys';
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
+import type { ApiKey, ApiKeysListParams, ApiKeysListResponse } from '../types/apiKeys';
 import { buildApiUrl } from './baseUrl';
 
 const API_KEYS_ENDPOINT = buildApiUrl('/api/api-keys');

@@ -242,7 +242,7 @@ const attemptReconnect = async () => {
       } else {
         updateConnectionStatus(false, response?.error ?? 'Нет ответа от контента');
       }
-    }
+    },
   );
 };
 
@@ -323,11 +323,11 @@ const dispatchToTab = (tabId, queueItem) => {
       }
 
       updateConnectionStatus(true);
-    }
+    },
   );
 };
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message || typeof message !== 'object') {
     return false;
   }
@@ -337,7 +337,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((tabId) => {
         if (!tabId) {
           updateConnectionStatus(false, 'Не найдена вкладка veles.finance');
-          sendResponse({ ok: false, error: 'Не найдена вкладка veles.finance' });
+          sendResponse({
+            ok: false,
+            error: 'Не найдена вкладка veles.finance',
+          });
           return;
         }
 
@@ -363,7 +366,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               updateConnectionStatus(false, errorText);
               sendResponse({ ok: false, error: errorText });
             }
-          }
+          },
         );
       })
       .catch((error) => {
@@ -457,7 +460,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     const url = changeInfo.url ?? tab.url;
     if (url && !isVelesUrl(url)) {
       if (activeRequest && activeRequest.tabId === tabId) {
-        retryActiveRequest('Вкладка покинула veles.finance', { incrementAttempt: false });
+        retryActiveRequest('Вкладка покинула veles.finance', {
+          incrementAttempt: false,
+        });
       }
       findActiveVelesTab()
         .then((foundTabId) => {

@@ -21,4 +21,3 @@ describe('backtestPreferences', () => {
     expect(readMultiCurrencyAssetList()).toBe('');
   });
 });
-

@@ -1,16 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
-import type { BotSummary } from '../types/bots';
 import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  type BotStrategy,
   buildBacktestPayload,
   composeSymbol,
   fetchBotStrategy,
   postBacktest,
   resolveQuoteCurrency,
-  type BotStrategy,
   type SymbolDescriptor,
 } from '../api/backtestRunner';
 import { useImportedBots } from '../context/ImportedBotsContext';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
+import type { BotSummary } from '../types/bots';
 
 export type BacktestVariant = 'single' | 'multiCurrency';
 
@@ -216,9 +225,10 @@ const applyNameTemplate = (template: string, botName: string, currency: string):
     .replace(/\{asset\}/gi, currency);
 };
 
-const wait = (ms: number) => new Promise<void>((resolve) => {
-  window.setTimeout(resolve, ms);
-});
+const wait = (ms: number) =>
+  new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 
 const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) => {
   const [formState, setFormState] = useState<BacktestFormState>(() => ({
@@ -297,32 +307,26 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, []);
 
-  const appendLog = useCallback(
-    (node: ReactNode, id?: string): string | null => {
-      if (!isActiveRef.current) {
-        return null;
-      }
-      const entryId = id ?? `log-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      setLogs((prev) => [...prev, { id: entryId, node }]);
-      return entryId;
-    },
-    [],
-  );
+  const appendLog = useCallback((node: ReactNode, id?: string): string | null => {
+    if (!isActiveRef.current) {
+      return null;
+    }
+    const entryId = id ?? `log-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setLogs((prev) => [...prev, { id: entryId, node }]);
+    return entryId;
+  }, []);
 
-  const replaceLog = useCallback(
-    (id: string, node: ReactNode) => {
-      if (!isActiveRef.current) {
-        return;
-      }
-      setLogs((prev) => {
-        const filtered = prev.filter((entry) => entry.id !== id);
-        return [...filtered, { id, node }];
-      });
-    },
-    [],
-  );
+  const replaceLog = useCallback((id: string, node: ReactNode) => {
+    if (!isActiveRef.current) {
+      return;
+    }
+    setLogs((prev) => {
+      const filtered = prev.filter((entry) => entry.id !== id);
+      return [...filtered, { id, node }];
+    });
+  }, []);
 
   const handlePresetClick = (months: number) => {
     const now = new Date();
@@ -438,7 +442,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           payload.variant === 'multiCurrency' ? payload.bots.length * assets.length : payload.bots.length;
 
         let completed = 0;
-        let launchedRequests = 0;
+        let _launchedRequests = 0;
 
         const updateProgress = () => {
           if (!isActiveRef.current) {
@@ -548,18 +552,19 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 });
                 const response = await postBacktest(body);
                 const backtestId = typeof response.id === 'number' ? response.id : '—';
-                const backtestUrl = typeof response.id === 'number'
-                  ? `https://veles.finance/cabinet/backtests/${response.id}`
-                  : null;
+                const backtestUrl =
+                  typeof response.id === 'number' ? `https://veles.finance/cabinet/backtests/${response.id}` : null;
                 const successNode = backtestUrl ? (
                   <>
-                    ✅ «{backtestName}» в очереди (ID: {' '}
+                    ✅ «{backtestName}» в очереди (ID:{' '}
                     <a href={backtestUrl} target="_blank" rel="noreferrer noopener">
                       {backtestId}
                     </a>
                     )
                   </>
-                ) : `✅ «${backtestName}» в очереди (ID: ${backtestId})`;
+                ) : (
+                  `✅ «${backtestName}» в очереди (ID: ${backtestId})`
+                );
                 if (pendingId) {
                   replaceLog(pendingId, successNode);
                 } else {
@@ -578,7 +583,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                   return;
                 }
               } finally {
-                launchedRequests += 1;
+                _launchedRequests += 1;
                 completed += 1;
                 updateProgress();
               }
@@ -620,33 +625,36 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
               });
               const response = await postBacktest(body);
               const backtestId = typeof response.id === 'number' ? response.id : '—';
-              const backtestUrl = typeof response.id === 'number'
-                ? `https://veles.finance/cabinet/backtests/${response.id}`
-                : null;
+              const backtestUrl =
+                typeof response.id === 'number' ? `https://veles.finance/cabinet/backtests/${response.id}` : null;
               if (logId) {
                 replaceLog(
                   logId,
                   backtestUrl ? (
                     <>
-                      ✅ «{backtestName}» в очереди (ID: {' '}
+                      ✅ «{backtestName}» в очереди (ID:{' '}
                       <a href={backtestUrl} target="_blank" rel="noreferrer noopener">
                         {backtestId}
                       </a>
                       )
                     </>
-                  ) : `✅ «${backtestName}» в очереди (ID: ${backtestId})`,
+                  ) : (
+                    `✅ «${backtestName}» в очереди (ID: ${backtestId})`
+                  ),
                 );
               } else {
                 appendLog(
                   backtestUrl ? (
                     <>
-                      ✅ «{backtestName}» в очереди (ID: {' '}
+                      ✅ «{backtestName}» в очереди (ID:{' '}
                       <a href={backtestUrl} target="_blank" rel="noreferrer noopener">
                         {backtestId}
                       </a>
                       )
                     </>
-                  ) : `✅ «${backtestName}» в очереди (ID: ${backtestId})`,
+                  ) : (
+                    `✅ «${backtestName}» в очереди (ID: ${backtestId})`
+                  ),
                 );
               }
             } catch (error) {
@@ -661,7 +669,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 return;
               }
             } finally {
-              launchedRequests += 1;
+              _launchedRequests += 1;
               completed += 1;
               updateProgress();
             }
@@ -696,7 +704,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
         }
       }
     },
-    [],
+    [appendLog, getStrategyById, replaceLog],
   );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -711,23 +719,24 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
     await runBacktests(payload);
   };
 
-  const placeholderExample = useMemo(
-    () => `Примеры: {bot_name}, {currency}`,
-    [],
-  );
+  const placeholderExample = useMemo(() => `Примеры: {bot_name}, {currency}`, []);
 
   return (
     <div className="modal">
       <div className="modal__overlay" role="presentation" />
       <div className="modal__content" role="dialog" aria-modal="true" aria-labelledby="backtest-modal-title">
         <header className="modal__header">
-          <h2 className="modal__title" id="backtest-modal-title">{title}</h2>
+          <h2 className="modal__title" id="backtest-modal-title">
+            {title}
+          </h2>
           <p className="modal__subtitle">Выбрано ботов: {selectedBots.length}</p>
         </header>
 
         <form className="modal__form" onSubmit={handleSubmit}>
           <div className="form-field">
-            <label className="form-label" htmlFor="backtest-name">Название бэктеста</label>
+            <label className="form-label" htmlFor="backtest-name">
+              Название бэктеста
+            </label>
             <input
               id="backtest-name"
               name="nameTemplate"
@@ -744,7 +753,9 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
           <div className="form-grid">
             <div className="form-field">
-              <label className="form-label" htmlFor="backtest-period-from">Дата начала</label>
+              <label className="form-label" htmlFor="backtest-period-from">
+                Дата начала
+              </label>
               <input
                 id="backtest-period-from"
                 name="periodFrom"
@@ -758,7 +769,9 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
             </div>
 
             <div className="form-field">
-              <label className="form-label" htmlFor="backtest-period-to">Дата окончания</label>
+              <label className="form-label" htmlFor="backtest-period-to">
+                Дата окончания
+              </label>
               <input
                 id="backtest-period-to"
                 name="periodTo"
@@ -789,7 +802,9 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
           <div className="form-grid">
             <div className="form-field">
-              <label className="form-label" htmlFor="maker-commission">Комиссия мейкера</label>
+              <label className="form-label" htmlFor="maker-commission">
+                Комиссия мейкера
+              </label>
               <input
                 id="maker-commission"
                 name="makerCommission"
@@ -804,7 +819,9 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
             </div>
 
             <div className="form-field">
-              <label className="form-label" htmlFor="taker-commission">Комиссия тейкера</label>
+              <label className="form-label" htmlFor="taker-commission">
+                Комиссия тейкера
+              </label>
               <input
                 id="taker-commission"
                 name="takerCommission"
@@ -844,7 +861,9 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
           {variant === 'multiCurrency' && (
             <div className="form-field">
-              <label className="form-label" htmlFor="asset-list">Список валют</label>
+              <label className="form-label" htmlFor="asset-list">
+                Список валют
+              </label>
               <textarea
                 id="asset-list"
                 name="assetList"

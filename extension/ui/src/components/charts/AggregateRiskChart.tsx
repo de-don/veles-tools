@@ -1,10 +1,10 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
-import type { PortfolioEquitySeries } from '../../lib/backtestAggregation';
-import { createPortfolioEquityChartOptions, type DataZoomRange } from '../../lib/chartOptions';
+import type { AggregateRiskSeries } from '../../lib/backtestAggregation';
+import { createAggregateRiskChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 
-interface PortfolioEquityChartProps {
-  series: PortfolioEquitySeries;
+interface AggregateRiskChartProps {
+  series: AggregateRiskSeries;
   className?: string;
   dataZoomRange?: DataZoomRange;
   onDataZoom?: (range: DataZoomRange) => void;
@@ -37,8 +37,8 @@ const extractRangeFromEvent = (event: DataZoomEventParams): DataZoomRange => {
   };
 };
 
-const PortfolioEquityChartComponent = ({ series, className, dataZoomRange, onDataZoom }: PortfolioEquityChartProps) => {
-  const option = useMemo(() => createPortfolioEquityChartOptions(series, dataZoomRange), [series, dataZoomRange]);
+const AggregateRiskChartComponent = ({ series, className, dataZoomRange, onDataZoom }: AggregateRiskChartProps) => {
+  const option = useMemo(() => createAggregateRiskChartOptions(series, dataZoomRange), [series, dataZoomRange]);
 
   const onEvents = useMemo(() => {
     if (!onDataZoom) {
@@ -66,4 +66,4 @@ const PortfolioEquityChartComponent = ({ series, className, dataZoomRange, onDat
   );
 };
 
-export const PortfolioEquityChart = memo(PortfolioEquityChartComponent);
+export const AggregateRiskChart = memo(AggregateRiskChartComponent);

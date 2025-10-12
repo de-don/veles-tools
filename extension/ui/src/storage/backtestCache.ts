@@ -1,5 +1,5 @@
-import { deleteIndexedDb, getObjectStore, openIndexedDb } from '../lib/indexedDb';
 import type { IndexedDbConfig } from '../lib/indexedDb';
+import { deleteIndexedDb, getObjectStore, openIndexedDb } from '../lib/indexedDb';
 import type { BacktestCycle, BacktestStatisticsDetail } from '../types/backtests';
 
 const DB_NAME = 'veles-backtests-cache';
@@ -49,7 +49,11 @@ const readDetailFromMemory = (id: number): BacktestStatisticsDetail | null => {
   return cached ? cached.detail : null;
 };
 
-const normalizeCycleParams = (params: { from?: string | null; to?: string | null; pageSize?: number }): NormalizedCyclesParams => {
+const normalizeCycleParams = (params: {
+  from?: string | null;
+  to?: string | null;
+  pageSize?: number;
+}): NormalizedCyclesParams => {
   const pageSize = Number.isFinite(params.pageSize) ? Math.max(Number(params.pageSize), 1) : 1;
   const from = params.from ?? null;
   const to = params.to ?? null;

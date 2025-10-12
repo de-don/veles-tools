@@ -1,14 +1,15 @@
-import { HashRouter, Route, Routes } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 import AppLayout, { type ConnectionStatus } from './components/AppLayout';
-import HomePage from './pages/HomePage';
-import BotsPage from './pages/BotsPage';
-import BacktestsPage from './pages/BacktestsPage';
-import ImportBotsPage from './pages/ImportBotsPage';
-import SettingsPage from './pages/SettingsPage';
-import ActiveDealsPage from './pages/ActiveDealsPage';
+import { ActiveDealsProvider } from './context/ActiveDealsContext';
 import { ImportedBotsProvider } from './context/ImportedBotsContext';
 import { isExtensionRuntime, pingConnection, readConnectionStatus, updateRequestDelay } from './lib/extensionMessaging';
+import ActiveDealsPage from './pages/ActiveDealsPage';
+import BacktestsPage from './pages/BacktestsPage';
+import BotsPage from './pages/BotsPage';
+import HomePage from './pages/HomePage';
+import ImportBotsPage from './pages/ImportBotsPage';
+import SettingsPage from './pages/SettingsPage';
 
 const DEFAULT_REQUEST_DELAY = 300;
 
@@ -35,7 +36,12 @@ const App = () => {
 
   const refreshConnectionStatus = useCallback(async () => {
     if (!extensionReady) {
-      setConnectionStatus({ ok: false, lastChecked: Date.now(), error: 'интерфейс вне расширения', origin: null });
+      setConnectionStatus({
+        ok: false,
+        lastChecked: Date.now(),
+        error: 'интерфейс вне расширения',
+        origin: null,
+      });
       return;
     }
 
@@ -110,7 +116,12 @@ const App = () => {
       ) {
         const payload = message as {
           action?: string;
-          payload?: { ok?: boolean; timestamp?: number; error?: string; origin?: string | null };
+          payload?: {
+            ok?: boolean;
+            timestamp?: number;
+            error?: string;
+            origin?: string | null;
+          };
         };
         if (payload.action === 'connection-status-update') {
           const snapshot = payload.payload ?? {};
@@ -146,21 +157,23 @@ const App = () => {
   return (
     <HashRouter>
       <ImportedBotsProvider>
-        <AppLayout
-          extensionReady={extensionReady}
-          connectionStatus={connectionStatus}
-          onPing={triggerPing}
-          onOpenVeles={openVelesTab}
-        >
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
-            <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
-            <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
-            <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Routes>
-        </AppLayout>
+        <ActiveDealsProvider extensionReady={extensionReady}>
+          <AppLayout
+            extensionReady={extensionReady}
+            connectionStatus={connectionStatus}
+            onPing={triggerPing}
+            onOpenVeles={openVelesTab}
+          >
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
+              <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
+              <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
+              <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </AppLayout>
+        </ActiveDealsProvider>
       </ImportedBotsProvider>
     </HashRouter>
   );

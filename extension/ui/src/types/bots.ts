@@ -47,6 +47,8 @@ export interface TradingBot {
   apiKey: number | null;
   substatus: string | null;
   symbols: string[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface BotSummary {
@@ -67,8 +69,8 @@ export interface BotProfitConfig {
 }
 
 export interface BotDepositConfig {
-  amount: number | null;
-  leverage: number | null;
+  amount: number | string | null;
+  leverage: number | string | null;
   marginType: string | null;
 }
 

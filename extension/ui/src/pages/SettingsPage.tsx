@@ -26,7 +26,9 @@ const SettingsPage = () => {
       return <div className="banner banner--success">Кэш очищен.</div>;
     }
     if (status === 'error') {
-      return <div className="banner banner--warning">Не удалось очистить кэш: {errorMessage ?? 'неизвестная ошибка'}.</div>;
+      return (
+        <div className="banner banner--warning">Не удалось очистить кэш: {errorMessage ?? 'неизвестная ошибка'}.</div>
+      );
     }
     return null;
   };

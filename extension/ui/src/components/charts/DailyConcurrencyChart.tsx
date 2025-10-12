@@ -1,5 +1,5 @@
-import { memo, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
+import { memo, useMemo } from 'react';
 import type { DailyConcurrencyRecord, DailyConcurrencyStats } from '../../lib/backtestAggregation';
 import { createDailyConcurrencyChartOptions } from '../../lib/chartOptions';
 
@@ -10,10 +10,7 @@ interface DailyConcurrencyChartProps {
 }
 
 const DailyConcurrencyChartComponent = ({ records, stats, className }: DailyConcurrencyChartProps) => {
-  const option = useMemo(
-    () => createDailyConcurrencyChartOptions(records, stats),
-    [records, stats],
-  );
+  const option = useMemo(() => createDailyConcurrencyChartOptions(records, stats), [records, stats]);
 
   return (
     <ReactECharts

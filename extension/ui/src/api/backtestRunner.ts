@@ -150,10 +150,7 @@ interface BuildPayloadOptions {
   overrideSymbol?: SymbolDescriptor;
 }
 
-export const buildBacktestPayload = (
-  baseStrategy: BotStrategy,
-  options: BuildPayloadOptions,
-): BotStrategy => {
+export const buildBacktestPayload = (baseStrategy: BotStrategy, options: BuildPayloadOptions): BotStrategy => {
   const payload = cloneStrategy(baseStrategy);
 
   payload.id = null;
