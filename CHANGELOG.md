@@ -1,3 +1,9 @@
+## [1.5.1](https://github.com/de-don/veles-tools/compare/v1.5.0...v1.5.1) (2025-10-12)
+
+### Bug Fixes
+
+* add bybit id ([4719165](https://github.com/de-don/veles-tools/commit/47191658929cebb461b024bdf5b97a903c51c918))
+
 ## [1.5.0](https://github.com/de-don/veles-tools/compare/v1.4.0...v1.5.0) (2025-10-12)
 
 ### Features
