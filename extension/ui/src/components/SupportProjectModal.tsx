@@ -34,7 +34,7 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
     try {
       await navigator.clipboard.writeText(WALLET_ADDRESS);
       setCopyStatus('copied');
-    } catch (error) {
+    } catch (_error) {
       setCopyStatus('error');
     }
   }, []);

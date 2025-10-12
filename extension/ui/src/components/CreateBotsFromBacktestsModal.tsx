@@ -90,7 +90,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
       .finally(() => {
         setApiKeysLoading(false);
       });
-  }, [open]);
+  }, [open, apiKeyId]);
 
   useEffect(() => {
     if (!open) {

@@ -100,7 +100,7 @@ const BulkActionModal = ({
     setIsRunning(false);
     setProcessedCount(0);
     setResult(null);
-  }, [open, totalBots]);
+  }, [open]);
 
   const percent = useMemo(() => buildPercent(processedCount, totalBots), [processedCount, totalBots]);
 

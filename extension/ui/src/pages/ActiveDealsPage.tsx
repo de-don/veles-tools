@@ -529,7 +529,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               </p>
             </div>
           </div>
-          <div className="chart-zoom-presets" role="group" aria-label="Интервалы отображения графика">
+          <fieldset className="chart-zoom-presets" aria-label="Интервалы отображения графика">
             {ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => {
               const isActive = zoomPreset === preset.key;
               return (
@@ -547,7 +547,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
             <button type="button" className="button button--ghost" onClick={handleResetHistory}>
               Сбросить данные
             </button>
-          </div>
+          </fieldset>
           <div className="aggregation-equity__chart">
             {pnlSeries.points.length === 0 ? (
               <div className="empty-state">Нет данных для отображения. Подождите первое обновление.</div>

@@ -1,8 +1,9 @@
 import { DownOutlined } from '@ant-design/icons';
 import type { MenuProps, TableProps } from 'antd';
-import { Dropdown, Switch, Table } from 'antd';
+import { Dropdown, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
+import type { Key } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktestCycles, fetchBacktestDetails, fetchBacktests } from '../api/backtests';
 import CreateBotsFromBacktestsModal, { type BacktestBotTarget } from '../components/CreateBotsFromBacktestsModal';
@@ -226,7 +227,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     return () => {
       isActive = false;
     };
-  }, [extensionReady, page, pageSize]);
+  }, [extensionReady, page, pageSize, sort]);
 
   useEffect(() => {
     if (!extensionReady) {
@@ -803,17 +804,50 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     });
   };
 
-  const toggleAggregationInclude = useCallback((id: number) => {
+  const aggregationSelectedRowKeys = useMemo(
+    () =>
+      aggregationItems
+        .filter((item) => item.status === 'success' && item.metrics && item.included)
+        .map((item) => item.id),
+    [aggregationItems],
+  );
+
+  const handleAggregationSelectionChange = (_newSelectedRowKeys: Key[], nextSelectedRows: AggregationItemState[]) => {
+    const selectedIds = new Set<number>(nextSelectedRows.map((r) => r.id));
+
     setAggregationState((prev) => {
-      const current = prev.items.get(id);
-      if (!current || current.status !== 'success' || !current.metrics) {
+      let changed = false;
+      const nextItems = new Map<number, AggregationItemState>();
+
+      prev.items.forEach((item, key) => {
+        if (item.status === 'success' && item.metrics) {
+          const shouldInclude = selectedIds.has(key);
+          if (item.included !== shouldInclude) {
+            changed = true;
+            nextItems.set(key, { ...item, included: shouldInclude });
+          } else {
+            nextItems.set(key, item);
+          }
+        } else {
+          nextItems.set(key, item);
+        }
+      });
+
+      if (!changed) {
         return prev;
       }
-      const nextItems = new Map(prev.items);
-      nextItems.set(id, { ...current, included: !current.included });
+
       return { ...prev, items: nextItems };
     });
-  }, []);
+  };
+
+  const aggregationRowSelection: TableRowSelection<AggregationItemState> = {
+    selectedRowKeys: aggregationSelectedRowKeys,
+    onChange: handleAggregationSelectionChange,
+    getCheckboxProps: (record) => ({
+      disabled: record.status !== 'success' || !record.metrics,
+    }),
+  };
 
   const resolveSortableNumber = (value: number | null | undefined): number => {
     return typeof value === 'number' && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
@@ -835,155 +869,128 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
       return aValue.localeCompare(bValue, 'ru');
     };
 
-  const aggregationColumns: ColumnsType<AggregationItemState> = useMemo(
-    () => [
-      {
-        title: 'Вкл.',
-        dataIndex: 'included',
-        key: 'included',
-        width: 70,
-        render: (_value, record) => {
-          const canToggle = record.status === 'success' && Boolean(record.metrics);
-          const isChecked = canToggle && record.included;
-          return (
-            <Switch
-              size="small"
-              checked={isChecked}
-              disabled={!canToggle}
-              onChange={() => toggleAggregationInclude(record.id)}
-              aria-label={`Включить статистику по бэктесту ${record.id}`}
-            />
-          );
-        },
+  const aggregationColumns: ColumnsType<AggregationItemState> = [
+    {
+      title: 'Бэктест',
+      key: 'name',
+      sorter: (a, b) => {
+        const aName = a.metrics?.name ?? '';
+        const bName = b.metrics?.name ?? '';
+        return aName.localeCompare(bName, 'ru');
       },
-      {
-        title: 'Бэктест',
-        key: 'name',
-        sorter: (a, b) => {
-          const aName = a.metrics?.name ?? '';
-          const bName = b.metrics?.name ?? '';
-          return aName.localeCompare(bName, 'ru');
-        },
-        render: (_metrics, record) => (
-          <div>
-            <div>{record.metrics?.name ?? '—'}</div>
-            <div className="panel__description">
-              ID:{' '}
-              <a
-                href={`https://veles.finance/cabinet/backtests/${record.id}`}
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                {record.id}
-              </a>
-            </div>
+      render: (_metrics, record) => (
+        <div>
+          <div>{record.metrics?.name ?? '—'}</div>
+          <div className="panel__description">
+            ID:{' '}
+            <a href={`https://veles.finance/cabinet/backtests/${record.id}`} target="_blank" rel="noreferrer noopener">
+              {record.id}
+            </a>
           </div>
-        ),
+        </div>
+      ),
+    },
+    {
+      title: 'Пара',
+      dataIndex: 'metrics',
+      key: 'symbol',
+      sorter: buildMetricStringSorter((metrics) => metrics.symbol),
+      render: (_metrics, record) => record.metrics?.symbol ?? '—',
+    },
+    {
+      title: 'Депозит',
+      dataIndex: 'metrics',
+      key: 'deposit',
+      sorter: buildMetricNumberSorter((metrics) => metrics.depositAmount ?? null),
+      render: (_metrics, record) => {
+        if (!record.metrics) {
+          return '—';
+        }
+        return formatAmount(record.metrics.depositAmount, record.metrics.depositCurrency ?? undefined);
       },
-      {
-        title: 'Пара',
-        dataIndex: 'metrics',
-        key: 'symbol',
-        sorter: buildMetricStringSorter((metrics) => metrics.symbol),
-        render: (_metrics, record) => record.metrics?.symbol ?? '—',
+    },
+    {
+      title: 'Плечо',
+      dataIndex: 'metrics',
+      key: 'leverage',
+      sorter: buildMetricNumberSorter((metrics) => metrics.depositLeverage ?? null),
+      render: (_metrics, record) => {
+        if (!record.metrics) {
+          return '—';
+        }
+        return formatLeverage(record.metrics.depositLeverage);
       },
-      {
-        title: 'Депозит',
-        dataIndex: 'metrics',
-        key: 'deposit',
-        sorter: buildMetricNumberSorter((metrics) => metrics.depositAmount ?? null),
-        render: (_metrics, record) => {
-          if (!record.metrics) {
-            return '—';
-          }
-          return formatAmount(record.metrics.depositAmount, record.metrics.depositCurrency ?? undefined);
-        },
+    },
+    {
+      title: 'Win rate',
+      dataIndex: 'metrics',
+      key: 'winRate',
+      sorter: buildMetricNumberSorter((metrics) => metrics.winRatePercent ?? null),
+      render: (_metrics, record) => {
+        if (!record.metrics) {
+          return '—';
+        }
+        return formatPercent(record.metrics.winRatePercent);
       },
-      {
-        title: 'Плечо',
-        dataIndex: 'metrics',
-        key: 'leverage',
-        sorter: buildMetricNumberSorter((metrics) => metrics.depositLeverage ?? null),
-        render: (_metrics, record) => {
-          if (!record.metrics) {
-            return '—';
-          }
-          return formatLeverage(record.metrics.depositLeverage);
-        },
-      },
-      {
-        title: 'Win rate',
-        dataIndex: 'metrics',
-        key: 'winRate',
-        sorter: buildMetricNumberSorter((metrics) => metrics.winRatePercent ?? null),
-        render: (_metrics, record) => {
-          if (!record.metrics) {
-            return '—';
-          }
-          return formatPercent(record.metrics.winRatePercent);
-        },
-      },
-      {
-        title: 'P&L',
-        dataIndex: 'metrics',
-        key: 'pnl',
-        sorter: buildMetricNumberSorter((metrics) => metrics.pnl),
-        render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.pnl) : '—'),
-      },
-      {
-        title: 'Net / день',
-        dataIndex: 'metrics',
-        key: 'netPerDay',
-        sorter: buildMetricNumberSorter((metrics) => metrics.avgNetPerDay),
-        render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.avgNetPerDay) : '—'),
-      },
-      {
-        title: 'Сделки',
-        dataIndex: 'metrics',
-        key: 'deals',
-        sorter: buildMetricNumberSorter((metrics) => metrics.totalDeals),
-        render: (_metrics, record) => (record.metrics ? formatAggregationInteger(record.metrics.totalDeals) : '—'),
-      },
-      {
-        title: 'Avg длит. (д)',
-        dataIndex: 'metrics',
-        key: 'avgDuration',
-        sorter: buildMetricNumberSorter((metrics) => metrics.avgTradeDurationDays),
-        render: (_metrics, record) =>
-          record.metrics ? `${formatAggregationValue(record.metrics.avgTradeDurationDays)} д` : '—',
-      },
-      {
-        title: 'Дни без торговли',
-        dataIndex: 'metrics',
-        key: 'downtime',
-        sorter: buildMetricNumberSorter((metrics) => metrics.downtimeDays),
-        render: (_metrics, record) =>
-          record.metrics ? `${formatAggregationValue(record.metrics.downtimeDays)} д` : '—',
-      },
-      {
-        title: 'Макс. просадка',
-        dataIndex: 'metrics',
-        key: 'maxDrawdown',
-        sorter: buildMetricNumberSorter((metrics) => metrics.maxDrawdown),
-        render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxDrawdown) : '—'),
-      },
-      {
-        title: 'Макс. МПУ',
-        dataIndex: 'metrics',
-        key: 'maxMPU',
-        sorter: buildMetricNumberSorter((metrics) => metrics.maxMPU),
-        render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxMPU) : '—'),
-      },
-      {
-        title: 'Макс. МПП',
-        dataIndex: 'metrics',
-        key: 'maxMPP',
-        sorter: buildMetricNumberSorter((metrics) => metrics.maxMPP),
-        render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxMPP) : '—'),
-      },
-    ],
-    [toggleAggregationInclude],
-  );
+    },
+    {
+      title: 'P&L',
+      dataIndex: 'metrics',
+      key: 'pnl',
+      sorter: buildMetricNumberSorter((metrics) => metrics.pnl),
+      render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.pnl) : '—'),
+    },
+    {
+      title: 'Net / день',
+      dataIndex: 'metrics',
+      key: 'netPerDay',
+      sorter: buildMetricNumberSorter((metrics) => metrics.avgNetPerDay),
+      render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.avgNetPerDay) : '—'),
+    },
+    {
+      title: 'Сделки',
+      dataIndex: 'metrics',
+      key: 'deals',
+      sorter: buildMetricNumberSorter((metrics) => metrics.totalDeals),
+      render: (_metrics, record) => (record.metrics ? formatAggregationInteger(record.metrics.totalDeals) : '—'),
+    },
+    {
+      title: 'Avg длит. (д)',
+      dataIndex: 'metrics',
+      key: 'avgDuration',
+      sorter: buildMetricNumberSorter((metrics) => metrics.avgTradeDurationDays),
+      render: (_metrics, record) =>
+        record.metrics ? `${formatAggregationValue(record.metrics.avgTradeDurationDays)} д` : '—',
+    },
+    {
+      title: 'Дни без торговли',
+      dataIndex: 'metrics',
+      key: 'downtime',
+      sorter: buildMetricNumberSorter((metrics) => metrics.downtimeDays),
+      render: (_metrics, record) => (record.metrics ? `${formatAggregationValue(record.metrics.downtimeDays)} д` : '—'),
+    },
+    {
+      title: 'Макс. просадка',
+      dataIndex: 'metrics',
+      key: 'maxDrawdown',
+      sorter: buildMetricNumberSorter((metrics) => metrics.maxDrawdown),
+      render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxDrawdown) : '—'),
+    },
+    {
+      title: 'Макс. МПУ',
+      dataIndex: 'metrics',
+      key: 'maxMPU',
+      sorter: buildMetricNumberSorter((metrics) => metrics.maxMPU),
+      render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxMPU) : '—'),
+    },
+    {
+      title: 'Макс. МПП',
+      dataIndex: 'metrics',
+      key: 'maxMPP',
+      sorter: buildMetricNumberSorter((metrics) => metrics.maxMPP),
+      render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.maxMPP) : '—'),
+    },
+  ];
 
   const aggregationRowClassName = useCallback((record: AggregationItemState) => {
     const classes = ['aggregation-table__row'];
@@ -1507,6 +1514,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
               columns={aggregationColumns}
               dataSource={aggregationItems}
               rowKey={(item) => item.id}
+              rowSelection={aggregationRowSelection}
               pagination={false}
               size="small"
               rowClassName={aggregationRowClassName}
