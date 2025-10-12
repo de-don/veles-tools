@@ -7,20 +7,21 @@ interface SupportProjectModalProps {
   onClose: () => void;
 }
 
-type SupportTab = 'crypto' | 'coffee';
+type SupportTab = 'bybit' | 'crypto' | 'coffee';
 
 const WALLET_ADDRESS = '0xDAa8A9B232A06616a0b0F9E91D6913A0b7555643';
 const DEBANK_URL = `https://debank.com/profile/${WALLET_ADDRESS}`;
 const BUY_ME_A_COFFEE_URL = 'https://www.buymeacoffee.com/dedon';
+const BYBIT_UID = '496946534';
 
 const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
-  const [activeTab, setActiveTab] = useState<SupportTab>('crypto');
+  const [activeTab, setActiveTab] = useState<SupportTab>('bybit');
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const addressInputId = useId();
 
   useEffect(() => {
     if (open) {
-      setActiveTab('crypto');
+      setActiveTab('bybit');
       setCopyStatus('idle');
     }
   }, [open]);
@@ -41,6 +42,18 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
 
   const tabItems: TabItem[] = useMemo<TabItem[]>(
     () => [
+      {
+        id: 'bybit',
+        label: 'ByBit перевод',
+        content: (
+          <div className="support-modal__tab">
+            <p>
+              Можно перевести любую сумму на ByBit по UID <strong>{BYBIT_UID}</strong>. Укажи его как получателя в
+              приложении или веб-версии биржи.
+            </p>
+          </div>
+        ),
+      },
       {
         id: 'crypto',
         label: 'Крипта',
@@ -105,7 +118,7 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
   );
 
   const handleTabChange = (nextTabId: string) => {
-    if (nextTabId === 'crypto' || nextTabId === 'coffee') {
+    if (nextTabId === 'bybit' || nextTabId === 'crypto' || nextTabId === 'coffee') {
       setActiveTab(nextTabId);
     }
   };
