@@ -4,8 +4,10 @@ import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type BotStrategy, fetchBotStrategy } from '../api/backtestRunner';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
+import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { type ImportedBotEntry, useImportedBots } from '../context/ImportedBotsContext';
 import { resolveBotStatusColor } from '../lib/statusColors';
+import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import { BOT_STATUS_VALUES, type BotStatus, type BotSummary } from '../types/bots';
 
 interface ImportBotsPageProps {
@@ -314,7 +316,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
     [appendLog, removeBot],
   );
 
-  const tableColumns: ColumnsType<ImportedBotEntry> = useMemo(
+  const baseTableColumns: ColumnsType<ImportedBotEntry> = useMemo(
     () => [
       {
         title: 'Название',
@@ -373,6 +375,18 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
     ],
     [handleRemove],
   );
+
+  const {
+    columns: tableColumns,
+    settings: tableColumnSettings,
+    moveColumn: moveTableColumn,
+    setColumnVisibility: setTableColumnVisibility,
+    reset: resetTableColumns,
+    hasCustomSettings: tableHasCustomSettings,
+  } = useTableColumnSettings<ImportedBotEntry>({
+    tableKey: 'import-bots-table',
+    columns: baseTableColumns,
+  });
 
   const tablePagination = useMemo(
     () => ({
@@ -484,6 +498,13 @@ https://veles.finance/share/q1w2e`}
             </p>
           </div>
           <div className="panel__actions">
+            <TableColumnSettingsButton
+              settings={tableColumnSettings}
+              moveColumn={moveTableColumn}
+              setColumnVisibility={setTableColumnVisibility}
+              reset={resetTableColumns}
+              hasCustomSettings={tableHasCustomSettings}
+            />
             <button type="button" className="button button--ghost" onClick={handleClearAll} disabled={!hasImportedBots}>
               Очистить список
             </button>

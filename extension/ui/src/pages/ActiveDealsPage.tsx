@@ -4,6 +4,7 @@ import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } f
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
+import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { ACTIVE_DEALS_REFRESH_INTERVALS, isActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
@@ -17,6 +18,7 @@ import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
 import type { DataZoomRange } from '../lib/chartOptions';
 import type { ActiveDeal } from '../types/activeDeals';
+import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
@@ -423,6 +425,18 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     [closingDealId, handleCloseDeal],
   );
 
+  const {
+    columns: visibleDealsColumns,
+    settings: dealsColumnSettings,
+    moveColumn: moveDealsColumn,
+    setColumnVisibility: setDealColumnVisibility,
+    reset: resetDealsColumns,
+    hasCustomSettings: dealsHasCustomSettings,
+  } = useTableColumnSettings<ActiveDealMetrics>({
+    tableKey: 'active-deals-table',
+    columns: dealsColumns,
+  });
+
   return (
     <>
       {messageContextHolder}
@@ -563,7 +577,20 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         </div>
 
         <div className="panel">
-          <h2 className="panel__title">Список сделок</h2>
+          <div className="panel__header">
+            <div>
+              <h2 className="panel__title">Список сделок</h2>
+            </div>
+            <div className="panel__actions">
+              <TableColumnSettingsButton
+                settings={dealsColumnSettings}
+                moveColumn={moveDealsColumn}
+                setColumnVisibility={setDealColumnVisibility}
+                reset={resetDealsColumns}
+                hasCustomSettings={dealsHasCustomSettings}
+              />
+            </div>
+          </div>
           {error && (
             <div className="form-error" style={{ marginBottom: 16 }}>
               {error}
@@ -571,7 +598,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           )}
           <div className="table-container">
             <Table<ActiveDealMetrics>
-              columns={dealsColumns}
+              columns={visibleDealsColumns}
               dataSource={positions}
               rowKey={(record) => record.deal.id}
               pagination={false}

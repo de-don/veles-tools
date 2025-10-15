@@ -7,7 +7,9 @@ import { fetchApiKeys } from '../api/apiKeys';
 import { fetchBots } from '../api/bots';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
 import BulkActionsMenu from '../components/bots/BulkActionsMenu';
+import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { resolveBotStatusColor } from '../lib/statusColors';
+import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import { parseSortDescriptor, serializeSortDescriptor } from '../lib/tableSort';
 import type { ApiKey } from '../types/apiKeys';
 import type { BotAlgorithm, BotStatus, BotSummary, BotsListFilters, BotsListResponse, TradingBot } from '../types/bots';
@@ -238,7 +240,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     [pageSize],
   );
 
-  const columns: ColumnsType<TradingBot> = useMemo(
+  const baseColumns: ColumnsType<TradingBot> = useMemo(
     () => [
       {
         title: 'Название',
@@ -303,6 +305,18 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     ],
     [currentSortDescriptor],
   );
+
+  const {
+    columns: visibleColumns,
+    settings: columnSettings,
+    moveColumn,
+    setColumnVisibility,
+    reset: resetColumnSettings,
+    hasCustomSettings,
+  } = useTableColumnSettings<TradingBot>({
+    tableKey: 'bots-table',
+    columns: baseColumns,
+  });
 
   const tablePagination = useMemo(
     () => ({
@@ -490,6 +504,15 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
               Сбросить фильтры
             </button>
           </div>
+          <div className="panel__filters-actions" style={{ marginLeft: 'auto' }}>
+            <TableColumnSettingsButton
+              settings={columnSettings}
+              moveColumn={moveColumn}
+              setColumnVisibility={setColumnVisibility}
+              reset={resetColumnSettings}
+              hasCustomSettings={hasCustomSettings}
+            />
+          </div>
         </form>
         {filtersError && (
           <div className="form-error" style={{ marginTop: 8 }}>
@@ -514,7 +537,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
 
         <div className="table-container">
           <Table<TradingBot>
-            columns={columns}
+            columns={visibleColumns}
             dataSource={bots}
             rowKey={(botRecord) => botRecord.id}
             rowSelection={rowSelection}
