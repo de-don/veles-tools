@@ -18,6 +18,7 @@ import {
   type SymbolDescriptor,
 } from '../api/backtestRunner';
 import { useImportedBots } from '../context/ImportedBotsContext';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
 import type { BotSummary } from '../types/bots';
 
@@ -243,7 +244,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
   const [runError, setRunError] = useState<string | null>(null);
   const isActiveRef = useRef(true);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
-  const initialTitleRef = useRef<string | null>(null);
+  const { getInitialTitle, setTitle: setDocumentTitle, resetTitle } = useDocumentTitle();
   const { getStrategyById } = useImportedBots();
 
   useEffect(() => {
@@ -278,30 +279,14 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
   };
 
   useEffect(() => {
-    if (initialTitleRef.current === null) {
-      initialTitleRef.current = document.title;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (initialTitleRef.current === null) {
-      initialTitleRef.current = document.title;
-    }
-
+    const baseTitle = getInitialTitle();
     if ((isRunning || isCompleted) && progress > 0) {
-      document.title = `(${progress}%) ${initialTitleRef.current}`;
-    } else if (initialTitleRef.current) {
-      document.title = initialTitleRef.current;
+      const nextTitle = baseTitle ? `${progress}% — ${baseTitle}` : `${progress}%`;
+      setDocumentTitle(nextTitle);
+    } else {
+      resetTitle();
     }
-  }, [isRunning, isCompleted, progress]);
-
-  useEffect(() => {
-    return () => {
-      if (initialTitleRef.current) {
-        document.title = initialTitleRef.current;
-      }
-    };
-  }, []);
+  }, [getInitialTitle, isRunning, isCompleted, progress, resetTitle, setDocumentTitle]);
 
   useEffect(() => {
     if (logContainerRef.current) {

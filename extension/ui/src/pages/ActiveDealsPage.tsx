@@ -17,8 +17,9 @@ import {
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
 import type { DataZoomRange } from '../lib/chartOptions';
-import type { ActiveDeal } from '../types/activeDeals';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
+import type { ActiveDeal } from '../types/activeDeals';
 
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
@@ -140,6 +141,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   const [messageApi, messageContextHolder] = message.useMessage();
 
   const seriesRef = useRef<PortfolioEquitySeries>(pnlSeries);
+  const { getInitialTitle, setTitle: setDocumentTitle } = useDocumentTitle();
 
   useEffect(() => {
     seriesRef.current = pnlSeries;
@@ -243,6 +245,13 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
       flat: aggregation.flatCount,
     };
   }, [dealsState.aggregation]);
+
+  useEffect(() => {
+    const baseTitle = getInitialTitle();
+    const pnlLabel = formatSignedCurrency(summary.pnl);
+    const nextTitle = baseTitle ? `${pnlLabel}$ — ${baseTitle}` : `${pnlLabel}$`;
+    setDocumentTitle(nextTitle);
+  }, [getInitialTitle, setDocumentTitle, summary.pnl]);
 
   const lastUpdatedLabel = useMemo(() => {
     if (!dealsState.lastUpdated) {
