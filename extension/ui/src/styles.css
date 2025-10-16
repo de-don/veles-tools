@@ -718,6 +718,18 @@ body {
   font-size: 13px;
 }
 
+.deal-sparkline-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+}
+
+.deal-sparkline-cell__empty {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
 .button--secondary {
   background-color: #0f172a;
   color: #fff;

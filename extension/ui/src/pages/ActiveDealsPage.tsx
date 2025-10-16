@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
+import { Sparkline } from '../components/charts/Sparkline';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
@@ -135,6 +136,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     setZoomRange,
     zoomPreset,
     setZoomPreset,
+    positionHistory,
   } = useActiveDeals();
 
   const [closingDealId, setClosingDealId] = useState<number | null>(null);
@@ -322,6 +324,27 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         ),
       },
       {
+        title: 'Динамика',
+        key: 'pnlTrend',
+        width: 140,
+        render: (_value, record) => {
+          const history = positionHistory.get(record.deal.id) ?? [];
+          if (history.length < 2) {
+            return (
+              <div className="deal-sparkline-cell">
+                <span className="deal-sparkline-cell__empty">—</span>
+              </div>
+            );
+          }
+          const points = history.map((item) => ({ time: item.time, value: item.pnl }));
+          return (
+            <div className="deal-sparkline-cell">
+              <Sparkline points={points} ariaLabel={`Динамика P&L сделки ${record.deal.id}`} />
+            </div>
+          );
+        },
+      },
+      {
         title: 'Вход / Текущая',
         dataIndex: 'averageEntryPrice',
         key: 'prices',
@@ -431,7 +454,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         },
       },
     ],
-    [closingDealId, handleCloseDeal],
+    [closingDealId, handleCloseDeal, positionHistory],
   );
 
   const {
