@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchApiKeys } from '../api/apiKeys';
 import type { CreateBotResponse } from '../api/bots';
 import { createBot, startBot } from '../api/bots';
+import { parseNumericInput } from '../lib/numericInput';
 import { type BotCreationOverrides, buildBotCreationPayload } from '../lib/backtestBotPayload';
 import type { ApiKey } from '../types/apiKeys';
 import type { BacktestStatisticsDetail } from '../types/backtests';
@@ -32,19 +33,6 @@ const MARGIN_OPTIONS: SelectProps<string>['options'] = [
   { value: 'CROSS', label: 'CROSS' },
   { value: 'ISOLATED', label: 'ISOLATED' },
 ];
-
-const sanitizeNumberInput = (value: string): string => {
-  return value.replace(/[\s_]/g, '').replace(',', '.');
-};
-
-const parseNumericInput = (value: string): number | null => {
-  const normalized = sanitizeNumberInput(value);
-  if (!normalized) {
-    return null;
-  }
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
-};
 
 const createLogId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 

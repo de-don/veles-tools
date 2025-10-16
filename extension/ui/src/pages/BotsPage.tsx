@@ -530,7 +530,12 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
               <button type="button" className="button button--secondary" onClick={() => openModal('multiCurrency')}>
                 Мультивалютный бэктест
               </button>
-              <BulkActionsMenu bots={selection} onReloadRequested={forceReloadBots} onSelectionUpdate={setSelection} />
+              <BulkActionsMenu
+                bots={selection}
+                apiKeys={apiKeys}
+                onReloadRequested={forceReloadBots}
+                onSelectionUpdate={setSelection}
+              />
             </div>
           </div>
         )}

@@ -1,14 +1,17 @@
-import { DeleteOutlined, DownOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
+import { CopyOutlined, DeleteOutlined, DownOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { Button, Dropdown, message } from 'antd';
 import type { ButtonProps } from 'antd/es/button';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { deleteBot, startBot, stopBot } from '../../api/bots';
+import type { ApiKey } from '../../types/apiKeys';
 import type { TradingBot } from '../../types/bots';
 import BulkActionModal, { type BulkActionCopy, type BulkActionResult } from './BulkActionModal';
+import CloneBotsModal from './CloneBotsModal';
 
 type BulkActionKey = 'delete' | 'stop' | 'start';
+type BulkMenuKey = BulkActionKey | 'clone';
 
 interface BulkActionConfig {
   key: BulkActionKey;
@@ -27,6 +30,7 @@ interface BulkActionConfig {
 
 interface BulkActionsMenuProps {
   bots: TradingBot[];
+  apiKeys: ApiKey[];
   onReloadRequested: () => void;
   onSelectionUpdate: Dispatch<SetStateAction<TradingBot[]>>;
 }
@@ -123,6 +127,11 @@ const buildMenuItems = (configs: Record<BulkActionKey, BulkActionConfig>): MenuP
     label: configs.stop.menuLabel,
     icon: configs.stop.menuIcon,
   },
+  {
+    key: 'clone',
+    label: 'Клонировать',
+    icon: <CopyOutlined />,
+  },
   { type: 'divider' },
   {
     key: configs.delete.key,
@@ -132,10 +141,12 @@ const buildMenuItems = (configs: Record<BulkActionKey, BulkActionConfig>): MenuP
   },
 ];
 
-const BulkActionsMenu = ({ bots, onReloadRequested, onSelectionUpdate }: BulkActionsMenuProps) => {
+const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }: BulkActionsMenuProps) => {
   const [messageApi, contextHolder] = message.useMessage();
   const [activeAction, setActiveAction] = useState<BulkActionKey | null>(null);
   const [botsSnapshot, setBotsSnapshot] = useState<TradingBot[]>([]);
+  const [isCloneModalOpen, setCloneModalOpen] = useState(false);
+  const [cloneBotsSnapshot, setCloneBotsSnapshot] = useState<TradingBot[]>([]);
 
   const menuItems = useMemo(() => buildMenuItems(ACTION_CONFIGS), []);
 
@@ -144,7 +155,13 @@ const BulkActionsMenu = ({ bots, onReloadRequested, onSelectionUpdate }: BulkAct
       if (bots.length === 0) {
         return;
       }
-      const actionKey = info.key as BulkActionKey;
+      const menuKey = info.key as BulkMenuKey;
+      if (menuKey === 'clone') {
+        setCloneBotsSnapshot([...bots]);
+        setCloneModalOpen(true);
+        return;
+      }
+      const actionKey = menuKey as BulkActionKey;
       setBotsSnapshot([...bots]);
       setActiveAction(actionKey);
     },
@@ -155,6 +172,29 @@ const BulkActionsMenu = ({ bots, onReloadRequested, onSelectionUpdate }: BulkAct
     setActiveAction(null);
     setBotsSnapshot([]);
   }, []);
+
+  const handleCloneClose = useCallback(() => {
+    setCloneModalOpen(false);
+    setCloneBotsSnapshot([]);
+  }, []);
+
+  const handleCloneCompleted = useCallback(
+    (summary: { succeeded: number; failed: number }) => {
+      const { succeeded, failed } = summary;
+      if (succeeded > 0 && failed === 0) {
+        messageApi.success(`Создано ботов: ${succeeded}.`);
+      } else if (succeeded > 0 && failed > 0) {
+        messageApi.warning(`Создано ${succeeded} из ${succeeded + failed}. Ошибок: ${failed}.`);
+      } else if (failed > 0) {
+        messageApi.error('Не удалось создать ботов.');
+      }
+
+      if (succeeded > 0) {
+        onReloadRequested();
+      }
+    },
+    [messageApi, onReloadRequested],
+  );
 
   const handleCompleted = useCallback(
     (action: BulkActionKey, result: BulkActionResult) => {
@@ -185,6 +225,7 @@ const BulkActionsMenu = ({ bots, onReloadRequested, onSelectionUpdate }: BulkAct
 
   const currentAction = activeAction ? ACTION_CONFIGS[activeAction] : null;
   const currentBots = activeAction ? botsSnapshot : [];
+  const cloneBots = isCloneModalOpen ? cloneBotsSnapshot : [];
 
   return (
     <>
@@ -203,6 +244,16 @@ const BulkActionsMenu = ({ bots, onReloadRequested, onSelectionUpdate }: BulkAct
           confirmButtonType={currentAction.confirmButtonType}
           onClose={handleModalClose}
           onCompleted={(result) => handleCompleted(activeAction, result)}
+        />
+      )}
+
+      {isCloneModalOpen && (
+        <CloneBotsModal
+          open
+          bots={cloneBots}
+          apiKeys={apiKeys}
+          onClose={handleCloneClose}
+          onCompleted={handleCloneCompleted}
         />
       )}
     </>

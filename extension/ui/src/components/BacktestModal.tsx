@@ -18,6 +18,8 @@ import {
   type SymbolDescriptor,
 } from '../api/backtestRunner';
 import { useImportedBots } from '../context/ImportedBotsContext';
+import { applyBotNameTemplate } from '../lib/nameTemplate';
+import { parseAssetList } from '../lib/assetList';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
 import type { BotSummary } from '../types/bots';
@@ -92,22 +94,6 @@ const parseCommission = (value: string): number => {
   const normalised = value.replace(',', '.');
   const parsed = Number(normalised);
   return Number.isFinite(parsed) ? parsed : NaN;
-};
-
-const parseAssetList = (value: string): string[] => {
-  const seen = new Set<string>();
-  return value
-    .split(/[\s,;]+/)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-    .filter((item) => {
-      const key = item.toUpperCase();
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
 };
 
 const normalizeDateInput = (value: string): { year: number; month: number; day: number } => {
@@ -217,13 +203,6 @@ const extractExistingSymbol = (strategy: BotStrategy): SymbolDescriptor | null =
   }
 
   return null;
-};
-
-const applyNameTemplate = (template: string, botName: string, currency: string): string => {
-  return template
-    .replace(/\{bot_name\}/gi, botName)
-    .replace(/\{currency\}/gi, currency)
-    .replace(/\{asset\}/gi, currency);
 };
 
 const wait = (ms: number) =>
@@ -514,7 +493,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
               const assetLabel = descriptor.display;
               const currencyLabel = descriptor.base;
-              const backtestName = applyNameTemplate(payload.nameTemplate, bot.name, currencyLabel);
+              const backtestName = applyBotNameTemplate(payload.nameTemplate, bot.name, currencyLabel);
               const pendingId = appendLog(
                 <>
                   ⏳ «{backtestName}» — {assetLabel}
@@ -588,7 +567,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
             const assetLabel = descriptor.display;
             const currencyLabel = descriptor.base;
-            const backtestName = applyNameTemplate(payload.nameTemplate, bot.name, currencyLabel);
+            const backtestName = applyBotNameTemplate(payload.nameTemplate, bot.name, currencyLabel);
             const logId = appendLog(
               <>
                 ⏳ «{backtestName}» — {assetLabel}
