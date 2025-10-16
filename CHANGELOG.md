@@ -1,3 +1,12 @@
+## [1.6.0](https://github.com/de-don/veles-tools/compare/v1.5.1...v1.6.0) (2025-10-16)
+
+### Features
+
+* add position history tracking and sparkline visualization for active deals ([55f7647](https://github.com/de-don/veles-tools/commit/55f76473c10436c4032977b25b50c71d8d5e6124))
+* add table column settings functionality across multiple pages ([63674da](https://github.com/de-don/veles-tools/commit/63674daf831b2f17a2af99fd93d1c7153210b346))
+* implement bot cloning functionality with customizable parameters ([6a0e05d](https://github.com/de-don/veles-tools/commit/6a0e05d7d7e77735bb088cd00d6e1f8e344e5810)), closes [#15](https://github.com/de-don/veles-tools/issues/15)
+* show curren P&L in tab title while on active deals page ([5f6f878](https://github.com/de-don/veles-tools/commit/5f6f8780449986a5a45921b7ca7dd2b60fa0beec)), closes [#12](https://github.com/de-don/veles-tools/issues/12)
+
 ## [1.5.1](https://github.com/de-don/veles-tools/compare/v1.5.0...v1.5.1) (2025-10-12)
 
 ### Bug Fixes
