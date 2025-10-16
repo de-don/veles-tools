@@ -13,6 +13,13 @@ import {
 import { ACTIVE_DEALS_DEFAULT_SIZE, fetchAllActiveDeals } from '../api/activeDeals';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
+import {
+  DEAL_HISTORY_LIMIT,
+  type DealHistoryMap,
+  type DealHistoryPoint,
+  mapHistoryToSnapshot,
+  snapshotHistoryToMap,
+} from '../lib/activeDealsHistory';
 import { type ActiveDealsRefreshInterval, DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
 import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
@@ -76,6 +83,7 @@ export interface ActiveDealsContextValue {
   setZoomRange: Dispatch<SetStateAction<DataZoomRange | undefined>>;
   zoomPreset: ActiveDealsZoomPreset;
   setZoomPreset: Dispatch<SetStateAction<ActiveDealsZoomPreset>>;
+  positionHistory: DealHistoryMap;
 }
 
 const ActiveDealsContext = createContext<ActiveDealsContextValue | undefined>(undefined);
@@ -96,6 +104,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   const [error, setError] = useState<string | null>(null);
   const [zoomRange, setZoomRange] = useState<DataZoomRange | undefined>(undefined);
   const [zoomPreset, setZoomPreset] = useState<ActiveDealsZoomPreset>('all');
+  const [positionHistory, setPositionHistory] = useState<DealHistoryMap>(() => new Map());
 
   const timerRef = useRef<number | null>(null);
   const initialLoadRef = useRef(false);
@@ -131,6 +140,27 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
         rawDeals: deals,
         totalDeals: deals.length,
         lastUpdated: timestamp,
+      });
+
+      setPositionHistory((prev) => {
+        const next = new Map(prev);
+        const activeIds = new Set<number>();
+        aggregation.positions.forEach((position) => {
+          const dealId = position.deal.id;
+          activeIds.add(dealId);
+          const previous = next.get(dealId) ?? [];
+          const appended = [...previous, { time: timestamp, pnl: position.pnl, pnlPercent: position.pnlPercent }];
+          const trimmed = appended.length > DEAL_HISTORY_LIMIT ? appended.slice(-DEAL_HISTORY_LIMIT) : appended;
+          next.set(dealId, trimmed);
+        });
+
+        Array.from(next.keys()).forEach((dealId) => {
+          if (!activeIds.has(dealId)) {
+            next.delete(dealId);
+          }
+        });
+
+        return next;
       });
     },
     [appendSeriesPoint],
@@ -171,6 +201,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       setPnlSeries(emptySeries);
       setZoomRange(undefined);
       setZoomPreset('all');
+      setPositionHistory(new Map());
       initialLoadRef.current = false;
       setLoading(false);
       setError(null);
@@ -207,6 +238,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     setDealsState(INITIAL_DEALS_STATE);
     setZoomRange(undefined);
     setZoomPreset('all');
+    setPositionHistory(new Map());
     initialLoadRef.current = false;
     setError(null);
   }, []);
@@ -229,6 +261,18 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     });
     setZoomRange(snapshot.zoomRange ?? undefined);
     setZoomPreset(snapshot.zoomPreset ?? 'all');
+    const restoredHistory = snapshotHistoryToMap(snapshot.positionHistory);
+    if (restoredHistory.size > 0) {
+      setPositionHistory(restoredHistory);
+    } else if (snapshot.lastUpdated) {
+      const history = new Map<number, DealHistoryPoint[]>();
+      aggregation.positions.forEach((position) => {
+        history.set(position.deal.id, [
+          { time: snapshot.lastUpdated ?? 0, pnl: position.pnl, pnlPercent: position.pnlPercent },
+        ]);
+      });
+      setPositionHistory(history);
+    }
     initialLoadRef.current = snapshot.deals.length > 0;
   }, []);
 
@@ -243,8 +287,9 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       zoomPreset,
       lastUpdated: dealsState.lastUpdated,
       storedAt: Date.now(),
+      positionHistory: mapHistoryToSnapshot(positionHistory),
     });
-  }, [dealsState.rawDeals, dealsState.lastUpdated, zoomRange, zoomPreset]);
+  }, [dealsState.rawDeals, dealsState.lastUpdated, zoomRange, zoomPreset, positionHistory]);
 
   const updateRefreshInterval = useCallback((interval: ActiveDealsRefreshInterval) => {
     setRefreshIntervalState(interval);
@@ -264,6 +309,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       setZoomRange,
       zoomPreset,
       setZoomPreset,
+      positionHistory,
     }),
     [
       dealsState,
@@ -276,6 +322,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       resetHistory,
       zoomRange,
       zoomPreset,
+      positionHistory,
     ],
   );
 

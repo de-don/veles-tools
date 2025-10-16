@@ -671,6 +671,65 @@ body {
   color: #1f2937;
 }
 
+.table-column-settings__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-column-settings__button--active {
+  box-shadow: inset 0 0 0 1px #1d4ed8;
+}
+
+.table-column-settings__content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 280px;
+}
+
+.table-column-settings__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.table-column-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.table-column-settings__row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-column-settings__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.table-column-settings__empty {
+  padding: 8px 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.deal-sparkline-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+}
+
+.deal-sparkline-cell__empty {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
 .button--secondary {
   background-color: #0f172a;
   color: #fff;

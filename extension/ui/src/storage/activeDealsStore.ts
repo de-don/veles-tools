@@ -1,3 +1,4 @@
+import { type DealHistorySnapshot, isDealHistorySnapshot } from '../lib/activeDealsHistory';
 import { type ActiveDealsZoomPreset, isActiveDealsZoomPreset } from '../lib/activeDealsZoom';
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import type { DataZoomRange } from '../lib/chartOptions';
@@ -73,6 +74,7 @@ export interface ActiveDealsSnapshot {
   zoomPreset?: ActiveDealsZoomPreset;
   lastUpdated: number | null;
   storedAt: number;
+  positionHistory?: DealHistorySnapshot;
 }
 
 const isActiveDealsSnapshot = (value: unknown): value is ActiveDealsSnapshot => {
@@ -86,6 +88,7 @@ const isActiveDealsSnapshot = (value: unknown): value is ActiveDealsSnapshot => 
     zoomPreset?: unknown;
     lastUpdated?: unknown;
     storedAt?: unknown;
+    positionHistory?: unknown;
   };
 
   if (!isActiveDealsArray(snapshot.deals)) {
@@ -104,6 +107,9 @@ const isActiveDealsSnapshot = (value: unknown): value is ActiveDealsSnapshot => 
     return false;
   }
   if (snapshot.zoomPreset !== undefined && !isActiveDealsZoomPreset(snapshot.zoomPreset)) {
+    return false;
+  }
+  if (snapshot.positionHistory !== undefined && !isDealHistorySnapshot(snapshot.positionHistory)) {
     return false;
   }
   return true;
@@ -133,6 +139,7 @@ export const writeActiveDealsSnapshot = (snapshot: ActiveDealsSnapshot): void =>
     zoomPreset: snapshot.zoomPreset,
     lastUpdated: snapshot.lastUpdated ?? null,
     storedAt: snapshot.storedAt,
+    positionHistory: snapshot.positionHistory,
   };
   writeStorageValue(STORAGE_KEY, JSON.stringify(payload));
 };

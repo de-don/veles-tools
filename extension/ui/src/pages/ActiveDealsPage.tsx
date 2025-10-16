@@ -3,7 +3,9 @@ import type { ColumnsType } from 'antd/es/table';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
+import { Sparkline } from '../components/charts/Sparkline';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
+import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { ACTIVE_DEALS_REFRESH_INTERVALS, isActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
@@ -16,6 +18,8 @@ import {
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
 import type { DataZoomRange } from '../lib/chartOptions';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { ActiveDeal } from '../types/activeDeals';
 
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
@@ -132,12 +136,14 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     setZoomRange,
     zoomPreset,
     setZoomPreset,
+    positionHistory,
   } = useActiveDeals();
 
   const [closingDealId, setClosingDealId] = useState<number | null>(null);
   const [messageApi, messageContextHolder] = message.useMessage();
 
   const seriesRef = useRef<PortfolioEquitySeries>(pnlSeries);
+  const { getInitialTitle, setTitle: setDocumentTitle } = useDocumentTitle();
 
   useEffect(() => {
     seriesRef.current = pnlSeries;
@@ -242,6 +248,13 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     };
   }, [dealsState.aggregation]);
 
+  useEffect(() => {
+    const baseTitle = getInitialTitle();
+    const pnlLabel = formatSignedCurrency(summary.pnl);
+    const nextTitle = baseTitle ? `${pnlLabel}$ — ${baseTitle}` : `${pnlLabel}$`;
+    setDocumentTitle(nextTitle);
+  }, [getInitialTitle, setDocumentTitle, summary.pnl]);
+
   const lastUpdatedLabel = useMemo(() => {
     if (!dealsState.lastUpdated) {
       return '—';
@@ -309,6 +322,27 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
             {formatPercent(record.pnlPercent)}
           </span>
         ),
+      },
+      {
+        title: 'Динамика',
+        key: 'pnlTrend',
+        width: 140,
+        render: (_value, record) => {
+          const history = positionHistory.get(record.deal.id) ?? [];
+          if (history.length < 2) {
+            return (
+              <div className="deal-sparkline-cell">
+                <span className="deal-sparkline-cell__empty">—</span>
+              </div>
+            );
+          }
+          const points = history.map((item) => ({ time: item.time, value: item.pnl }));
+          return (
+            <div className="deal-sparkline-cell">
+              <Sparkline points={points} ariaLabel={`Динамика P&L сделки ${record.deal.id}`} />
+            </div>
+          );
+        },
       },
       {
         title: 'Вход / Текущая',
@@ -420,8 +454,20 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         },
       },
     ],
-    [closingDealId, handleCloseDeal],
+    [closingDealId, handleCloseDeal, positionHistory],
   );
+
+  const {
+    columns: visibleDealsColumns,
+    settings: dealsColumnSettings,
+    moveColumn: moveDealsColumn,
+    setColumnVisibility: setDealColumnVisibility,
+    reset: resetDealsColumns,
+    hasCustomSettings: dealsHasCustomSettings,
+  } = useTableColumnSettings<ActiveDealMetrics>({
+    tableKey: 'active-deals-table',
+    columns: dealsColumns,
+  });
 
   return (
     <>
@@ -563,7 +609,20 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         </div>
 
         <div className="panel">
-          <h2 className="panel__title">Список сделок</h2>
+          <div className="panel__header">
+            <div>
+              <h2 className="panel__title">Список сделок</h2>
+            </div>
+            <div className="panel__actions">
+              <TableColumnSettingsButton
+                settings={dealsColumnSettings}
+                moveColumn={moveDealsColumn}
+                setColumnVisibility={setDealColumnVisibility}
+                reset={resetDealsColumns}
+                hasCustomSettings={dealsHasCustomSettings}
+              />
+            </div>
+          </div>
           {error && (
             <div className="form-error" style={{ marginBottom: 16 }}>
               {error}
@@ -571,7 +630,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           )}
           <div className="table-container">
             <Table<ActiveDealMetrics>
-              columns={dealsColumns}
+              columns={visibleDealsColumns}
               dataSource={positions}
               rowKey={(record) => record.deal.id}
               pagination={false}

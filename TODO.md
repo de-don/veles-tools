@@ -22,7 +22,6 @@
 
 - [ ] Symbols groups
 - [ ] Configurable tables
-- [ ] New design (shadcn/ui)
 
 
 ## FAQ
