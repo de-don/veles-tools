@@ -1,9 +1,9 @@
+import { type DealHistorySnapshot, isDealHistorySnapshot } from '../lib/activeDealsHistory';
 import { type ActiveDealsZoomPreset, isActiveDealsZoomPreset } from '../lib/activeDealsZoom';
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import type { DataZoomRange } from '../lib/chartOptions';
 import { readStorageValue, removeStorageValue, writeStorageValue } from '../lib/safeStorage';
 import type { ActiveDeal } from '../types/activeDeals';
-import { type DealHistorySnapshot, isDealHistorySnapshot } from '../lib/activeDealsHistory';
 
 const STORAGE_KEY = 'veles-active-deals-state-v1';
 

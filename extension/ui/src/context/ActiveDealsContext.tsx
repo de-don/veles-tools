@@ -13,6 +13,13 @@ import {
 import { ACTIVE_DEALS_DEFAULT_SIZE, fetchAllActiveDeals } from '../api/activeDeals';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
+import {
+  DEAL_HISTORY_LIMIT,
+  type DealHistoryMap,
+  type DealHistoryPoint,
+  mapHistoryToSnapshot,
+  snapshotHistoryToMap,
+} from '../lib/activeDealsHistory';
 import { type ActiveDealsRefreshInterval, DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
 import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
 import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
@@ -24,13 +31,6 @@ import {
   writeActiveDealsSnapshot,
 } from '../storage/activeDealsStore';
 import type { ActiveDeal } from '../types/activeDeals';
-import {
-  DEAL_HISTORY_LIMIT,
-  type DealHistoryMap,
-  type DealHistoryPoint,
-  mapHistoryToSnapshot,
-  snapshotHistoryToMap,
-} from '../lib/activeDealsHistory';
 
 interface DealsState {
   aggregation: ActiveDealsAggregation | null;
@@ -268,7 +268,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       const history = new Map<number, DealHistoryPoint[]>();
       aggregation.positions.forEach((position) => {
         history.set(position.deal.id, [
-          { time: snapshot.lastUpdated!, pnl: position.pnl, pnlPercent: position.pnlPercent },
+          { time: snapshot.lastUpdated ?? 0, pnl: position.pnl, pnlPercent: position.pnlPercent },
         ]);
       });
       setPositionHistory(history);
@@ -289,13 +289,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       storedAt: Date.now(),
       positionHistory: mapHistoryToSnapshot(positionHistory),
     });
-  }, [
-    dealsState.rawDeals,
-    dealsState.lastUpdated,
-    zoomRange,
-    zoomPreset,
-    positionHistory,
-  ]);
+  }, [dealsState.rawDeals, dealsState.lastUpdated, zoomRange, zoomPreset, positionHistory]);
 
   const updateRefreshInterval = useCallback((interval: ActiveDealsRefreshInterval) => {
     setRefreshIntervalState(interval);

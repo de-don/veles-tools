@@ -76,4 +76,3 @@ export const useDocumentTitle = (options?: UseDocumentTitleOptions): DocumentTit
     [setTitle, resetTitle, getInitialTitle],
   );
 };
-

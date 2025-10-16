@@ -29,14 +29,20 @@ export const isDealHistorySnapshot = (value: unknown): value is DealHistorySnaps
   return Object.values(record).every((entry) => Array.isArray(entry) && entry.every(isDealHistoryPoint));
 };
 
-export const clampDealHistory = (points: DealHistoryPoint[], limit: number = DEAL_HISTORY_LIMIT): DealHistoryPoint[] => {
+export const clampDealHistory = (
+  points: DealHistoryPoint[],
+  limit: number = DEAL_HISTORY_LIMIT,
+): DealHistoryPoint[] => {
   if (points.length <= limit) {
     return points;
   }
   return points.slice(-limit);
 };
 
-export const mapHistoryToSnapshot = (history: DealHistoryMap, limit: number = DEAL_HISTORY_LIMIT): DealHistorySnapshot => {
+export const mapHistoryToSnapshot = (
+  history: DealHistoryMap,
+  limit: number = DEAL_HISTORY_LIMIT,
+): DealHistorySnapshot => {
   const snapshot: DealHistorySnapshot = {};
   history.forEach((points, key) => {
     const normalizedKey = String(key);
@@ -62,4 +68,3 @@ export const snapshotHistoryToMap = (snapshot: DealHistorySnapshot | undefined):
   }
   return map;
 };
-

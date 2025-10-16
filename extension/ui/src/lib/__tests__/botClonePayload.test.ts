@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { buildBotClonePayload } from '../botClonePayload';
-import type { TradingBot, BotProfitConfig, BotDepositConfig, BotSettings } from '../../types/bots';
 import type { SymbolDescriptor } from '../../api/backtestRunner';
+import type { BotDepositConfig, BotProfitConfig, BotSettings, TradingBot } from '../../types/bots';
+import { buildBotClonePayload } from '../botClonePayload';
 
 const buildProfit = (overrides: Partial<BotProfitConfig> = {}): BotProfitConfig => ({
   type: overrides.type ?? 'PERCENT',
@@ -35,19 +35,18 @@ const buildBot = (overrides: Partial<TradingBot> = {}): TradingBot => ({
   deposit: overrides.deposit ?? buildDeposit(),
   stopLoss: overrides.stopLoss ?? null,
   settings: overrides.settings ?? buildSettings(),
-  conditions:
-    overrides.conditions ?? [
-      {
-        type: 'GT',
-        indicator: null,
-        interval: null,
-        basic: null,
-        value: null,
-        operation: null,
-        closed: null,
-        reverse: null,
-      },
-    ],
+  conditions: overrides.conditions ?? [
+    {
+      type: 'GT',
+      indicator: null,
+      interval: null,
+      basic: null,
+      value: null,
+      operation: null,
+      closed: null,
+      reverse: null,
+    },
+  ],
   status: overrides.status ?? 'RUNNING',
   apiKey: overrides.apiKey ?? 10,
   substatus: overrides.substatus ?? null,

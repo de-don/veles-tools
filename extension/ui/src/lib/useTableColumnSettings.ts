@@ -228,10 +228,11 @@ export const useTableColumnSettings = <RecordType extends object>(
     return preferences.order
       .filter((key) => columnsMap.has(key))
       .map((key, index) => {
-        const column = columnsMap.get(key)!;
+        const column = columnsMap.get(key);
+
         return {
           key,
-          title: resolveColumnTitle<RecordType>(column.title, key),
+          title: resolveColumnTitle<RecordType>(column?.title, key),
           visible: !hiddenSet.has(key),
           canMoveUp: index > 0,
           canMoveDown: index < preferences.order.length - 1,
@@ -245,7 +246,9 @@ export const useTableColumnSettings = <RecordType extends object>(
     const total = orderedKeys.length;
 
     return orderedKeys.map((key, index) => {
+      // biome-ignore lint/style/noNonNullAssertion: 100% exists
       const column = columnsMap.get(key)!;
+
       if (column.fixed === 'left' && index !== 0) {
         return { ...column, fixed: undefined };
       }

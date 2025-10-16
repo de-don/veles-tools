@@ -48,6 +48,10 @@ const percentageFormatter = new Intl.NumberFormat('ru-RU', {
   minimumFractionDigits: 0,
 });
 
+const resolveSortableNumber = (value: number | null | undefined): number => {
+  return typeof value === 'number' && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
+};
+
 const durationFormatter = (value: number | null) => {
   if (value === null) {
     return '—';
@@ -863,10 +867,6 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     }),
   };
 
-  const resolveSortableNumber = (value: number | null | undefined): number => {
-    return typeof value === 'number' && Number.isFinite(value) ? value : Number.NEGATIVE_INFINITY;
-  };
-
   const buildMetricNumberSorter = useCallback(
     (selector: (metrics: BacktestAggregationMetrics) => number | null | undefined) => {
       return (a: AggregationItemState, b: AggregationItemState) => {
@@ -904,7 +904,11 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
             <div>{record.metrics?.name ?? '—'}</div>
             <div className="panel__description">
               ID:{' '}
-              <a href={`https://veles.finance/cabinet/backtests/${record.id}`} target="_blank" rel="noreferrer noopener">
+              <a
+                href={`https://veles.finance/cabinet/backtests/${record.id}`}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
                 {record.id}
               </a>
             </div>
@@ -988,7 +992,8 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         dataIndex: 'metrics',
         key: 'downtime',
         sorter: buildMetricNumberSorter((metrics) => metrics.downtimeDays),
-        render: (_metrics, record) => (record.metrics ? `${formatAggregationValue(record.metrics.downtimeDays)} д` : '—'),
+        render: (_metrics, record) =>
+          record.metrics ? `${formatAggregationValue(record.metrics.downtimeDays)} д` : '—',
       },
       {
         title: 'Макс. просадка',

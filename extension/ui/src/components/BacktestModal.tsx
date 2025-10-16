@@ -18,8 +18,8 @@ import {
   type SymbolDescriptor,
 } from '../api/backtestRunner';
 import { useImportedBots } from '../context/ImportedBotsContext';
-import { applyBotNameTemplate } from '../lib/nameTemplate';
 import { parseAssetList } from '../lib/assetList';
+import { applyBotNameTemplate } from '../lib/nameTemplate';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
 import type { BotSummary } from '../types/bots';

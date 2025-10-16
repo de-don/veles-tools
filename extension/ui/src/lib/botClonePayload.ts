@@ -1,5 +1,5 @@
-import type { CreateBotPayload } from '../api/bots';
 import type { SymbolDescriptor } from '../api/backtestRunner';
+import type { CreateBotPayload } from '../api/bots';
 import type { BacktestDepositConfig, BacktestSettings } from '../types/backtests';
 import type { TradingBot } from '../types/bots';
 
@@ -70,8 +70,7 @@ export const buildBotClonePayload = (
   }
 
   const clonedConditions = bot.conditions ? deepClone(bot.conditions) : null;
-  const includePosition =
-    typeof bot.settings?.includePosition === 'boolean' ? bot.settings.includePosition : null;
+  const includePosition = typeof bot.settings?.includePosition === 'boolean' ? bot.settings.includePosition : null;
 
   const depositConfig: BacktestDepositConfig = {
     amount: overrides.depositAmount,

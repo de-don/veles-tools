@@ -62,4 +62,3 @@ export const writeTableColumnPreferences = (
 export const clearTableColumnPreferences = (tableId: string): void => {
   removeStorageValue(buildStorageKey(tableId));
 };
-

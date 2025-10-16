@@ -9,8 +9,8 @@ import BacktestModal, { type BacktestVariant } from '../components/BacktestModal
 import BulkActionsMenu from '../components/bots/BulkActionsMenu';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { resolveBotStatusColor } from '../lib/statusColors';
-import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import { parseSortDescriptor, serializeSortDescriptor } from '../lib/tableSort';
+import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { ApiKey } from '../types/apiKeys';
 import type { BotAlgorithm, BotStatus, BotSummary, BotsListFilters, BotsListResponse, TradingBot } from '../types/bots';
 import { BOT_STATUS_VALUES } from '../types/bots';

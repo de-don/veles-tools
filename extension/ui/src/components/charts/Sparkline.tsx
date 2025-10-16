@@ -23,11 +23,14 @@ const DEFAULT_STROKE_WIDTH = 1.5;
 const MARGIN_X = 4;
 const MARGIN_Y = 4;
 
-const resolveStrokeColor = (points: readonly SparklinePoint[], colors: {
-  positive: string;
-  negative: string;
-  neutral: string;
-}): string => {
+const resolveStrokeColor = (
+  points: readonly SparklinePoint[],
+  colors: {
+    positive: string;
+    negative: string;
+    neutral: string;
+  },
+): string => {
   if (points.length === 0) {
     return colors.neutral;
   }
@@ -88,9 +91,7 @@ export const Sparkline = ({
       const x = MARGIN_X + (chartWidth * index) / horizontalSpan;
       const normalized = (point.value - minValue) / verticalSpan;
       const y = height - MARGIN_Y - normalized * chartHeight;
-      const clampedY = Number.isFinite(y)
-        ? Math.min(height - MARGIN_Y, Math.max(MARGIN_Y, y))
-        : height / 2;
+      const clampedY = Number.isFinite(y) ? Math.min(height - MARGIN_Y, Math.max(MARGIN_Y, y)) : height / 2;
       const command = index === 0 ? 'M' : 'L';
       return `${command} ${x} ${clampedY}`;
     });

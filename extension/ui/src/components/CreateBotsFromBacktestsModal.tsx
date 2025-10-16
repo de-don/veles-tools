@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchApiKeys } from '../api/apiKeys';
 import type { CreateBotResponse } from '../api/bots';
 import { createBot, startBot } from '../api/bots';
-import { parseNumericInput } from '../lib/numericInput';
 import { type BotCreationOverrides, buildBotCreationPayload } from '../lib/backtestBotPayload';
+import { parseNumericInput } from '../lib/numericInput';
 import type { ApiKey } from '../types/apiKeys';
 import type { BacktestStatisticsDetail } from '../types/backtests';
 

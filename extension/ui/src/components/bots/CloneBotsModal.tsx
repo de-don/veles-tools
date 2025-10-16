@@ -2,12 +2,12 @@ import { Input, Modal, Select } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { composeSymbol } from '../../api/backtestRunner';
 import { createBot } from '../../api/bots';
-import type { ApiKey } from '../../types/apiKeys';
-import type { TradingBot } from '../../types/bots';
 import { parseAssetList } from '../../lib/assetList';
+import { buildBotClonePayload } from '../../lib/botClonePayload';
 import { applyBotNameTemplate } from '../../lib/nameTemplate';
 import { parseNumericInput } from '../../lib/numericInput';
-import { buildBotClonePayload } from '../../lib/botClonePayload';
+import type { ApiKey } from '../../types/apiKeys';
+import type { TradingBot } from '../../types/bots';
 
 interface CloneBotsModalProps {
   open: boolean;
@@ -279,7 +279,9 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
           disabled={isRunning}
           placeholder="Например {bot_name} {currency}"
         />
-        <span className="form-hint">Доступные плейсхолдеры: {'{bot_name}'}, {'{currency}'}</span>
+        <span className="form-hint">
+          Доступные плейсхолдеры: {'{bot_name}'}, {'{currency}'}
+        </span>
       </div>
 
       <div
