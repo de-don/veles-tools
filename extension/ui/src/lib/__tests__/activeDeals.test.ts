@@ -151,4 +151,82 @@ describe('activeDeals metrics', () => {
     expect(metrics.executedOrdersCount).toBe(2);
     expect(metrics.totalOrdersCount).toBe(2);
   });
+
+  it('uses ordersSize when provided for total orders count', () => {
+    const deal = createDeal({
+      ordersSize: 12,
+      orders: [
+        {
+          id: 1,
+          category: 'GRID',
+          type: 'MARKET',
+          side: 'BUY',
+          position: 1,
+          quantity: 1,
+          filled: 1,
+          price: 100,
+          status: 'EXECUTED',
+          publishedAt: '2025-10-07T00:00:00.000Z',
+          executedAt: '2025-10-07T00:00:00.000Z',
+        },
+        {
+          id: 2,
+          category: 'GRID',
+          type: 'LIMIT',
+          side: 'BUY',
+          position: 2,
+          quantity: 1,
+          filled: 1,
+          price: 95,
+          status: 'PENDING',
+          publishedAt: '2025-10-07T00:01:00.000Z',
+          executedAt: null,
+        },
+      ],
+    });
+
+    const metrics = computeDealMetrics(deal);
+
+    expect(metrics.executedOrdersCount).toBe(1);
+    expect(metrics.totalOrdersCount).toBe(12);
+  });
+
+  it('falls back to orders length when ordersSize is not a finite number', () => {
+    const deal = createDeal({
+      ordersSize: Number.NaN,
+      orders: [
+        {
+          id: 1,
+          category: 'GRID',
+          type: 'MARKET',
+          side: 'BUY',
+          position: 1,
+          quantity: 1,
+          filled: 1,
+          price: 100,
+          status: 'EXECUTED',
+          publishedAt: '2025-10-07T00:00:00.000Z',
+          executedAt: '2025-10-07T00:00:00.000Z',
+        },
+        {
+          id: 2,
+          category: 'GRID',
+          type: 'MARKET',
+          side: 'BUY',
+          position: 2,
+          quantity: 1,
+          filled: 1,
+          price: 90,
+          status: 'EXECUTED',
+          publishedAt: '2025-10-07T00:05:00.000Z',
+          executedAt: '2025-10-07T00:05:00.000Z',
+        },
+      ],
+    });
+
+    const metrics = computeDealMetrics(deal);
+
+    expect(metrics.executedOrdersCount).toBe(2);
+    expect(metrics.totalOrdersCount).toBe(2);
+  });
 });

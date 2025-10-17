@@ -86,7 +86,9 @@ export const computeDealMetrics = (deal: ActiveDeal): ActiveDealMetrics => {
   const exposure = absQuantity * averageEntryPrice;
   const pnl = absQuantity > 0 ? markPrice * netQuantity - totals.cost : 0;
   const pnlPercent = computePnlPercent(pnl, exposure);
-  const totalOrdersCount = deal.orders.length;
+  const resolvedOrdersSize = toFiniteNumber(deal.ordersSize);
+  const normalizedOrdersSize = resolvedOrdersSize !== null ? Math.max(0, Math.trunc(resolvedOrdersSize)) : null;
+  const totalOrdersCount = normalizedOrdersSize ?? deal.orders.length;
 
   return {
     deal,
