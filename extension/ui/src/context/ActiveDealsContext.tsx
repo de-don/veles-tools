@@ -14,12 +14,12 @@ import { ACTIVE_DEALS_DEFAULT_SIZE, fetchAllActiveDeals } from '../api/activeDea
 import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
 import {
+  clampDealHistory,
   DEAL_HISTORY_LIMIT,
   DEAL_HISTORY_WINDOW_MS,
-  clampDealHistory,
-  filterDealHistoryByTimeWindow,
   type DealHistoryMap,
   type DealHistoryPoint,
+  filterDealHistoryByTimeWindow,
   mapHistoryToSnapshot,
   snapshotHistoryToMap,
 } from '../lib/activeDealsHistory';
@@ -153,7 +153,10 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
           activeIds.add(dealId);
           const previous = next.get(dealId) ?? [];
           const filteredPrevious = filterDealHistoryByTimeWindow(previous, DEAL_HISTORY_WINDOW_MS, timestamp);
-          const appended = [...filteredPrevious, { time: timestamp, pnl: position.pnl, pnlPercent: position.pnlPercent }];
+          const appended = [
+            ...filteredPrevious,
+            { time: timestamp, pnl: position.pnl, pnlPercent: position.pnlPercent },
+          ];
           const trimmed = clampDealHistory(appended, DEAL_HISTORY_LIMIT);
           next.set(dealId, trimmed);
         });

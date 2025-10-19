@@ -113,6 +113,7 @@ describe('activeDeals metrics', () => {
 
   it('computes weighted entry price for multiple executed orders', () => {
     const deal = createDeal({
+      ordersSize: 2,
       orders: [
         {
           id: 1,

@@ -3,9 +3,10 @@ import type { MenuProps, TableProps } from 'antd';
 import { Dropdown, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
-import type { Key } from 'react';
+import type { ChangeEvent, Key } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktestCycles, fetchBacktestDetails, fetchBacktests } from '../api/backtests';
+import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktestCycles, fetchBacktestDetails } from '../api/backtests';
+import BacktestsFullSyncModal from '../components/backtests/BacktestsFullSyncModal';
 import CreateBotsFromBacktestsModal, { type BacktestBotTarget } from '../components/CreateBotsFromBacktestsModal';
 import { AggregateRiskChart } from '../components/charts/AggregateRiskChart';
 import { DailyConcurrencyChart } from '../components/charts/DailyConcurrencyChart';
@@ -14,22 +15,23 @@ import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart'
 import { InfoTooltip } from '../components/ui/InfoTooltip';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { type TabItem, Tabs } from '../components/ui/Tabs';
+import { BacktestsSyncProvider, useBacktestsSync } from '../context/BacktestsSyncContext';
 import {
   type AggregationSummary,
   type BacktestAggregationMetrics,
   computeBacktestMetrics,
   summarizeAggregations,
 } from '../lib/backtestAggregation';
+import type { BacktestsSyncSnapshot } from '../lib/backtestsSync';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import { readCachedBacktestCycles, readCachedBacktestDetail } from '../storage/backtestCache';
-import type { BacktestStatistics, BacktestStatisticsDetail, BacktestStatisticsListResponse } from '../types/backtests';
+import type { BacktestStatistics, BacktestStatisticsDetail } from '../types/backtests';
 
 interface BacktestsPageProps {
   extensionReady: boolean;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-const DEFAULT_SORT = 'date,desc';
 
 const logBacktestsError = (context: string, error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
@@ -127,6 +129,34 @@ const formatLossRate = (losses: number | null, wins: number | null) => {
   return formatPercent((lossesCount / completedDeals) * 100);
 };
 
+const buildStringSorter = (selector: (item: BacktestStatistics) => string | null | undefined) => {
+  return (a: BacktestStatistics, b: BacktestStatistics) => {
+    const aValue = selector(a) ?? '';
+    const bValue = selector(b) ?? '';
+    return aValue.localeCompare(bValue, 'ru', { sensitivity: 'base' });
+  };
+};
+
+const buildNumberSorter = (selector: (item: BacktestStatistics) => number | null | undefined) => {
+  return (a: BacktestStatistics, b: BacktestStatistics) => {
+    const aValue = resolveSortableNumber(selector(a));
+    const bValue = resolveSortableNumber(selector(b));
+    return aValue - bValue;
+  };
+};
+
+const buildDateSorter = (selector: (item: BacktestStatistics) => string | null | undefined) => {
+  return (a: BacktestStatistics, b: BacktestStatistics) => {
+    const aDate = selector(a);
+    const bDate = selector(b);
+    const aTime = aDate ? Date.parse(aDate) : Number.NaN;
+    const bTime = bDate ? Date.parse(bDate) : Number.NaN;
+    const safeATime = Number.isNaN(aTime) ? Number.NEGATIVE_INFINITY : aTime;
+    const safeBTime = Number.isNaN(bTime) ? Number.NEGATIVE_INFINITY : bTime;
+    return safeATime - safeBTime;
+  };
+};
+
 type AggregationStatus = 'idle' | 'loading' | 'success' | 'error';
 
 interface AggregationItemState {
@@ -180,14 +210,111 @@ const formatAggregationInteger = (value: number): string => {
   return aggregationIntegerFormatter.format(value);
 };
 
-const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
+const formatCountValue = (value: number | null | undefined): string => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return '—';
+  }
+  return aggregationIntegerFormatter.format(value);
+};
+
+const describeSyncStatus = (snapshot: BacktestsSyncSnapshot | null, isRunning: boolean): string => {
+  if (!snapshot) {
+    return 'Синхронизация ещё не запускалась.';
+  }
+  if (isRunning || snapshot.status === 'running') {
+    return 'Синхронизация выполняется.';
+  }
+  if (snapshot.status === 'success') {
+    return 'Синхронизация завершена.';
+  }
+  if (snapshot.status === 'cancelled') {
+    return 'Синхронизация прервана пользователем.';
+  }
+  if (snapshot.status === 'error') {
+    return `Синхронизация завершилась с ошибкой: ${snapshot.error ?? 'неизвестная ошибка'}.`;
+  }
+  return 'Состояние синхронизации неизвестно.';
+};
+
+const describeStopReason = (snapshot: BacktestsSyncSnapshot | null): string | null => {
+  if (!snapshot?.stopReason) {
+    return null;
+  }
+  switch (snapshot.stopReason) {
+    case 'existing':
+      return 'Обнаружены уже синхронизированные бэктесты — более ранние записи не запрашиваются.';
+    case 'exhausted':
+      return 'Загружена вся доступная история бэктестов.';
+    case 'no-data':
+      return 'На сервере не найдено новых бэктестов.';
+    default:
+      return null;
+  }
+};
+
+const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
+  const {
+    backtests,
+    backtestsLoading,
+    localCount,
+    oldestLocalDate,
+    syncSnapshot,
+    isSyncRunning,
+    startSync,
+    remoteTotal,
+    remoteLoading,
+    remoteError,
+    refreshRemoteTotal,
+  } = useBacktestsSync();
+
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
-  const sort = DEFAULT_SORT;
-  const [data, setData] = useState<BacktestStatisticsListResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selection, setSelection] = useState<BacktestStatistics[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [fullSyncModalOpen, setFullSyncModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const backtestsById = useMemo(() => {
+    const map = new Map<number, BacktestStatistics>();
+    backtests.forEach((item) => {
+      map.set(item.id, item);
+    });
+    return map;
+  }, [backtests]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => backtestsById.has(id));
+      if (next.length === prev.length) {
+        return prev;
+      }
+      return next;
+    });
+  }, [backtestsById]);
+
+  const selectedBacktests = useMemo(() => {
+    return selectedIds.map((id) => backtestsById.get(id)).filter((item): item is BacktestStatistics => Boolean(item));
+  }, [backtestsById, selectedIds]);
+
+  const filteredBacktests = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (query.length === 0) {
+      return backtests;
+    }
+    return backtests.filter((item) => item.name.toLowerCase().includes(query));
+  }, [backtests, searchTerm]);
+
+  useEffect(() => {
+    const maxPage = Math.max(Math.ceil(filteredBacktests.length / pageSize) - 1, 0);
+    if (page > maxPage) {
+      setPage(maxPage);
+    }
+  }, [filteredBacktests.length, page, pageSize]);
+
+  useEffect(() => {
+    void searchTerm;
+    setPage(0);
+  }, [searchTerm]);
+
   const [aggregationState, setAggregationState] = useState<AggregationState>({
     items: new Map(),
     running: false,
@@ -200,44 +327,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
   useEffect(() => {
     if (!extensionReady) {
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    let isActive = true;
-    setLoading(true);
-    setError(null);
-
-    fetchBacktests({ page, size: pageSize, sort })
-      .then((response) => {
-        if (!isActive) {
-          return;
-        }
-        setData(response);
-      })
-      .catch((requestError: unknown) => {
-        if (!isActive) {
-          return;
-        }
-        const message = logBacktestsError('Не удалось загрузить список бэктестов', requestError);
-        setError(message);
-      })
-      .finally(() => {
-        if (isActive) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [extensionReady, page, pageSize, sort]);
-
-  useEffect(() => {
-    if (!extensionReady) {
-      setSelection([]);
+      setSelectedIds([]);
       setAggregationState({
         items: new Map(),
         running: false,
@@ -248,9 +338,8 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     }
   }, [extensionReady]);
 
-  const items = data?.content ?? [];
-  const totalElements = data?.totalElements ?? items.length;
-  const totalSelected = selection.length;
+  const totalElements = filteredBacktests.length;
+  const totalSelected = selectedBacktests.length;
 
   useEffect(() => {
     if (totalSelected === 0) {
@@ -290,16 +379,47 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     [totalSelected],
   );
 
-  const selectedRowKeys = useMemo(() => selection.map((s) => s.id), [selection]);
+  const selectedRowKeys = selectedIds;
 
   const rowSelection: TableRowSelection<BacktestStatistics> = {
     selectedRowKeys,
     type: 'checkbox',
     preserveSelectedRowKeys: true,
-    onChange: (_nextSelectedRowKeys, nextSelectedRows) => {
-      setSelection(nextSelectedRows);
+    onChange: (nextSelectedRowKeys) => {
+      setSelectedIds(nextSelectedRowKeys.map((key) => Number(key)));
     },
   };
+
+  const syncBaselineTotal = syncSnapshot?.totalRemote ?? remoteTotal;
+  const syncProgressPercent = useMemo(() => {
+    if (!syncBaselineTotal || syncBaselineTotal <= 0) {
+      return null;
+    }
+    if (localCount <= 0) {
+      return 0;
+    }
+    const percent = Math.round((localCount / syncBaselineTotal) * 100);
+    return Math.min(Math.max(percent, 0), 100);
+  }, [localCount, syncBaselineTotal]);
+
+  const syncStatusMessage = useMemo(
+    () => describeSyncStatus(syncSnapshot, isSyncRunning),
+    [syncSnapshot, isSyncRunning],
+  );
+  const syncStopReasonMessage = useMemo(() => describeStopReason(syncSnapshot), [syncSnapshot]);
+  const oldestLocalDateFormatted = formatDateRu(oldestLocalDate);
+
+  const triggerIncrementalSync = useCallback(() => {
+    void startSync({ mode: 'incremental', clearBefore: false });
+  }, [startSync]);
+
+  const handleOpenFullSync = useCallback(() => {
+    setFullSyncModalOpen(true);
+  }, []);
+
+  const handleCloseFullSync = useCallback(() => {
+    setFullSyncModalOpen(false);
+  }, []);
 
   const handleTableChange = useCallback<NonNullable<TableProps<BacktestStatistics>['onChange']>>(
     (pagination) => {
@@ -320,7 +440,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   useEffect(() => {
     setAggregationState((prev) => {
       const nextItems = new Map<number, AggregationItemState>();
-      selection.forEach(({ id }) => {
+      selectedBacktests.forEach(({ id }) => {
         const existing = prev.items.get(id);
         if (existing) {
           nextItems.set(id, existing);
@@ -348,7 +468,11 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         completed: prev.running ? Math.min(prev.completed, nextItems.size) : 0,
       };
     });
-  }, [selection]);
+  }, [selectedBacktests]);
+
+  const handleSearchChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  }, []);
 
   const baseTableColumns: ColumnsType<BacktestStatistics> = useMemo(
     () => [
@@ -358,6 +482,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         key: 'name',
         width: 240,
         fixed: 'left',
+        sorter: buildStringSorter((item) => item.name ?? ''),
         render: (_value, item) => (
           <div>
             <div>{item.name}</div>
@@ -374,6 +499,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'Период',
         dataIndex: 'date',
         key: 'date',
+        sorter: buildDateSorter((item) => item.from ?? item.date ?? null),
         render: (_value, item) => (
           <div>
             <div>{formatDateRu(item.from)}</div>
@@ -385,11 +511,13 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'Биржа',
         dataIndex: 'exchange',
         key: 'exchange',
+        sorter: buildStringSorter((item) => item.exchange),
       },
       {
         title: 'Пара',
         dataIndex: 'symbol',
         key: 'symbol',
+        sorter: buildStringSorter((item) => item.symbol),
         render: (_value, item) => (
           <div>
             <div>{item.symbol}</div>
@@ -401,6 +529,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'Прибыль',
         dataIndex: 'profitQuote',
         key: 'profitQuote',
+        sorter: buildNumberSorter((item) => item.profitQuote),
         render: (_value, item) => (
           <div>
             <div>{formatAmount(item.profitQuote, item.quote)}</div>
@@ -412,6 +541,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'Net / день',
         dataIndex: 'netQuote',
         key: 'netQuote',
+        sorter: buildNumberSorter((item) => item.netQuotePerDay),
         render: (_value, item) => (
           <div>
             <div>{formatAmount(item.netQuote, item.quote)}</div>
@@ -423,6 +553,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'Число сделок',
         dataIndex: 'totalDeals',
         key: 'totalDeals',
+        sorter: buildNumberSorter((item) => item.totalDeals),
         render: (_value, item) => (
           <div>
             <div>{item.totalDeals ?? '—'}</div>
@@ -436,6 +567,15 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'Win rate',
         dataIndex: 'winRateProfits',
         key: 'winRate',
+        sorter: buildNumberSorter((item) => {
+          const winsCount = resolveDealCount(item.winRateProfits ?? item.profits);
+          const lossesCount = resolveDealCount(item.winRateLosses ?? item.losses);
+          const completedDeals = winsCount + lossesCount;
+          if (completedDeals <= 0) {
+            return null;
+          }
+          return (winsCount / completedDeals) * 100;
+        }),
         render: (_value, item) => {
           const winRateValue = formatWinRate(item.winRateProfits ?? item.profits, item.winRateLosses ?? item.losses);
           const lossRateValue = formatLossRate(item.winRateLosses ?? item.losses, item.winRateProfits ?? item.profits);
@@ -451,6 +591,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'МПУ',
         dataIndex: 'maeAbsolute',
         key: 'maeAbsolute',
+        sorter: buildNumberSorter((item) => item.maeAbsolute),
         render: (_value, item) => (
           <div>
             <div>{formatAmount(item.maeAbsolute, item.quote)}</div>
@@ -462,6 +603,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'МПП',
         dataIndex: 'mfeAbsolute',
         key: 'mfeAbsolute',
+        sorter: buildNumberSorter((item) => item.mfeAbsolute),
         render: (_value, item) => (
           <div>
             <div>{formatAmount(item.mfeAbsolute, item.quote)}</div>
@@ -473,12 +615,14 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         title: 'Макс время в сделке',
         dataIndex: 'maxDuration',
         key: 'maxDuration',
+        sorter: buildNumberSorter((item) => item.maxDuration),
         render: (_value, item) => durationFormatter(item.maxDuration),
       },
       {
         title: 'Среднее время в сделке',
         dataIndex: 'avgDuration',
         key: 'avgDuration',
+        sorter: buildNumberSorter((item) => item.avgDuration),
         render: (_value, item) => durationFormatter(item.avgDuration),
       },
     ],
@@ -558,15 +702,15 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
   const pendingCachedEntries = useMemo(() => {
     const entries: Array<[number, BacktestStatistics]> = [];
-    selection.forEach((summary, id) => {
-      const stateItem = aggregationState.items.get(id);
+    selectedBacktests.forEach((summary) => {
+      const stateItem = aggregationState.items.get(summary.id);
       if (!stateItem || stateItem.status !== 'idle' || stateItem.metrics) {
         return;
       }
-      entries.push([id, summary]);
+      entries.push([summary.id, summary]);
     });
     return entries;
-  }, [selection, aggregationState.items]);
+  }, [selectedBacktests, aggregationState.items]);
 
   useEffect(() => {
     if (pendingCachedEntries.length === 0) {
@@ -730,7 +874,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
     if (aggregationState.running) {
       return;
     }
-    const targets = selection.map((s) => s.id);
+    const targets = selectedIds;
     if (targets.length === 0) {
       return;
     }
@@ -810,7 +954,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
   const resetAggregation = () => {
     const nextItems = new Map<number, AggregationItemState>();
-    selection.forEach((stat) => {
+    selectedBacktests.forEach((stat) => {
       nextItems.set(stat.id, { id: stat.id, status: 'idle', included: true });
     });
     setAggregationState({
@@ -831,7 +975,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
   );
 
   const handleAggregationSelectionChange = (_newSelectedRowKeys: Key[], nextSelectedRows: AggregationItemState[]) => {
-    const selectedIds = new Set<number>(nextSelectedRows.map((r) => r.id));
+    const selectedAggregationIds = new Set<number>(nextSelectedRows.map((r) => r.id));
 
     setAggregationState((prev) => {
       let changed = false;
@@ -839,7 +983,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
       prev.items.forEach((item, key) => {
         if (item.status === 'success' && item.metrics) {
-          const shouldInclude = selectedIds.has(key);
+          const shouldInclude = selectedAggregationIds.has(key);
           if (item.included !== shouldInclude) {
             changed = true;
             nextItems.set(key, { ...item, included: shouldInclude });
@@ -1054,41 +1198,137 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
 
       {!extensionReady && (
         <div className="banner banner--warning">
-          Расширение Veles Tools неактивно. Запустите интерфейс из меню расширения, чтобы загрузить список бэктестов.
+          Расширение Veles Tools неактивно. Локальные данные доступны, но синхронизация и загрузка деталей недоступны.
         </div>
       )}
 
       <div className="panel">
-        <div className="panel__section">
+        <div className="panel__header">
+          <div>
+            <h2 className="panel__title">Синхронизация бэктестов</h2>
+            <p className="panel__description">
+              Сохраняем результаты локально, чтобы фильтровать и пагинировать без ограничений API.
+            </p>
+          </div>
           <div className="panel__actions">
-            <TableColumnSettingsButton
-              settings={backtestColumnSettings}
-              moveColumn={moveBacktestColumn}
-              setColumnVisibility={setBacktestColumnVisibility}
-              reset={resetBacktestColumns}
-              hasCustomSettings={backtestsHasCustomSettings}
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={refreshRemoteTotal}
+              disabled={remoteLoading || isSyncRunning}
+            >
+              {remoteLoading ? 'Обновляем…' : 'Обновить статус'}
+            </button>
+            <button type="button" className="button" onClick={triggerIncrementalSync} disabled={isSyncRunning}>
+              {isSyncRunning ? 'Синхронизация…' : 'Синхронизировать'}
+            </button>
+            <button type="button" className="button button--ghost" onClick={handleOpenFullSync}>
+              Полная синхронизация
+            </button>
+          </div>
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 12,
+          }}
+        >
+          <div>
+            <div className="panel__description" style={{ marginBottom: 4 }}>
+              Локально сохранено
+            </div>
+            <div style={{ fontWeight: 600 }}>{formatCountValue(localCount)}</div>
+          </div>
+          <div>
+            <div className="panel__description" style={{ marginBottom: 4 }}>
+              На сервере
+            </div>
+            <div style={{ fontWeight: 600 }}>{formatCountValue(syncBaselineTotal)}</div>
+          </div>
+          <div>
+            <div className="panel__description" style={{ marginBottom: 4 }}>
+              Самый старый локальный бэктест
+            </div>
+            <div style={{ fontWeight: 600 }}>{oldestLocalDateFormatted}</div>
+          </div>
+        </div>
+        <div className="panel__description" style={{ marginTop: 12 }}>
+          {syncStatusMessage}
+        </div>
+        {syncStopReasonMessage && (
+          <div className="panel__description" style={{ marginTop: 4 }}>
+            {syncStopReasonMessage}
+          </div>
+        )}
+        {remoteError && !remoteLoading && (
+          <div className="form-error" style={{ marginTop: 12 }}>
+            {remoteError}
+          </div>
+        )}
+        {syncBaselineTotal && syncBaselineTotal > 0 && syncProgressPercent !== null && (
+          <div className="run-log" style={{ marginTop: 12 }}>
+            <div className="run-log__progress">
+              <span>
+                Синхронизировано {formatCountValue(localCount)} из {formatCountValue(syncBaselineTotal)}
+              </span>
+              <div className="progress-bar">
+                <div className="progress-bar__fill" style={{ width: `${syncProgressPercent}%` }} />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="panel">
+        <div className="panel__section">
+          <div
+            className="panel__actions"
+            style={{
+              display: 'flex',
+              gap: 12,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              width: '100%',
+            }}
+          >
+            <input
+              type="search"
+              className="input"
+              placeholder="Поиск по названию"
+              value={searchTerm}
+              onChange={handleSearchChange}
+              style={{ flexGrow: 1, minWidth: 200, maxWidth: 360 }}
             />
+            <div style={{ marginLeft: 'auto' }}>
+              <TableColumnSettingsButton
+                settings={backtestColumnSettings}
+                moveColumn={moveBacktestColumn}
+                setColumnVisibility={setBacktestColumnVisibility}
+                reset={resetBacktestColumns}
+                hasCustomSettings={backtestsHasCustomSettings}
+              />
+            </div>
           </div>
           <div className="table-container">
             <Table<BacktestStatistics>
               columns={backtestColumns}
-              dataSource={items}
+              dataSource={filteredBacktests}
               rowKey={(item) => item.id}
               pagination={tablePagination}
               rowSelection={rowSelection}
-              loading={loading}
+              loading={backtestsLoading}
               onChange={handleTableChange}
               scroll={{ x: 1400 }}
               size="middle"
               locale={{
-                emptyText: loading ? 'Загружаем данные…' : 'Нет данных для отображения.',
+                emptyText: backtestsLoading ? 'Загружаем локальные данные…' : 'Нет данных для отображения.',
               }}
               sticky
             />
           </div>
         </div>
-
-        {error && <div className="banner banner--warning">Ошибка загрузки: {error}</div>}
       </div>
 
       <div className="panel">
@@ -1100,7 +1340,7 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
           <div className="empty-state">Выберите один или несколько бэктестов в таблице.</div>
         ) : (
           <ul className="panel__list--compact">
-            {selection.map((item) => (
+            {selectedBacktests.map((item) => (
               <li key={item.id}>
                 <span className="chip">
                   <strong>{item.name}</strong>
@@ -1593,7 +1833,16 @@ const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
         targets={botCreationTargets}
         onClose={handleBotCreationClose}
       />
+      <BacktestsFullSyncModal open={fullSyncModalOpen} onClose={handleCloseFullSync} formatDate={formatDateRu} />
     </section>
+  );
+};
+
+const BacktestsPage = ({ extensionReady }: BacktestsPageProps) => {
+  return (
+    <BacktestsSyncProvider extensionReady={extensionReady}>
+      <BacktestsPageContent extensionReady={extensionReady} />
+    </BacktestsSyncProvider>
   );
 };
 
