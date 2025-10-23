@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchBacktests } from '../api/backtests';
-import { type BacktestsSyncMode, type BacktestsSyncSnapshot, performBacktestsSync } from '../lib/backtestsSync';
+import { type BacktestsSyncSnapshot, performBacktestsSync } from '../lib/backtestsSync';
 import { readCachedBacktestList, subscribeBacktestList } from '../storage/backtestCache';
 import type { BacktestStatistics } from '../types/backtests';
 
@@ -19,13 +19,15 @@ interface BacktestsSyncContextValue {
   oldestLocalDate: string | null;
   syncSnapshot: BacktestsSyncSnapshot | null;
   isSyncRunning: boolean;
-  startSync: (options: { mode: BacktestsSyncMode; clearBefore?: boolean }) => Promise<BacktestsSyncSnapshot | null>;
+  startSync: (options?: { clearBefore?: boolean }) => Promise<BacktestsSyncSnapshot | null>;
   stopSync: () => void;
   refreshRemoteTotal: () => Promise<void>;
   remoteTotal: number | null;
   remoteLoading: boolean;
   remoteError: string | null;
   lastRemoteCheck: number | null;
+  lastSyncCompletedAt: number | null;
+  autoSyncPending: boolean;
 }
 
 const BacktestsSyncContext = createContext<BacktestsSyncContextValue | undefined>(undefined);
@@ -87,6 +89,8 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
     error: null,
     lastChecked: null,
   });
+  const [lastSyncCompletedAt, setLastSyncCompletedAt] = useState<number | null>(null);
+  const [autoSyncPending, setAutoSyncPending] = useState(false);
 
   const refreshRemoteTotal = useCallback(async () => {
     if (!extensionReady) {
@@ -131,6 +135,12 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
 
   const [syncSnapshot, setSyncSnapshot] = useState<BacktestsSyncSnapshot | null>(null);
   const syncControllerRef = useRef<AbortController | null>(null);
+  const autoSyncInFlightRef = useRef(false);
+  const extensionReadyRef = useRef(extensionReady);
+
+  useEffect(() => {
+    extensionReadyRef.current = extensionReady;
+  }, [extensionReady]);
 
   useEffect(() => {
     return () => {
@@ -142,7 +152,7 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
   }, []);
 
   const startSync = useCallback(
-    async ({ mode, clearBefore = false }: { mode: BacktestsSyncMode; clearBefore?: boolean }) => {
+    async ({ clearBefore = false }: { clearBefore?: boolean } = {}) => {
       if (syncControllerRef.current) {
         return null;
       }
@@ -182,7 +192,6 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
         clearBeforeSync: clearBefore,
         signal: controller.signal,
         onProgress: handleProgress,
-        mode,
       });
 
       if (active) {
@@ -193,6 +202,9 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
           error: result.status === 'error' ? (result.error ?? prev.error) : prev.error,
           lastChecked: Date.now(),
         }));
+        if (result.status === 'success') {
+          setLastSyncCompletedAt(Date.now());
+        }
       }
 
       if (syncControllerRef.current === controller) {
@@ -217,6 +229,40 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
   const localCount = backtests.length;
   const oldestLocalDate = useMemo(() => resolveOldestDate(backtests), [backtests]);
   const isSyncRunning = syncSnapshot?.status === 'running';
+  useEffect(() => {
+    if (!extensionReady || isSyncRunning || autoSyncInFlightRef.current) {
+      return;
+    }
+
+    const remote = remoteState.total;
+    if (remote === null) {
+      return;
+    }
+
+    if (localCount >= remote) {
+      return;
+    }
+
+    autoSyncInFlightRef.current = true;
+    setAutoSyncPending(true);
+
+    const runAutoSync = async () => {
+      try {
+        await startSync();
+      } catch (error) {
+        console.warn('[BacktestsSync] Автосинхронизация завершилась с ошибкой', error);
+      } finally {
+        autoSyncInFlightRef.current = false;
+        setAutoSyncPending(false);
+      }
+    };
+
+    runAutoSync().catch((error) => {
+      console.warn('[BacktestsSync] Ошибка автосинхронизации', error);
+      autoSyncInFlightRef.current = false;
+      setAutoSyncPending(false);
+    });
+  }, [extensionReady, isSyncRunning, remoteState.total, localCount, startSync]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -254,6 +300,8 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
       remoteLoading: remoteState.loading,
       remoteError: remoteState.error,
       lastRemoteCheck: remoteState.lastChecked,
+      lastSyncCompletedAt,
+      autoSyncPending,
     }),
     [
       backtests,
@@ -269,6 +317,8 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
       remoteState.loading,
       remoteState.error,
       remoteState.lastChecked,
+      lastSyncCompletedAt,
+      autoSyncPending,
     ],
   );
 

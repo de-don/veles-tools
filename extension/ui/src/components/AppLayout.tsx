@@ -61,6 +61,12 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           <NavLink to="/backtests" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Бэктесты
           </NavLink>
+          <NavLink
+            to="/backtest-groups"
+            className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}
+          >
+            Группы бэктестов
+          </NavLink>
           <NavLink to="/settings" className={({ isActive }) => (isActive ? 'nav-link nav-link--active' : 'nav-link')}>
             Настройки
           </NavLink>

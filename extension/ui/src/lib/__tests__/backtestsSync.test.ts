@@ -90,7 +90,7 @@ beforeEach(() => {
 });
 
 describe('performBacktestsSync', () => {
-  it('stores new backtests and stops when все записи синхронизированы (incremental)', async () => {
+  it('stores new backtests until общее число записей совпадёт', async () => {
     readIdsMock.mockResolvedValue(new Set([2, 3]));
     const freshFive = buildBacktest(5);
     const freshFour = buildBacktest(4);
@@ -103,34 +103,34 @@ describe('performBacktestsSync', () => {
       pageNumber: 0,
     });
 
-    const result = await performBacktestsSync({ mode: 'incremental' });
+    const result = await performBacktestsSync();
 
     expect(result.status).toBe('success');
-    expect(result.stopReason).toBe('existing');
     expect(result.stored).toBe(2);
     expect(result.processed).toBe(4);
+    expect(result.totalRemote).toBe(4);
     expect(writeBatchMock).toHaveBeenCalledWith([freshFive, freshFour]);
     expect(fetchBacktestsMock).toHaveBeenCalledTimes(1);
   });
 
   it('clears local cache when requested', async () => {
-    await performBacktestsSync({ clearBeforeSync: true, mode: 'incremental' });
+    await performBacktestsSync({ clearBeforeSync: true });
     expect(clearListMock).toHaveBeenCalledTimes(1);
   });
 
   it('marks sync as cancelled when aborted', async () => {
     const controller = new AbortController();
     controller.abort();
-    const result = await performBacktestsSync({ signal: controller.signal, mode: 'incremental' });
+    const result = await performBacktestsSync({ signal: controller.signal });
     expect(result.status).toBe('cancelled');
     expect(writeBatchMock).not.toHaveBeenCalled();
   });
 
-  it('skips already синхронизированные страницы, когда локальных записей меньше (full)', async () => {
+  it('продолжает качать последовательные страницы, пока локальное число меньше удалённого', async () => {
     readIdsMock.mockResolvedValue(new Set([200, 199, 198, 197]));
 
     const page0Entries = [buildBacktest(200), buildBacktest(199)];
-    const page2Entries = [buildBacktest(196), buildBacktest(195)];
+    const page1Entries = [buildBacktest(196), buildBacktest(195)];
 
     fetchBacktestsMock.mockImplementation(async ({ page, size }) => {
       expect(size).toBe(2);
@@ -142,12 +142,12 @@ describe('performBacktestsSync', () => {
           pageNumber: 0,
         };
       }
-      if (page === 2) {
+      if (page === 1) {
         return {
-          content: page2Entries,
+          content: page1Entries,
           totalElements: 6,
           totalPages: 3,
-          pageNumber: 2,
+          pageNumber: 1,
         };
       }
       return {
@@ -158,13 +158,12 @@ describe('performBacktestsSync', () => {
       };
     });
 
-    const result = await performBacktestsSync({ pageSize: 2, mode: 'full' });
+    const result = await performBacktestsSync({ pageSize: 2 });
 
     const requestedPages = fetchBacktestsMock.mock.calls.map(([params]) => params.page);
-    expect(requestedPages).toEqual([0, 2]);
-    expect(writeBatchMock).toHaveBeenCalledWith(page2Entries);
+    expect(requestedPages).toEqual([0, 1]);
+    expect(writeBatchMock).toHaveBeenCalledWith(page1Entries);
     expect(result.stored).toBe(2);
     expect(result.status).toBe('success');
-    expect(result.stopReason).toBe('exhausted');
   });
 });

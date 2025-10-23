@@ -11,19 +11,14 @@ const DEFAULT_SORT = 'date,desc';
 
 export type BacktestsSyncStatus = 'idle' | 'running' | 'success' | 'error' | 'cancelled';
 
-export type BacktestsSyncStopReason = 'existing' | 'exhausted' | 'no-data';
-
 export interface BacktestsSyncSnapshot {
   status: BacktestsSyncStatus;
   processed: number;
   stored: number;
   fetchedPages: number;
   totalRemote: number | null;
-  stopReason?: BacktestsSyncStopReason;
   error?: string;
 }
-
-export type BacktestsSyncMode = 'incremental' | 'full';
 
 export interface BacktestsSyncOptions {
   clearBeforeSync?: boolean;
@@ -31,8 +26,6 @@ export interface BacktestsSyncOptions {
   pageSize?: number;
   sort?: string;
   onProgress?: (snapshot: BacktestsSyncSnapshot) => void;
-  mode?: BacktestsSyncMode;
-  stopOnExisting?: boolean;
 }
 
 class BacktestsSyncAbortError extends Error {
@@ -60,8 +53,6 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
   const pageSize = options.pageSize && options.pageSize > 0 ? Math.floor(options.pageSize) : DEFAULT_SYNC_PAGE_SIZE;
   const sort = options.sort ?? DEFAULT_SORT;
   const signal = options.signal ?? null;
-  const mode: BacktestsSyncMode = options.mode ?? 'incremental';
-  const stopOnExisting = options.stopOnExisting ?? mode !== 'full';
 
   try {
     ensureNotAborted(signal);
@@ -90,7 +81,6 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
   let page = 0;
   let fetchedPages = 0;
   let remoteTotal: number | null = null;
-  let stopReason: BacktestsSyncStopReason | undefined;
 
   emitProgress(options.onProgress, {
     status: 'running',
@@ -113,17 +103,14 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
 
       const items = response.content ?? [];
       if (items.length === 0) {
-        stopReason = stopReason ?? (remoteTotal !== null && knownIds.size < remoteTotal ? 'exhausted' : 'no-data');
         break;
       }
 
       const freshBatch: BacktestStatistics[] = [];
-      let sawExistingOnPage = false;
 
       for (const snapshot of items) {
         processed += 1;
         if (knownIds.has(snapshot.id)) {
-          sawExistingOnPage = true;
           continue;
         }
         freshBatch.push(snapshot);
@@ -137,39 +124,23 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
         stored += freshBatch.length;
       }
 
-      if (sawExistingOnPage && stopOnExisting) {
-        stopReason = stopReason ?? 'existing';
-      }
-
       emitProgress(options.onProgress, {
         status: 'running',
         processed,
         stored,
         fetchedPages,
         totalRemote: remoteTotal,
-        stopReason,
       });
 
-      if (stopOnExisting && stopReason === 'existing') {
-        break;
-      }
-
       if (remoteTotal !== null && knownIds.size >= remoteTotal) {
-        stopReason = stopReason ?? (sawExistingOnPage ? 'existing' : 'exhausted');
         break;
       }
 
       if (totalPages !== null && page >= totalPages - 1) {
-        stopReason = stopReason ?? (sawExistingOnPage ? 'existing' : 'exhausted');
         break;
       }
 
-      const targetPageFromKnown = remoteTotal !== null ? Math.floor(knownIds.size / pageSize) : page + 1;
-      let nextPage = Math.max(page + 1, targetPageFromKnown);
-      if (nextPage <= page) {
-        nextPage = page + 1;
-      }
-      page = nextPage;
+      page += 1;
     }
   } catch (error) {
     if (error instanceof BacktestsSyncAbortError) {
@@ -179,7 +150,6 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
         stored,
         fetchedPages,
         totalRemote: remoteTotal,
-        stopReason,
       };
     }
 
@@ -190,7 +160,6 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
       stored,
       fetchedPages,
       totalRemote: remoteTotal,
-      stopReason,
       error: message,
     });
 
@@ -200,7 +169,6 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
       stored,
       fetchedPages,
       totalRemote: remoteTotal,
-      stopReason,
       error: message,
     };
   }
@@ -211,7 +179,6 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
     stored,
     fetchedPages,
     totalRemote: remoteTotal,
-    stopReason,
   };
 
   emitProgress(options.onProgress, finalSnapshot);

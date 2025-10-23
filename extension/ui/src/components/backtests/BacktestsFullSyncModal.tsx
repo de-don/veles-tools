@@ -27,7 +27,7 @@ const BacktestsFullSyncModal = ({ open, onClose, formatDate }: BacktestsFullSync
   }, [remoteTotal, localCount]);
 
   const handleStart = async () => {
-    await startSync({ mode: 'full' });
+    await startSync({ clearBefore: true });
   };
 
   const handleCancel = () => {
