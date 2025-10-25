@@ -39,7 +39,7 @@
     },
     {
       "resources": ["ui/dist/index.html", "ui/dist/assets/*"],
-      "matches": ["<all_urls>"]
+      "matches": ["https://veles.finance/*", "https://ru.veles.finance/*"]
     }
   ]
 }
