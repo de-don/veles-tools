@@ -251,7 +251,12 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         render: (_value, botRecord) => (
           <div>
             <div>{botRecord.name}</div>
-            <div className="panel__description">ID: {botRecord.id}</div>
+            <div className="panel__description">
+              ID:{' '}
+              <a href={`https://veles.finance/cabinet/bot/${botRecord.id}`} target="_blank" rel="noreferrer noopener">
+                {botRecord.id}
+              </a>
+            </div>
           </div>
         ),
       },
