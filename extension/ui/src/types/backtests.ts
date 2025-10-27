@@ -1,4 +1,4 @@
-import type { StrategyCondition } from './bots';
+import type { BotStopLossConfig, StrategyCondition } from './bots';
 
 export interface BacktestStatisticsListResponse {
   totalElements: number;
@@ -45,6 +45,7 @@ export interface BacktestConfig {
   portion: number | null;
   profit: BacktestProfitConfig | null;
   deposit: BacktestDepositConfig | null;
+  stopLoss: BotStopLossConfig | null;
   settings: BacktestSettings;
   conditions: StrategyCondition[] | null;
   from: string | null;
@@ -119,6 +120,7 @@ export interface BacktestStatisticsDetail extends BacktestStatistics {
   portion?: number | null;
   profit?: BacktestProfitConfig | null;
   deposit?: BacktestDepositConfig | null;
+  stopLoss?: BotStopLossConfig | null;
   settings?: BacktestSettings;
   conditions?: StrategyCondition[] | null;
   commissions?: BacktestCommissionsConfig | null;

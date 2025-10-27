@@ -49,12 +49,27 @@ const deriveSymbols = (detail: BacktestStatisticsDetail): string[] | null => {
   return null;
 };
 
+const clonePayloadFragment = <T>(value: T): T => {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch {
+      // fallback to JSON cloning
+    }
+  }
+  return JSON.parse(JSON.stringify(value)) as T;
+};
+
 export const buildBotCreationPayload = (
   detail: BacktestStatisticsDetail,
   overrides: BotCreationOverrides,
 ): CreateBotPayload => {
   const symbols = deriveSymbols(detail);
   const deposit = buildDepositConfig(detail.deposit ?? null, overrides);
+  const stopLoss = detail.stopLoss ? clonePayloadFragment(detail.stopLoss) : null;
   const name =
     typeof detail.name === 'string' && detail.name.trim().length > 0 ? detail.name.trim() : `Backtest ${detail.id}`;
   const symbol =
@@ -74,6 +89,7 @@ export const buildBotCreationPayload = (
     portion: detail.portion ?? null,
     profit: detail.profit ?? null,
     deposit,
+    stopLoss,
     settings: detail.settings ?? null,
     conditions: detail.conditions ?? null,
     from: detail.from ?? detail.start ?? null,

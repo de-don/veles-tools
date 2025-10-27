@@ -70,6 +70,7 @@ export const buildBotClonePayload = (
   }
 
   const clonedConditions = bot.conditions ? deepClone(bot.conditions) : null;
+  const clonedStopLoss = bot.stopLoss ? deepClone(bot.stopLoss) : null;
   const includePosition = typeof bot.settings?.includePosition === 'boolean' ? bot.settings.includePosition : null;
 
   const depositConfig: BacktestDepositConfig = {
@@ -99,6 +100,7 @@ export const buildBotClonePayload = (
     portion: bot.portion ?? null,
     profit: clonedProfit,
     deposit: depositConfig,
+    stopLoss: clonedStopLoss,
     settings: settingsPayload,
     conditions: clonedConditions,
     from: null,
