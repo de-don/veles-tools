@@ -405,7 +405,9 @@ export const createLimitEfficiencyChartOptions = (points: LimitImpactPoint[]): E
       color: '#14b8a6',
     },
     emphasis: { focus: 'series' },
-    data: points.map((point) => (Number.isFinite(point.aggregateRiskEfficiency ?? Number.NaN) ? point.aggregateRiskEfficiency : null)),
+    data: points.map((point) =>
+      Number.isFinite(point.aggregateRiskEfficiency ?? Number.NaN) ? point.aggregateRiskEfficiency : null,
+    ),
   } satisfies LineSeriesOption;
 
   return {

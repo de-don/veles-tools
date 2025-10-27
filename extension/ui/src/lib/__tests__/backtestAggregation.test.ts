@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { BacktestCycle, BacktestOrder, BacktestStatisticsDetail } from '../../types/backtests';
-import { computeBacktestMetrics, type AggregationSummary, MS_IN_DAY, summarizeAggregations } from '../backtestAggregation';
+import {
+  type AggregationSummary,
+  computeBacktestMetrics,
+  MS_IN_DAY,
+  summarizeAggregations,
+} from '../backtestAggregation';
 
 const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): BacktestStatisticsDetail => ({
   id: 1,

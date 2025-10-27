@@ -1,5 +1,4 @@
 import type { ColumnsType } from 'antd/es/table';
-import type { BacktestStatistics } from '../../types/backtests';
 import {
   formatAmount,
   formatDateRu,
@@ -8,6 +7,7 @@ import {
   resolveDealCount,
 } from '../../lib/backtestFormatting';
 import { resolveSortableNumber } from '../../lib/backtestSorting';
+import type { BacktestStatistics } from '../../types/backtests';
 
 const buildStringSorter = (selector: (item: BacktestStatistics) => string | null | undefined) => {
   return (a: BacktestStatistics, b: BacktestStatistics) => {
@@ -139,8 +139,8 @@ const buildColumns = (): ColumnsType<BacktestStatistics> => [
       return (winsCount / completedDeals) * 100;
     }),
     render: (_value, item) => {
-      const winRateValue = (item.winRateProfits ?? item.profits ?? 0);
-      const lossRateValue = (item.winRateLosses ?? item.losses ?? 0);
+      const winRateValue = item.winRateProfits ?? item.profits ?? 0;
+      const lossRateValue = item.winRateLosses ?? item.losses ?? 0;
       const total = winRateValue + lossRateValue;
       if (total <= 0) {
         return (
@@ -201,4 +201,3 @@ const buildColumns = (): ColumnsType<BacktestStatistics> => [
 ];
 
 export const buildBacktestColumns = (): ColumnsType<BacktestStatistics> => buildColumns();
-

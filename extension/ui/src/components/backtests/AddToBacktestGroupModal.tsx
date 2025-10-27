@@ -15,7 +15,13 @@ interface AddToGroupFormValues {
   groupId: string;
 }
 
-const AddToBacktestGroupModal = ({ open, groups, selectedBacktests, onCancel, onSubmit }: AddToBacktestGroupModalProps) => {
+const AddToBacktestGroupModal = ({
+  open,
+  groups,
+  selectedBacktests,
+  onCancel,
+  onSubmit,
+}: AddToBacktestGroupModalProps) => {
   const [form] = Form.useForm<AddToGroupFormValues>();
 
   useEffect(() => {
@@ -51,11 +57,7 @@ const AddToBacktestGroupModal = ({ open, groups, selectedBacktests, onCancel, on
             проигнорированы.
           </p>
           <Form<AddToGroupFormValues> form={form} layout="vertical" initialValues={{ groupId: undefined }}>
-            <Form.Item
-              label="Группа"
-              name="groupId"
-              rules={[{ required: true, message: 'Выберите группу.' }]}
-            >
+            <Form.Item label="Группа" name="groupId" rules={[{ required: true, message: 'Выберите группу.' }]}>
               <Select
                 placeholder="Выберите группу"
                 options={groups.map((group) => ({ value: group.id, label: group.name }))}

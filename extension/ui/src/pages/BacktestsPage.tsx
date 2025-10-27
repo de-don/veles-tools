@@ -1,15 +1,15 @@
 import type { TableProps } from 'antd';
-import { Table, message } from 'antd';
+import { message, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
-import type { ChangeEvent, Key } from 'react';
+import type { ChangeEvent } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AddToBacktestGroupModal from '../components/backtests/AddToBacktestGroupModal';
+import { buildBacktestColumns } from '../components/backtests/backtestTableColumns';
 import SaveBacktestGroupModal from '../components/backtests/SaveBacktestGroupModal';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import { BacktestsSyncProvider, useBacktestsSync } from '../context/BacktestsSyncContext';
-import { buildBacktestColumns } from '../components/backtests/backtestTableColumns';
 import { formatAmount } from '../lib/backtestFormatting';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { BacktestStatistics } from '../types/backtests';
@@ -31,24 +31,9 @@ const formatCountValue = (value: number | null | undefined): string => {
   return countFormatter.format(value);
 };
 
-const formatSyncTimestamp = (value: number | null): string => {
-  if (!value) {
-    return '—';
-  }
-  return new Date(value).toLocaleString('ru-RU');
-};
-
 const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
-  const {
-    backtests,
-    backtestsLoading,
-    localCount,
-    syncSnapshot,
-    isSyncRunning,
-    startSync,
-    lastSyncCompletedAt,
-    autoSyncPending,
-  } = useBacktestsSync();
+  const { backtests, backtestsLoading, localCount, syncSnapshot, isSyncRunning, startSync, autoSyncPending } =
+    useBacktestsSync();
 
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
@@ -250,7 +235,6 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
     [page, pageSize, totalElements],
   );
 
-
   return (
     <section className="page">
       {messageContextHolder}
@@ -272,7 +256,9 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
         <div className="panel__header">
           <div>
             <h2 className="panel__title">Синхронизация бэктестов</h2>
-            <p className="panel__description">Локальная копия позволяет анализировать результаты без ограничений API.</p>
+            <p className="panel__description">
+              Локальная копия позволяет анализировать результаты без ограничений API.
+            </p>
           </div>
           <button
             type="button"
@@ -285,7 +271,9 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
         </div>
         <div className="panel__body" style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <div className="panel__description" style={{ marginBottom: 4 }}>Локально сохранено</div>
+            <div className="panel__description" style={{ marginBottom: 4 }}>
+              Локально сохранено
+            </div>
             <div style={{ fontWeight: 600 }}>{formatCountValue(localCount)}</div>
           </div>
         </div>
@@ -302,10 +290,7 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
                 {totalRemote && totalRemote > 0 ? ` из ${formatCountValue(totalRemote)}` : ''}
               </span>
               <div className="progress-bar">
-                <div
-                  className="progress-bar__fill"
-                  style={{ width: `${syncProgressPercent ?? 0}%` }}
-                />
+                <div className="progress-bar__fill" style={{ width: `${syncProgressPercent ?? 0}%` }} />
               </div>
             </div>
           </div>
@@ -320,137 +305,137 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
 
       {syncReady && (
         <>
-      <div className="panel">
-        <div className="panel__section">
-          <div
-            className="panel__actions"
-            style={{
-              display: 'flex',
-              gap: 12,
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              width: '100%',
-            }}
-          >
-            <input
-              type="search"
-              className="input"
-              placeholder="Поиск по названию"
-              value={searchTerm}
-              onChange={handleSearchChange}
-              style={{ flexGrow: 1, minWidth: 200, maxWidth: 360 }}
-            />
-            <div style={{ marginLeft: 'auto' }}>
-              <TableColumnSettingsButton
-                settings={backtestColumnSettings}
-                moveColumn={moveBacktestColumn}
-                setColumnVisibility={setBacktestColumnVisibility}
-                reset={resetBacktestColumns}
-                hasCustomSettings={backtestsHasCustomSettings}
-              />
+          <div className="panel">
+            <div className="panel__section">
+              <div
+                className="panel__actions"
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                }}
+              >
+                <input
+                  type="search"
+                  className="input"
+                  placeholder="Поиск по названию"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  style={{ flexGrow: 1, minWidth: 200, maxWidth: 360 }}
+                />
+                <div style={{ marginLeft: 'auto' }}>
+                  <TableColumnSettingsButton
+                    settings={backtestColumnSettings}
+                    moveColumn={moveBacktestColumn}
+                    setColumnVisibility={setBacktestColumnVisibility}
+                    reset={resetBacktestColumns}
+                    hasCustomSettings={backtestsHasCustomSettings}
+                  />
+                </div>
+              </div>
+              <div className="table-container">
+                <Table<BacktestStatistics>
+                  columns={backtestColumns}
+                  dataSource={filteredBacktests}
+                  rowKey={(item) => item.id}
+                  pagination={tablePagination}
+                  rowSelection={rowSelection}
+                  loading={backtestsLoading}
+                  onChange={handleTableChange}
+                  scroll={{ x: 1400 }}
+                  size="middle"
+                  locale={{
+                    emptyText: backtestsLoading ? 'Загружаем локальные данные…' : 'Нет данных для отображения.',
+                  }}
+                  sticky
+                />
+              </div>
             </div>
           </div>
-          <div className="table-container">
-            <Table<BacktestStatistics>
-              columns={backtestColumns}
-              dataSource={filteredBacktests}
-              rowKey={(item) => item.id}
-              pagination={tablePagination}
-              rowSelection={rowSelection}
-              loading={backtestsLoading}
-              onChange={handleTableChange}
-              scroll={{ x: 1400 }}
-              size="middle"
-              locale={{
-                emptyText: backtestsLoading ? 'Загружаем локальные данные…' : 'Нет данных для отображения.',
-              }}
-              sticky
-            />
-          </div>
-        </div>
-      </div>
 
-      <div className="panel">
-        <h2 className="panel__title">Выбранные бэктесты</h2>
-        <p className="panel__description">
-          Эти результаты будут использоваться для дальнейшего анализа и интеграции с мультизапуском.
-        </p>
-        <div
-          className="panel__actions"
-          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: totalSelected === 0 ? 0 : 12 }}
-        >
-          <button type="button" className="button" onClick={handleOpenSaveGroup} disabled={totalSelected === 0}>
-            Сохранить как группу
-          </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={handleOpenAddToGroup}
-            disabled={totalSelected === 0 || groups.length === 0}
-            title={groups.length === 0 ? 'Нет доступных групп' : undefined}
-          >
-            Добавить в группу
-          </button>
-        </div>
-        {totalSelected === 0 ? (
-          <div className="empty-state">Выберите один или несколько бэктестов в таблице.</div>
-        ) : (
-          <ul className="panel__list--compact">
-            {selectedBacktests.map((item) => (
-              <li key={item.id}>
-                <span className="chip">
-                  <strong>{item.name}</strong>
-                  <span>
-                    <a
-                      href={`https://veles.finance/cabinet/backtests/${item.id}`}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      style={{ color: 'inherit', textDecoration: 'none' }}
+          <div className="panel">
+            <h2 className="panel__title">Выбранные бэктесты</h2>
+            <p className="panel__description">
+              Эти результаты будут использоваться для дальнейшего анализа и интеграции с мультизапуском.
+            </p>
+            <div
+              className="panel__actions"
+              style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: totalSelected === 0 ? 0 : 12 }}
+            >
+              <button type="button" className="button" onClick={handleOpenSaveGroup} disabled={totalSelected === 0}>
+                Сохранить как группу
+              </button>
+              <button
+                type="button"
+                className="button button--ghost"
+                onClick={handleOpenAddToGroup}
+                disabled={totalSelected === 0 || groups.length === 0}
+                title={groups.length === 0 ? 'Нет доступных групп' : undefined}
+              >
+                Добавить в группу
+              </button>
+            </div>
+            {totalSelected === 0 ? (
+              <div className="empty-state">Выберите один или несколько бэктестов в таблице.</div>
+            ) : (
+              <ul className="panel__list--compact">
+                {selectedBacktests.map((item) => (
+                  <li key={item.id}>
+                    <span className="chip">
+                      <strong>{item.name}</strong>
+                      <span>
+                        <a
+                          href={`https://veles.finance/cabinet/backtests/${item.id}`}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          style={{ color: 'inherit', textDecoration: 'none' }}
+                        >
+                          ID: {item.id}
+                        </a>
+                        {' · '}
+                        {item.symbol}
+                      </span>
+                    </span>
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        color: '#94a3b8',
+                      }}
                     >
-                      ID: {item.id}
-                    </a>
-                    {' · '}
-                    {item.symbol}
-                  </span>
-                </span>
-                <span
-                  style={{
-                    marginLeft: 8,
-                    color: '#94a3b8',
-                  }}
-                >
-                  {formatAmount(item.profitQuote, item.quote)}
-                </span>
-                {item.netQuote !== null && (
-                  <span
-                    style={{
-                      marginLeft: 8,
-                      color: '#94a3b8',
-                    }}
-                  >
-                    Net: {formatAmount(item.netQuote, item.quote)}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                      {formatAmount(item.profitQuote, item.quote)}
+                    </span>
+                    {item.netQuote !== null && (
+                      <span
+                        style={{
+                          marginLeft: 8,
+                          color: '#94a3b8',
+                        }}
+                      >
+                        Net: {formatAmount(item.netQuote, item.quote)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-      <SaveBacktestGroupModal
-        open={saveGroupModalOpen}
-        selectedBacktests={selectedBacktests}
-        onCancel={handleCloseSaveGroup}
-        onSubmit={handleSaveGroupSubmit}
-      />
-      <AddToBacktestGroupModal
-        open={addToGroupModalOpen}
-        groups={groups}
-        selectedBacktests={selectedBacktests}
-        onCancel={handleCloseAddToGroup}
-        onSubmit={handleAddToGroupSubmit}
-      />
+          <SaveBacktestGroupModal
+            open={saveGroupModalOpen}
+            selectedBacktests={selectedBacktests}
+            onCancel={handleCloseSaveGroup}
+            onSubmit={handleSaveGroupSubmit}
+          />
+          <AddToBacktestGroupModal
+            open={addToGroupModalOpen}
+            groups={groups}
+            selectedBacktests={selectedBacktests}
+            onCancel={handleCloseAddToGroup}
+            onSubmit={handleAddToGroupSubmit}
+          />
         </>
       )}
     </section>

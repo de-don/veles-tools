@@ -14,10 +14,9 @@
   const isAllowedProtocol = (protocol) => protocol === 'https:' || protocol === 'http:';
 
   // Получаем nonce, переданный через data-атрибут инжектящего script-тега
-  const BRIDGE_NONCE =
-    document.currentScript && document.currentScript.dataset && document.currentScript.dataset.velesBridgeNonce
-      ? String(document.currentScript.dataset.velesBridgeNonce)
-      : null;
+  const BRIDGE_NONCE = document.currentScript?.dataset?.velesBridgeNonce
+    ? String(document.currentScript.dataset.velesBridgeNonce)
+    : null;
 
   if (!BRIDGE_NONCE) {
     console.warn('[Veles page bridge] Missing bridge nonce — aborting initialization');
@@ -114,7 +113,7 @@
         respond(requestId, { ok: false, error: `Запросы разрешены только к ${VELES_BASE_DOMAIN}` });
         return;
       }
-    } catch (err) {
+    } catch {
       respond(requestId, { ok: false, error: 'Некорректный URL формата' });
       return;
     }

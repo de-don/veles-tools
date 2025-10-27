@@ -1,9 +1,9 @@
-import { Alert, Button, Empty, Spin, message } from 'antd';
+import { Alert, Button, Empty, message, Spin } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { fetchBacktestDetails } from '../api/backtests';
 import BacktestAggregationPanel from '../components/backtests/BacktestAggregationPanel';
 import RenameBacktestGroupModal from '../components/backtests/RenameBacktestGroupModal';
-import { fetchBacktestDetails } from '../api/backtests';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import { readCachedBacktestDetail, readCachedBacktestList, writeCachedBacktestDetail } from '../storage/backtestCache';
 import type { BacktestGroup } from '../types/backtestGroups';
@@ -118,7 +118,9 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
         });
 
         const composeBacktests = () =>
-          group.backtestIds.map((id) => cachedDetailsMap.get(id) ?? listSnapshotsMap.get(id) ?? buildBacktestPlaceholder(id));
+          group.backtestIds.map(
+            (id) => cachedDetailsMap.get(id) ?? listSnapshotsMap.get(id) ?? buildBacktestPlaceholder(id),
+          );
 
         setBacktests(composeBacktests());
         setLoading(false);
@@ -220,9 +222,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     }
     setBacktests((prev) => {
       const map = new Map(prev.map((item) => [item.id, item] as const));
-      return result.backtestIds
-        .map((id) => map.get(id))
-        .filter((item): item is BacktestStatistics => Boolean(item));
+      return result.backtestIds.map((id) => map.get(id)).filter((item): item is BacktestStatistics => Boolean(item));
     });
     messageApi.success('Выбранные бэктесты удалены из группы.');
   };
@@ -239,9 +239,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     }
     setBacktests((prev) => {
       const map = new Map(prev.map((item) => [item.id, item] as const));
-      return result.backtestIds
-        .map((id) => map.get(id))
-        .filter((item): item is BacktestStatistics => Boolean(item));
+      return result.backtestIds.map((id) => map.get(id)).filter((item): item is BacktestStatistics => Boolean(item));
     });
     messageApi.success('Невыбранные бэктесты удалены из группы.');
   };
@@ -252,7 +250,8 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
       <header className="page__header">
         <h1 className="page__title">{group.name}</h1>
         <p className="page__subtitle">
-          Группа включает {group.backtestIds.length} бэктестов. Используйте агрегацию ниже для анализа и управления составом.
+          Группа включает {group.backtestIds.length} бэктестов. Используйте агрегацию ниже для анализа и управления
+          составом.
         </p>
       </header>
 

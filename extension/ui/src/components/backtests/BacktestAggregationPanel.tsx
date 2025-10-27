@@ -12,13 +12,7 @@ import {
   computeBacktestMetrics,
   summarizeAggregations,
 } from '../../lib/backtestAggregation';
-import {
-  formatAmount,
-  formatDateRu,
-  formatDurationMinutes,
-  formatLeverage,
-  formatPercent,
-} from '../../lib/backtestFormatting';
+import { formatAmount, formatDateRu, formatLeverage, formatPercent } from '../../lib/backtestFormatting';
 import { resolveSortableNumber } from '../../lib/backtestSorting';
 import type { LimitImpactPoint } from '../../lib/chartOptions';
 import { useTableColumnSettings } from '../../lib/useTableColumnSettings';

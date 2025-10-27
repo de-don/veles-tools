@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { BotStopLossConfig } from '../../types/bots';
 import type { BacktestStatisticsDetail } from '../../types/backtests';
+import type { BotStopLossConfig } from '../../types/bots';
 import { buildBotCreationPayload } from '../backtestBotPayload';
 
 const buildStopLoss = (overrides: Partial<BotStopLossConfig> = {}): BotStopLossConfig => ({

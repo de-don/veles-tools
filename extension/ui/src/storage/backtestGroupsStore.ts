@@ -24,7 +24,9 @@ const isBacktestGroup = (value: unknown): value is BacktestGroup => {
 };
 
 const sanitizeGroup = (group: BacktestGroup): BacktestGroup => {
-  const uniqueIds = Array.from(new Set(group.backtestIds.filter((id) => typeof id === 'number' && Number.isFinite(id))));
+  const uniqueIds = Array.from(
+    new Set(group.backtestIds.filter((id) => typeof id === 'number' && Number.isFinite(id))),
+  );
   uniqueIds.sort((a, b) => a - b);
   return {
     id: group.id,
