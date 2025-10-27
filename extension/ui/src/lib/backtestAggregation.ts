@@ -51,6 +51,8 @@ export interface BacktestAggregationMetrics {
   maxDrawdown: number;
   maxMPU: number;
   maxMPP: number;
+  worstRisk: number;
+  riskEfficiency: number | null;
   downtimeDays: number;
   spanStart: number | null;
   spanEnd: number | null;
@@ -121,6 +123,8 @@ export interface AggregationSummary {
   avgMaxDrawdown: number;
   aggregateDrawdown: number;
   aggregateMPU: number;
+  aggregateWorstRisk: number;
+  aggregateRiskEfficiency: number | null;
   maxConcurrent: number;
   avgConcurrent: number;
   noTradeDays: number;
@@ -527,6 +531,10 @@ export const computeBacktestMetrics = (
 
   const name = stats.name ?? '—';
   const sanitizedSymbol = stats.symbol || `${stats.base ?? ''}/${stats.quote ?? ''}`.replace(/^[/]+|[/]+$/g, '') || '—';
+  const maxDrawdown = Number.isFinite(drawdownTimeline.maxDrawdown) ? drawdownTimeline.maxDrawdown : 0;
+  const maxMPU = Number.isFinite(riskInfo.maxRisk) ? riskInfo.maxRisk : 0;
+  const worstRisk = Math.max(0, maxDrawdown, maxMPU);
+  const riskEfficiency = worstRisk > 0 ? pnl / worstRisk : null;
 
   return {
     id: stats.id,
@@ -543,9 +551,11 @@ export const computeBacktestMetrics = (
     avgTradeDurationDays,
     totalTradeDurationSec,
     avgNetPerDay,
-    maxDrawdown: drawdownTimeline.maxDrawdown,
-    maxMPU: riskInfo.maxRisk,
+    maxDrawdown,
+    maxMPU,
     maxMPP,
+    worstRisk,
+    riskEfficiency,
     downtimeDays,
     spanStart: Number.isFinite(spanStart) ? spanStart : null,
     spanEnd: Number.isFinite(spanEnd) ? spanEnd : null,
@@ -1506,6 +1516,8 @@ const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): Aggre
   const aggregateDrawdown = computeAggregateDrawdown(metricsList);
   const aggregateRiskSeries = computeAggregateRiskSeriesFromMetrics(metricsList);
   const aggregateMPU = aggregateRiskSeries.maxValue;
+  const aggregateWorstRisk = Math.max(0, aggregateDrawdown, aggregateMPU);
+  const aggregateRiskEfficiency = aggregateWorstRisk > 0 ? totalPnl / aggregateWorstRisk : null;
   const concurrency = computeConcurrency(metricsList);
   const noTradeInfo = computeNoTradeInfo(metricsList);
   const dailyConcurrency = computeDailyConcurrency(metricsList);
@@ -1523,6 +1535,8 @@ const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): Aggre
     avgMaxDrawdown,
     aggregateDrawdown,
     aggregateMPU,
+    aggregateWorstRisk,
+    aggregateRiskEfficiency,
     maxConcurrent: concurrency.max,
     avgConcurrent: concurrency.average,
     noTradeDays: noTradeInfo.noTradeDays,
@@ -1576,6 +1590,8 @@ const summarizeWithConcurrencyLimit = (
   const aggregateDrawdown = computeAggregateDrawdownFromTrades(acceptedTrades);
   const aggregateRiskSeries = computeAggregateRiskSeriesFromTrades(acceptedTrades, metricsList);
   const aggregateMPU = aggregateRiskSeries.maxValue;
+  const aggregateWorstRisk = Math.max(0, aggregateDrawdown, aggregateMPU);
+  const aggregateRiskEfficiency = aggregateWorstRisk > 0 ? totalPnl / aggregateWorstRisk : null;
   const concurrency = computeConcurrencyFromTrades(acceptedTrades);
   const avgNetPerDay = concurrency.totalSpanMs > 0 ? totalPnl / (concurrency.totalSpanMs / MS_IN_DAY) : 0;
   const noTradeInfo = computeNoTradeInfoFromTrades(acceptedTrades);
@@ -1595,6 +1611,8 @@ const summarizeWithConcurrencyLimit = (
     avgMaxDrawdown,
     aggregateDrawdown,
     aggregateMPU,
+    aggregateWorstRisk,
+    aggregateRiskEfficiency,
     maxConcurrent: concurrency.max,
     avgConcurrent: concurrency.average,
     noTradeDays: noTradeInfo.noTradeDays,

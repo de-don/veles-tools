@@ -20,13 +20,14 @@ import {
   formatPercent,
 } from '../../lib/backtestFormatting';
 import { resolveSortableNumber } from '../../lib/backtestSorting';
+import type { LimitImpactPoint } from '../../lib/chartOptions';
 import { useTableColumnSettings } from '../../lib/useTableColumnSettings';
 import { readCachedBacktestCycles, readCachedBacktestDetail } from '../../storage/backtestCache';
 import type { BacktestStatistics, BacktestStatisticsDetail } from '../../types/backtests';
 import CreateBotsFromBacktestsModal, { type BacktestBotTarget } from '../CreateBotsFromBacktestsModal';
 import { AggregateRiskChart } from '../charts/AggregateRiskChart';
 import { DailyConcurrencyChart } from '../charts/DailyConcurrencyChart';
-import { LimitImpactChart } from '../charts/LimitImpactChart';
+import { LimitImpactChart, LimitRiskEfficiencyChart } from '../charts/LimitImpactChart';
 import { PortfolioEquityChart } from '../charts/PortfolioEquityChart';
 import { InfoTooltip } from '../ui/InfoTooltip';
 import { TableColumnSettingsButton } from '../ui/TableColumnSettingsButton';
@@ -391,12 +392,7 @@ const BacktestAggregationPanel = ({
       return [];
     }
 
-    const items = [] as {
-      label: string;
-      totalPnl: number;
-      aggregateDrawdown: number;
-      aggregateMPU: number;
-    }[];
+    const items: LimitImpactPoint[] = [];
 
     for (let limit = 1; limit <= total; limit += 1) {
       const summary = summarizeAggregations(metricsList, {
@@ -407,6 +403,8 @@ const BacktestAggregationPanel = ({
         totalPnl: summary.totalPnl,
         aggregateDrawdown: summary.aggregateDrawdown,
         aggregateMPU: summary.aggregateMPU,
+        aggregateWorstRisk: summary.aggregateWorstRisk,
+        aggregateRiskEfficiency: summary.aggregateRiskEfficiency,
       });
     }
 
@@ -416,6 +414,8 @@ const BacktestAggregationPanel = ({
       totalPnl: unlimitedSummary.totalPnl,
       aggregateDrawdown: unlimitedSummary.aggregateDrawdown,
       aggregateMPU: unlimitedSummary.aggregateMPU,
+      aggregateWorstRisk: unlimitedSummary.aggregateWorstRisk,
+      aggregateRiskEfficiency: unlimitedSummary.aggregateRiskEfficiency,
     });
 
     return items;
@@ -680,10 +680,10 @@ const BacktestAggregationPanel = ({
         title: 'Бэктест',
         key: 'name',
         onCell: () => ({
-          style: { minWidth: 100 },
+          style: { minWidth: 150 },
         }),
         onHeaderCell: () => ({
-          style: { minWidth: 100 },
+          style: { minWidth: 150 },
         }),
         sorter: (a, b) => {
           const aName = a.metrics?.name ?? '';
@@ -787,6 +787,24 @@ const BacktestAggregationPanel = ({
         key: 'pnl',
         sorter: buildMetricNumberSorter((metrics) => metrics.pnl),
         render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.pnl) : '—'),
+      },
+      {
+        title: 'P&L / риск',
+        dataIndex: 'metrics',
+        key: 'riskEfficiency',
+        sorter: buildMetricNumberSorter((metrics) => metrics.riskEfficiency ?? null),
+        render: (_metrics, record) => {
+          if (!record.metrics || record.metrics.riskEfficiency === null) {
+            return '—';
+          }
+          return formatSignedAmount(record.metrics.riskEfficiency);
+        },
+        onCell: () => ({
+          style: { minWidth: 100 },
+        }),
+        onHeaderCell: () => ({
+          style: { minWidth: 100 },
+        }),
       },
       {
         title: 'Net / день',
@@ -1015,6 +1033,23 @@ const BacktestAggregationPanel = ({
                       </div>
                       <div className="aggregation-metric">
                         <div className="aggregation-metric__label">
+                          P&L / макс риск
+                          <InfoTooltip text="Отношение совокупного P&L к наибольшему из значений МПУ или просадки." />
+                        </div>
+                        <div
+                          className={
+                            typeof aggregationSummary.aggregateRiskEfficiency === 'number'
+                              ? resolveTrendClass(aggregationSummary.aggregateRiskEfficiency)
+                              : 'aggregation-metric__value aggregation-metric__value--muted'
+                          }
+                        >
+                          {typeof aggregationSummary.aggregateRiskEfficiency === 'number'
+                            ? formatSignedAmount(aggregationSummary.aggregateRiskEfficiency)
+                            : '—'}
+                        </div>
+                      </div>
+                      <div className="aggregation-metric">
+                        <div className="aggregation-metric__label">
                           Сделки (P/L/Σ)
                           <InfoTooltip text="Количество сделок и распределение по прибыльным, убыточным и нейтральным операциям." />
                         </div>
@@ -1163,6 +1198,16 @@ const BacktestAggregationPanel = ({
                       <div className="aggregation-limit__chart">
                         {limitImpactPoints.length > 0 ? (
                           <LimitImpactChart points={limitImpactPoints} className="aggregation-limit__canvas" />
+                        ) : (
+                          <div className="aggregation-limit__empty">Нет данных для построения графика.</div>
+                        )}
+                      </div>
+                      <div className="aggregation-limit__chart">
+                        {limitImpactPoints.length > 0 ? (
+                          <LimitRiskEfficiencyChart
+                            points={limitImpactPoints}
+                            className="aggregation-limit__canvas aggregation-limit__canvas--secondary"
+                          />
                         ) : (
                           <div className="aggregation-limit__empty">Нет данных для построения графика.</div>
                         )}

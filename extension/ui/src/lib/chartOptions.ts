@@ -294,6 +294,8 @@ export interface LimitImpactPoint {
   totalPnl: number;
   aggregateDrawdown: number;
   aggregateMPU: number;
+  aggregateWorstRisk: number;
+  aggregateRiskEfficiency: number | null;
 }
 
 export const createLimitImpactChartOptions = (points: LimitImpactPoint[]): EChartsOption => {
@@ -382,6 +384,61 @@ export const createLimitImpactChartOptions = (points: LimitImpactPoint[]): EChar
       },
     },
     series: [pnlSeries, drawdownSeries, riskSeries],
+  } satisfies EChartsOption;
+};
+
+export const createLimitEfficiencyChartOptions = (points: LimitImpactPoint[]): EChartsOption => {
+  const categories = points.map((point) => point.label);
+
+  const efficiencySeries: LineSeriesOption = {
+    name: 'P&L / макс. риск',
+    type: 'line',
+    smooth: false,
+    showSymbol: true,
+    symbolSize: 8,
+    connectNulls: false,
+    lineStyle: {
+      color: '#0f766e',
+      width: 1.8,
+    },
+    itemStyle: {
+      color: '#14b8a6',
+    },
+    emphasis: { focus: 'series' },
+    data: points.map((point) => (Number.isFinite(point.aggregateRiskEfficiency ?? Number.NaN) ? point.aggregateRiskEfficiency : null)),
+  } satisfies LineSeriesOption;
+
+  return {
+    animation: false,
+    grid: { left: 60, right: 24, top: 16, bottom: 76 },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' },
+      valueFormatter: (value) => formatNumber(Number(value)),
+    },
+    legend: {
+      bottom: 0,
+      icon: 'roundRect',
+      data: ['P&L / макс. риск'],
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisLabel: {
+        formatter: (value) => `≤ ${value}`,
+      },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: (value) => formatNumber(Number(value)),
+      },
+      splitLine: {
+        show: true,
+        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+      },
+    },
+    series: [efficiencySeries],
   } satisfies EChartsOption;
 };
 

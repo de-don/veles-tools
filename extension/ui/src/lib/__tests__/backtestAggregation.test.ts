@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BacktestCycle, BacktestOrder, BacktestStatisticsDetail } from '../../types/backtests';
-import { computeBacktestMetrics, MS_IN_DAY, summarizeAggregations } from '../backtestAggregation';
+import { computeBacktestMetrics, type AggregationSummary, MS_IN_DAY, summarizeAggregations } from '../backtestAggregation';
 
 const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): BacktestStatisticsDetail => ({
   id: 1,
@@ -103,6 +103,15 @@ const buildMetricsWithRiskWindow = ({
   );
 };
 
+const expectRiskEfficiencyConsistency = (summary: AggregationSummary): void => {
+  expect(summary.aggregateWorstRisk).toBe(Math.max(summary.aggregateDrawdown, summary.aggregateMPU));
+  if (summary.aggregateWorstRisk > 0) {
+    expect(summary.aggregateRiskEfficiency).toBeCloseTo(summary.totalPnl / summary.aggregateWorstRisk, 6);
+  } else {
+    expect(summary.aggregateRiskEfficiency).toBeNull();
+  }
+};
+
 describe('computeBacktestMetrics', () => {
   it('aggregates statistics and cycles into consistent metrics', () => {
     const stats = buildDetail({
@@ -179,6 +188,8 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.maxDrawdown).toBe(40);
     expect(metrics.maxMPU).toBe(45);
     expect(metrics.maxMPP).toBe(120);
+    expect(metrics.worstRisk).toBe(45);
+    expect(metrics.riskEfficiency).toBeCloseTo(3.3333333, 4);
     expect(metrics.depositAmount).toBe(2500);
     expect(metrics.depositLeverage).toBe(5);
     expect(metrics.depositCurrency).toBe('USDT');
@@ -326,6 +337,8 @@ describe('summarizeAggregations', () => {
     expect(summary.avgMaxDrawdown).toBe(0);
     expect(summary.aggregateDrawdown).toBe(0);
     expect(summary.aggregateMPU).toBe(0);
+    expect(summary.aggregateWorstRisk).toBe(0);
+    expect(summary.aggregateRiskEfficiency).toBeNull();
     expect(summary.maxConcurrent).toBe(0);
     expect(summary.avgConcurrent).toBe(0);
     expect(summary.noTradeDays).toBe(0);
@@ -343,6 +356,7 @@ describe('summarizeAggregations', () => {
       maxValue: 0,
     });
     expect(summary.aggregateRiskSeries).toEqual({ points: [], maxValue: 0 });
+    expectRiskEfficiencyConsistency(summary);
   });
 
   it('aggregates multiple backtests into portfolio-level metrics', () => {
@@ -440,6 +454,7 @@ describe('summarizeAggregations', () => {
     expect(summary.avgMaxDrawdown).toBeCloseTo((metricsA.maxDrawdown + metricsB.maxDrawdown) / 2, 6);
     expect(summary.aggregateDrawdown).toBeGreaterThanOrEqual(Math.max(metricsA.maxDrawdown, metricsB.maxDrawdown));
     expect(summary.aggregateMPU).toBeGreaterThanOrEqual(Math.max(metricsA.maxMPU, metricsB.maxMPU));
+    expectRiskEfficiencyConsistency(summary);
     expect(summary.aggregateRiskSeries.maxValue).toBe(summary.aggregateMPU);
     expect(summary.aggregateRiskSeries.points.length).toBeGreaterThan(0);
     expect(summary.maxConcurrent).toBeGreaterThanOrEqual(2);
@@ -506,6 +521,7 @@ describe('summarizeAggregations', () => {
 
     expect(summary.aggregateMPU).toBe(55);
     expect(summary.aggregateRiskSeries.maxValue).toBe(55);
+    expectRiskEfficiencyConsistency(summary);
   });
 
   it('sums concurrent risk spikes including instantaneous windows', () => {
@@ -541,6 +557,7 @@ describe('summarizeAggregations', () => {
 
     expect(summary.aggregateMPU).toBe(38);
     expect(summary.aggregateRiskSeries.maxValue).toBe(38);
+    expectRiskEfficiencyConsistency(summary);
   });
 
   it('ignores cycles without risk contribution when computing aggregate MPU', () => {
@@ -574,6 +591,7 @@ describe('summarizeAggregations', () => {
 
     expect(summary.aggregateMPU).toBe(25);
     expect(summary.aggregateRiskSeries.maxValue).toBe(25);
+    expectRiskEfficiencyConsistency(summary);
   });
 
   it('computes aggregate MPU across overlapping risk intervals', () => {
@@ -631,6 +649,7 @@ describe('summarizeAggregations', () => {
 
     expect(summary.aggregateMPU).toBeCloseTo(30);
     expect(summary.aggregateRiskSeries.maxValue).toBeCloseTo(30);
+    expectRiskEfficiencyConsistency(summary);
   });
 
   it('calculates noTradeDays across sparse activity windows', () => {
@@ -671,6 +690,7 @@ describe('summarizeAggregations', () => {
 
     expect(summary.totalSelected).toBe(1);
     expect(summary.noTradeDays).toBe(1);
+    expectRiskEfficiencyConsistency(summary);
   });
 
   it('includes idle selections when counting noTradeDays', () => {
@@ -719,6 +739,7 @@ describe('summarizeAggregations', () => {
 
     expect(summary.totalSelected).toBe(2);
     expect(summary.noTradeDays).toBe(4);
+    expectRiskEfficiencyConsistency(summary);
   });
 
   it('tracks aggregate drawdown and concurrency across overlapping selections', () => {
@@ -812,6 +833,7 @@ describe('summarizeAggregations', () => {
     expect(summary.avgConcurrent).toBeGreaterThan(0);
     expect(summary.avgConcurrent).toBeLessThanOrEqual(summary.maxConcurrent);
     expect(summary.noTradeDays).toBe(1);
+    expectRiskEfficiencyConsistency(summary);
 
     const march1Index = Math.floor(new Date('2024-03-01T00:00:00Z').getTime() / MS_IN_DAY);
     const march2Index = Math.floor(new Date('2024-03-02T00:00:00Z').getTime() / MS_IN_DAY);
@@ -921,6 +943,9 @@ describe('summarizeAggregations', () => {
     expect(unlimitedSummary.aggregateRiskSeries.maxValue).toBe(unlimitedSummary.aggregateMPU);
     expect(boundedSummary.aggregateRiskSeries.maxValue).toBe(boundedSummary.aggregateMPU);
     expect(unlimitedSummary.aggregateRiskSeries.points.length).toBeGreaterThan(0);
+    expectRiskEfficiencyConsistency(unlimitedSummary);
+    expectRiskEfficiencyConsistency(boundedSummary);
+    expectRiskEfficiencyConsistency(relaxedSummary);
 
     expect(boundedSummary.totalDeals).toBeLessThan(unlimitedSummary.totalDeals);
     expect(boundedSummary.totalPnl).toBeLessThan(unlimitedSummary.totalPnl);
