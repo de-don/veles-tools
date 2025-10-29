@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { message, Table } from 'antd';
+import { Button, message, Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { ChangeEvent } from 'react';
@@ -260,14 +260,9 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
               Локальная копия позволяет анализировать результаты без ограничений API.
             </p>
           </div>
-          <button
-            type="button"
-            className="button"
-            onClick={handleManualSync}
-            disabled={isSyncRunning || backtestsLoading}
-          >
-            {isSyncRunning ? 'Синхронизируем…' : 'Синхронизировать'}
-          </button>
+          <Button type="primary" onClick={handleManualSync} loading={isSyncRunning} disabled={backtestsLoading}>
+            Синхронизировать
+          </Button>
         </div>
         <div className="panel__body" style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
           <div>
@@ -361,23 +356,18 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
             <p className="panel__description">
               Эти результаты будут использоваться для дальнейшего анализа и интеграции с мультизапуском.
             </p>
-            <div
-              className="panel__actions"
-              style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: totalSelected === 0 ? 0 : 12 }}
-            >
-              <button type="button" className="button" onClick={handleOpenSaveGroup} disabled={totalSelected === 0}>
+            <Space className="panel__actions" size={[8, 8]} wrap style={{ marginBottom: totalSelected === 0 ? 0 : 12 }}>
+              <Button type="primary" onClick={handleOpenSaveGroup} disabled={totalSelected === 0}>
                 Сохранить как группу
-              </button>
-              <button
-                type="button"
-                className="button button--ghost"
+              </Button>
+              <Button
                 onClick={handleOpenAddToGroup}
                 disabled={totalSelected === 0 || groups.length === 0}
                 title={groups.length === 0 ? 'Нет доступных групп' : undefined}
               >
                 Добавить в группу
-              </button>
-            </div>
+              </Button>
+            </Space>
             {totalSelected === 0 ? (
               <div className="empty-state">Выберите один или несколько бэктестов в таблице.</div>
             ) : (

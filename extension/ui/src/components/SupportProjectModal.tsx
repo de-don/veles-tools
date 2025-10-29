@@ -1,4 +1,5 @@
-import { Modal } from 'antd';
+import { CopyOutlined } from '@ant-design/icons';
+import { Button, Input, Modal } from 'antd';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import Tabs, { type TabItem } from './ui/Tabs';
 
@@ -68,20 +69,16 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
                 Адрес кошелька
               </label>
               <div className="support-modal__address-row">
-                <input
+                <Input
                   id={addressInputId}
                   className="support-modal__address-input"
                   value={WALLET_ADDRESS}
                   readOnly
                   aria-readonly="true"
                 />
-                <button
-                  type="button"
-                  className="button button--ghost support-modal__copy-button"
-                  onClick={handleCopyAddress}
-                >
+                <Button icon={<CopyOutlined />} onClick={handleCopyAddress} className="support-modal__copy-button">
                   Скопировать
-                </button>
+                </Button>
               </div>
               {copyStatus === 'copied' && (
                 <span className="support-modal__copy-status support-modal__copy-status--success">Адрес скопирован</span>

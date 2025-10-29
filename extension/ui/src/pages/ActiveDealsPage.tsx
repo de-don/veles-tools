@@ -1,4 +1,4 @@
-import { message, Popconfirm, Table } from 'antd';
+import { Button, message, Popconfirm, Segmented, Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
@@ -442,13 +442,13 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               onConfirm={() => handleCloseDeal(record.deal)}
               disabled={actionsDisabled}
             >
-              <button
-                type="button"
-                className={`button active-deals__close-button ${buttonToneClass}`}
+              <Button
+                className={`active-deals__close-button ${buttonToneClass}`}
                 disabled={actionsDisabled}
+                loading={isClosing}
               >
-                {isClosing ? 'Закрытие...' : 'Закрыть'}
-              </button>
+                Закрыть
+              </Button>
             </Popconfirm>
           );
         },
@@ -575,25 +575,18 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               </p>
             </div>
           </div>
-          <fieldset className="chart-zoom-presets" aria-label="Интервалы отображения графика">
-            {ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => {
-              const isActive = zoomPreset === preset.key;
-              return (
-                <button
-                  key={preset.key}
-                  type="button"
-                  className={`chart-zoom-presets__button${isActive ? ' chart-zoom-presets__button--active' : ''}`}
-                  onClick={() => applyZoomPreset(preset.key)}
-                  aria-pressed={isActive}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
-            <button type="button" className="button button--ghost" onClick={handleResetHistory}>
-              Сбросить данные
-            </button>
-          </fieldset>
+          <Space className="chart-zoom-presets" align="center" size="middle" wrap>
+            <Segmented
+              options={ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => ({
+                label: preset.label,
+                value: preset.key,
+              }))}
+              value={zoomPreset}
+              size="middle"
+              onChange={(value) => applyZoomPreset(value as ActiveDealsZoomPresetKey)}
+            />
+            <Button onClick={handleResetHistory}>Сбросить данные</Button>
+          </Space>
           <div className="aggregation-equity__chart">
             {pnlSeries.points.length === 0 ? (
               <div className="empty-state">Нет данных для отображения. Подождите первое обновление.</div>

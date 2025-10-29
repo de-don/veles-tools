@@ -1,5 +1,5 @@
 import type { SelectProps } from 'antd';
-import { Checkbox, Input, Modal, Select } from 'antd';
+import { Button, Checkbox, Input, Modal, Select } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchApiKeys } from '../api/apiKeys';
 import type { CreateBotResponse } from '../api/bots';
@@ -347,17 +347,17 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
           marginTop: 20,
         }}
       >
-        <button type="button" className="button button--ghost" onClick={handleCancel} disabled={isRunning}>
+        <Button onClick={handleCancel} disabled={isRunning}>
           Отменить
-        </button>
-        <button
-          type="button"
-          className="button"
+        </Button>
+        <Button
+          type="primary"
           onClick={runCreation}
           disabled={isRunning || totalTargets === 0 || !apiKeyId}
+          loading={isRunning}
         >
           {isRunning ? 'Создаём…' : `Создать ботов (${totalTargets})`}
-        </button>
+        </Button>
       </div>
     </Modal>
   );

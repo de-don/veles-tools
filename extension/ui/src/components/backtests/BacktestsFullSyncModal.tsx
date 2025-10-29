@@ -1,4 +1,4 @@
-import { Modal } from 'antd';
+import { Button, Modal } from 'antd';
 import { useMemo } from 'react';
 import { useBacktestsSync } from '../../context/BacktestsSyncContext';
 
@@ -127,17 +127,17 @@ const BacktestsFullSyncModal = ({ open, onClose, formatDate }: BacktestsFullSync
           marginTop: 24,
         }}
       >
-        <button type="button" className="button button--ghost" onClick={handleCancel} disabled={isSyncRunning}>
+        <Button onClick={handleCancel} disabled={isSyncRunning}>
           Закрыть
-        </button>
+        </Button>
         {isSyncRunning ? (
-          <button type="button" className="button button--ghost" onClick={stopSync}>
+          <Button danger onClick={stopSync}>
             Остановить
-          </button>
+          </Button>
         ) : (
-          <button type="button" className="button" onClick={handleStart}>
+          <Button type="primary" onClick={handleStart}>
             Запустить полную синхронизацию
-          </button>
+          </Button>
         )}
       </div>
     </Modal>

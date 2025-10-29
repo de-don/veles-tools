@@ -1,6 +1,6 @@
 import { DownOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Dropdown, Modal, Table } from 'antd';
+import { Button, Dropdown, Modal, Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { Key } from 'react';
@@ -891,14 +891,14 @@ const BacktestAggregationPanel = ({
         </div>
         <div className="panel__actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {showGatherButton && (
-            <button
-              type="button"
-              className="button"
+            <Button
+              type="primary"
               onClick={runAggregation}
               disabled={!extensionReady || aggregationState.running || cachePreloading}
+              loading={aggregationState.running || cachePreloading}
             >
               {aggregationState.running ? 'Собираем…' : cachePreloading ? 'Загружаем из кеша…' : 'Собрать статистику'}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -1302,17 +1302,15 @@ const BacktestAggregationPanel = ({
               }}
             >
               {hasActionsMenu && (
-                <div style={{ marginLeft: 'auto' }}>
+                <Space style={{ marginLeft: 'auto' }}>
                   <Dropdown
                     menu={{ items: actionsMenuItems, onClick: handleActionsMenuClick }}
                     trigger={['click']}
                     disabled={aggregationState.running}
                   >
-                    <button type="button" className="button button--ghost">
-                      Действия <DownOutlined style={{ marginLeft: 6 }} />
-                    </button>
+                    <Button icon={<DownOutlined />}>Действия</Button>
                   </Dropdown>
-                </div>
+                </Space>
               )}
               <TableColumnSettingsButton
                 settings={aggregationColumnSettings}

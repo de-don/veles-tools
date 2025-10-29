@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Table, Tag } from 'antd';
+import { Button, Space, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type BotStrategy, fetchBotStrategy } from '../api/backtestRunner';
@@ -367,9 +367,9 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
         title: 'Действия',
         key: 'actions',
         render: (_value, entry) => (
-          <button type="button" className="button button--ghost" onClick={() => handleRemove(entry)}>
+          <Button type="link" danger onClick={() => handleRemove(entry)}>
             Удалить
-          </button>
+          </Button>
         ),
       },
     ],
@@ -435,9 +435,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
     <section className="page">
       <header className="page__header">
         <h1 className="page__title">Импорт ботов</h1>
-        <p className="page__subtitle">
-          Вставьте ссылки или идентификаторы, чтобы загрузить конфигурации ботов по общему доступу.
-        </p>
+        <p className="page__subtitle">Вставьте публичные ссылки на ботов, чтобы загрузить их конфигурации.</p>
       </header>
 
       {!extensionReady && (
@@ -460,19 +458,14 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
 https://veles.finance/share/q1w2e`}
           rows={4}
         />
-        <div className="panel__actions" style={{ marginTop: 12 }}>
-          <button type="button" className="button" onClick={handleImport} disabled={!extensionReady || isImporting}>
-            {isImporting ? 'Импортируем…' : 'Импортировать'}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setInputValue('')}
-            disabled={isImporting}
-          >
+        <Space className="panel__actions" style={{ marginTop: 12 }} wrap>
+          <Button type="primary" onClick={handleImport} loading={isImporting} disabled={!extensionReady}>
+            Импортировать
+          </Button>
+          <Button onClick={() => setInputValue('')} disabled={isImporting}>
             Очистить поле
-          </button>
-        </div>
+          </Button>
+        </Space>
         {logs.length > 0 && (
           <ul className="panel__list" style={{ marginTop: 16 }}>
             {logs.map((log) => (
@@ -497,7 +490,7 @@ https://veles.finance/share/q1w2e`}
               Храним конфигурации локально. Можно выбрать ботов для запуска бэктестов или удалить ненужных.
             </p>
           </div>
-          <div className="panel__actions">
+          <Space className="panel__actions" size={[8, 8]} wrap>
             <TableColumnSettingsButton
               settings={tableColumnSettings}
               moveColumn={moveTableColumn}
@@ -505,10 +498,10 @@ https://veles.finance/share/q1w2e`}
               reset={resetTableColumns}
               hasCustomSettings={tableHasCustomSettings}
             />
-            <button type="button" className="button button--ghost" onClick={handleClearAll} disabled={!hasImportedBots}>
+            <Button onClick={handleClearAll} disabled={!hasImportedBots}>
               Очистить список
-            </button>
-          </div>
+            </Button>
+          </Space>
         </div>
 
         {hasImportedBots ? (
@@ -530,14 +523,12 @@ https://veles.finance/share/q1w2e`}
         {totalSelected > 0 && (
           <div className="panel__bulk-actions">
             <span className="panel__bulk-info">Выбрано {totalSelected} ботов</span>
-            <div className="panel__bulk-buttons">
-              <button type="button" className="button" onClick={() => openModal('single')}>
+            <Space className="panel__bulk-buttons" wrap>
+              <Button type="primary" onClick={() => openModal('single')}>
                 Бэктест
-              </button>
-              <button type="button" className="button button--secondary" onClick={() => openModal('multiCurrency')}>
-                Мультивалютный бэктест
-              </button>
-            </div>
+              </Button>
+              <Button onClick={() => openModal('multiCurrency')}>Мультивалютный бэктест</Button>
+            </Space>
           </div>
         )}
       </div>

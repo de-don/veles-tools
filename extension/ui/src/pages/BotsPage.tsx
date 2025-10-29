@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Table, Tag } from 'antd';
+import { Button, Space, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -496,19 +496,14 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
               ))}
             </select>
           </div>
-          <div className="panel__filters-actions">
-            <button type="submit" className="button">
+          <Space className="panel__filters-actions">
+            <Button type="primary" htmlType="submit">
               Применить
-            </button>
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={handleFiltersReset}
-              disabled={isResetDisabled}
-            >
+            </Button>
+            <Button type="default" onClick={handleFiltersReset} disabled={isResetDisabled}>
               Сбросить фильтры
-            </button>
-          </div>
+            </Button>
+          </Space>
           <div className="panel__filters-actions" style={{ marginLeft: 'auto' }}>
             <TableColumnSettingsButton
               settings={columnSettings}
@@ -528,20 +523,20 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         {totalSelected > 0 && (
           <div className="panel__bulk-actions">
             <span className="panel__bulk-info">Выбрано {totalSelected} ботов</span>
-            <div className="panel__bulk-buttons">
-              <button type="button" className="button" onClick={() => openModal('single')}>
+            <Space className="panel__bulk-buttons" wrap>
+              <Button type="primary" onClick={() => openModal('single')}>
                 Бэктест
-              </button>
-              <button type="button" className="button button--secondary" onClick={() => openModal('multiCurrency')}>
+              </Button>
+              <Button type="default" onClick={() => openModal('multiCurrency')}>
                 Мультивалютный бэктест
-              </button>
+              </Button>
               <BulkActionsMenu
                 bots={selection}
                 apiKeys={apiKeys}
                 onReloadRequested={forceReloadBots}
                 onSelectionUpdate={setSelection}
               />
-            </div>
+            </Space>
           </div>
         )}
 

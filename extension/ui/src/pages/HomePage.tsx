@@ -1,3 +1,4 @@
+import { Card, Col, List, Row, Space, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { APP_NAME, APP_VERSION } from '../config/version';
 
@@ -81,66 +82,88 @@ const faqItems = [
 
 const HomePage = () => {
   return (
-    <section className="page">
-      <header className="page__header">
-        <h1 className="page__title">{APP_NAME}</h1>
-        <p className="page__subtitle">
-          Veles Tools — рабочая панель для управления мультизапусками бэктестов и ботами veles.finance. Текущая версия —
-          v{APP_VERSION}.
-        </p>
-      </header>
+    <div className="page">
+      <Space direction="vertical" size={24} style={{ width: '100%' }}>
+        <Space direction="vertical" size={4} className="page__header">
+          <Typography.Title level={1} style={{ marginBottom: 0 }}>
+            {APP_NAME}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" className="page__subtitle" style={{ marginBottom: 0 }}>
+            Veles Tools — рабочая панель для управления мультизапусками бэктестов и ботами veles.finance. Текущая версия
+            — v{APP_VERSION}.
+          </Typography.Paragraph>
+        </Space>
 
-      <div className="panel panel--hero">
-        <div className="home-hero">
-          <div>
-            <h2 className="panel__title">Быстрый старт</h2>
-            <p className="panel__description">
+        <Card
+          title="Быстрый старт"
+          bordered
+          extra={<Typography.Text type="secondary">Готовые действия для работы каждый день</Typography.Text>}
+        >
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Typography.Paragraph style={{ marginBottom: 0 }}>
               Собирайте метрики, управляйте очередью бэктестов и сохраняйте стратегии без переключения между страницами.
-            </p>
-          </div>
-          <div className="home-quick-links">
-            {quickLinks.map((link) => (
-              <Link key={link.to} to={link.to} className="home-quick-link">
-                <span className="home-quick-link__label">{link.label}</span>
-                <span className="home-quick-link__hint">{link.description}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+            </Typography.Paragraph>
+            <Row gutter={[16, 16]}>
+              {quickLinks.map((link) => (
+                <Col key={link.to} xs={24} sm={12}>
+                  <Link to={link.to} className="home-quick-card">
+                    <Card hoverable size="small" className="home-quick-card__inner">
+                      <Space direction="vertical" size={4}>
+                        <Typography.Text strong>{link.label}</Typography.Text>
+                        <Typography.Text type="secondary">{link.description}</Typography.Text>
+                      </Space>
+                    </Card>
+                  </Link>
+                </Col>
+              ))}
+            </Row>
+          </Space>
+        </Card>
 
-      <div className="home-grid">
-        <div className="panel">
-          <h2 className="panel__title">Функционал</h2>
-          <ul className="panel__list">
-            {completedHighlights.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={12}>
+            <Card title="Функционал" bordered>
+              <List
+                dataSource={completedHighlights}
+                renderItem={(item) => (
+                  <List.Item>
+                    <Typography.Text>{item}</Typography.Text>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} md={12}>
+            <Card title="В планах" bordered>
+              <List
+                dataSource={roadmapHighlights}
+                renderItem={(item) => (
+                  <List.Item>
+                    <Typography.Text>{item}</Typography.Text>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-        <div className="panel">
-          <h2 className="panel__title">В планах</h2>
-          <ul className="panel__list">
-            {roadmapHighlights.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="panel">
-        <h2 className="panel__title">Часто задаваемые вопросы</h2>
-        <div className="faq">
-          {faqItems.map((item) => (
-            <div key={item.question} className="faq__item">
-              <div className="faq__question">{item.question}</div>
-              <div className="faq__answer">{item.answer}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+        <Card title="Часто задаваемые вопросы" bordered>
+          <List
+            itemLayout="vertical"
+            dataSource={faqItems}
+            split={false}
+            renderItem={(item) => (
+              <List.Item key={item.question}>
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Typography.Text strong>{item.question}</Typography.Text>
+                  <Typography.Paragraph style={{ marginBottom: 0 }}>{item.answer}</Typography.Paragraph>
+                </Space>
+              </List.Item>
+            )}
+          />
+        </Card>
+      </Space>
+    </div>
   );
 };
 

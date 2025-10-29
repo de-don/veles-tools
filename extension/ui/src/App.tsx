@@ -172,13 +172,13 @@ const App = () => {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
                 <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
-                <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
                 <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
                 <Route path="/backtest-groups" element={<BacktestGroupsPage />} />
                 <Route
                   path="/backtest-groups/:groupId"
                   element={<BacktestGroupDetailsPage extensionReady={extensionReady} />}
                 />
+                <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </AppLayout>

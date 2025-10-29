@@ -1,3 +1,4 @@
+import { Button } from 'antd';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -752,15 +753,15 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           <div className="form-presets">
             <span className="form-presets__label">Быстрый период:</span>
             {periodPresets.map((preset) => (
-              <button
+              <Button
                 key={preset.months}
-                type="button"
                 className="form-preset-button"
+                size="small"
                 onClick={() => handlePresetClick(preset.months)}
                 disabled={isRunning}
               >
                 {preset.label}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -864,12 +865,12 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           {runError && <div className="banner banner--warning">{runError}</div>}
 
           <footer className="modal__footer">
-            <button type="button" className="button button--ghost" onClick={handleCancel}>
+            <Button onClick={handleCancel} disabled={isRunning}>
               {isRunning ? 'Отменить' : isCompleted ? 'Закрыть' : 'Отмена'}
-            </button>
-            <button type="submit" className="button" disabled={isRunning}>
+            </Button>
+            <Button type="primary" htmlType="submit" loading={isRunning}>
               {isRunning ? 'Запускаем…' : 'Запустить'}
-            </button>
+            </Button>
           </footer>
         </form>
       </div>

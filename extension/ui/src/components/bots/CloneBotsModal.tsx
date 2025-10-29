@@ -1,4 +1,4 @@
-import { Input, Modal, Select } from 'antd';
+import { Button, Input, Modal, Select } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { composeSymbol } from '../../api/backtestRunner';
 import { createBot } from '../../api/bots';
@@ -391,17 +391,17 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
           marginTop: 20,
         }}
       >
-        <button type="button" className="button button--ghost" onClick={handleCancel} disabled={isRunning}>
+        <Button onClick={handleCancel} disabled={isRunning}>
           Отменить
-        </button>
-        <button
-          type="button"
-          className="button"
+        </Button>
+        <Button
+          type="primary"
           onClick={runCloning}
           disabled={isRunning || totalPlanned === 0 || !apiKeyId}
+          loading={isRunning}
         >
           {isRunning ? 'Создаём…' : `Создать (${totalPlanned})`}
-        </button>
+        </Button>
       </div>
     </Modal>
   );

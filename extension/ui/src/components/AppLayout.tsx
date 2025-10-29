@@ -11,8 +11,8 @@ import {
   SettingOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Layout, Menu, Space, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
+import { Alert, Button, Layout, Menu, Popover, Space, Tag, Typography } from 'antd';
 import { type PropsWithChildren, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
@@ -124,8 +124,25 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
     </Tag>
   ) : (
     <Tag icon={<ExclamationCircleOutlined />} color="error">
-      {connectionStatus.error ?? 'Нет соединения'}
+      Связь не активна
     </Tag>
+  );
+
+  const connectionPopover = (
+    <Space direction="vertical" size={8} style={{ minWidth: 220 }}>
+      <Typography.Text type="secondary">
+        Обновлено: {lastCheckedLabel}
+      </Typography.Text>
+      <Typography.Text type={connectionStatus.ok ? 'secondary' : 'danger'}>
+        {connectionStatus.ok ? 'Соединение с вкладкой активно.' : connectionStatus.error ?? 'Нет соединения с вкладкой.'}
+      </Typography.Text>
+      {connectionStatus.origin && (
+        <Typography.Text type="secondary">Домен: {connectionStatus.origin}</Typography.Text>
+      )}
+      <Button size="small" type="primary" icon={<ReloadOutlined />} onClick={onPing}>
+        Обновить
+      </Button>
+    </Space>
   );
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
@@ -168,17 +185,12 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
         <Header className="app-layout__header">
           <Space direction="vertical" size={2} className="app-layout__header-details">
             <Space size="small" wrap align="center">
-              {statusTag}
-              <Typography.Text type="secondary">Обновлено: {lastCheckedLabel}</Typography.Text>
-              {connectionStatus.origin && (
-                <Typography.Text type="secondary">Домен: {connectionStatus.origin}</Typography.Text>
-              )}
+              <Popover content={connectionPopover} trigger="hover" placement="bottomLeft">
+                {statusTag}
+              </Popover>
             </Space>
           </Space>
           <Space size="middle" wrap>
-            <Button icon={<ReloadOutlined />} onClick={onPing}>
-              Обновить
-            </Button>
             {!connectionStatus.ok && (
               <Button type="primary" onClick={onOpenVeles}>
                 Открыть veles.finance
