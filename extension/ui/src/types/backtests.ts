@@ -167,7 +167,7 @@ export interface BacktestOrder {
 
 export interface BacktestCycle {
   id: number;
-  status: 'CANCELED' | 'FINISHED' | string;
+  status: 'CANCELLED' | 'FINISHED' | 'STARTED';
   substatus?: 'PULL_UP' | 'TAKE_PROFIT' | string | null;
   exchange?: 'BYBIT_FUTURES' | string | null;
   symbol?: string | null;

@@ -54,6 +54,9 @@ export interface BacktestAggregationMetrics {
   worstRisk: number;
   riskEfficiency: number | null;
   downtimeDays: number;
+  openDeals: number;
+  activeMpu: number;
+  openPositions: OpenPositionRisk[];
   spanStart: number | null;
   spanEnd: number | null;
   activeDurationMs: number;
@@ -116,6 +119,8 @@ export interface AggregationSummary {
   totalProfits: number;
   totalLosses: number;
   totalDeals: number;
+  openDeals: number;
+  activeMpu: number;
   avgPnlPerDeal: number;
   avgPnlPerBacktest: number;
   avgNetPerDay: number;
@@ -131,6 +136,11 @@ export interface AggregationSummary {
   dailyConcurrency: DailyConcurrencyResult;
   portfolioEquity: PortfolioEquitySeries;
   aggregateRiskSeries: AggregateRiskSeries;
+}
+
+interface OpenPositionRisk {
+  cycleId: number;
+  mpu: number;
 }
 
 const toNumber = (value: unknown): number => {
@@ -229,12 +239,12 @@ const resolveStatsSpan = (stats: BacktestStatisticsDetail): TimeInterval | null 
   return null;
 };
 
-const normalizeStatus = (status: string | null | undefined): string => {
-  return typeof status === 'string' ? status.toUpperCase() : '';
+const isFinishedCycle = (cycle: BacktestCycle | null | undefined): cycle is BacktestCycle => {
+  return Boolean(cycle && cycle.status === 'FINISHED');
 };
 
-const isFinishedCycle = (cycle: BacktestCycle | null | undefined): cycle is BacktestCycle => {
-  return Boolean(cycle && normalizeStatus(cycle.status) === 'FINISHED');
+const isStartedCycle = (cycle: BacktestCycle | null | undefined): cycle is BacktestCycle => {
+  return Boolean(cycle && cycle.status === 'STARTED');
 };
 
 const resolveCycleInterval = (cycle: BacktestCycle): TimeInterval | null => {
@@ -460,6 +470,9 @@ export const computeBacktestMetrics = (
   const finishedCycleIntervals = cycleIntervals.filter(({ cycle }) => isFinishedCycle(cycle));
   const trades: AggregationTrade[] = [];
   let maxMPP = 0;
+  let openDeals = 0;
+  let activeMpu = 0;
+  const openPositions: OpenPositionRisk[] = [];
 
   cycleIntervals.forEach(({ cycle }) => {
     const mfe = Math.max(0, toNumber(cycle.mfeAbsolute ?? 0));
@@ -482,6 +495,22 @@ export const computeBacktestMetrics = (
       mfe,
       mae,
     });
+  });
+
+  cycleIntervals.forEach(({ cycle }) => {
+    if (!isStartedCycle(cycle)) {
+      return;
+    }
+    openDeals += 1;
+    const maeValue = toNumber(cycle.maeAbsolute ?? 0);
+    const normalizedMae = Number.isFinite(maeValue) ? Math.abs(maeValue) : 0;
+    const netValue = toNumber(cycle.netQuote ?? cycle.profitQuote ?? cycle.pnl ?? 0);
+    const unrealizedLoss = Number.isFinite(netValue) && netValue < 0 ? Math.abs(netValue) : 0;
+    const mpu = Math.max(normalizedMae, unrealizedLoss);
+    if (mpu > 0) {
+      activeMpu += mpu;
+    }
+    openPositions.push({ cycleId: cycle.id, mpu });
   });
 
   const drawdownTimeline = computeDrawdownTimeline(cycles);
@@ -557,6 +586,9 @@ export const computeBacktestMetrics = (
     worstRisk,
     riskEfficiency,
     downtimeDays,
+    openDeals,
+    activeMpu,
+    openPositions,
     spanStart: Number.isFinite(spanStart) ? spanStart : null,
     spanEnd: Number.isFinite(spanEnd) ? spanEnd : null,
     activeDurationMs: coverage.totalActiveMs,
@@ -1498,6 +1530,12 @@ const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): Aggre
   const totalProfits = metricsList.reduce((acc, metrics) => acc + (Number(metrics.profitsCount) || 0), 0);
   const totalLosses = metricsList.reduce((acc, metrics) => acc + (Number(metrics.lossesCount) || 0), 0);
   const totalDeals = metricsList.reduce((acc, metrics) => acc + (Number(metrics.totalDeals) || 0), 0);
+  const openPositionRisks = metricsList.flatMap((metrics) => metrics.openPositions ?? []);
+  const totalOpenDeals = openPositionRisks.length;
+  const totalActiveMpu = openPositionRisks.reduce(
+    (acc, position) => acc + (Number.isFinite(position.mpu) ? position.mpu : 0),
+    0,
+  );
   const totalTradeDurationSec = metricsList.reduce(
     (acc, metrics) => acc + (Number(metrics.totalTradeDurationSec) || 0),
     0,
@@ -1528,6 +1566,8 @@ const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): Aggre
     totalProfits,
     totalLosses,
     totalDeals,
+    openDeals: totalOpenDeals,
+    activeMpu: totalActiveMpu,
     avgPnlPerDeal,
     avgPnlPerBacktest,
     avgNetPerDay,
@@ -1577,6 +1617,14 @@ const summarizeWithConcurrencyLimit = (
   const avgPnlPerDeal = totalDeals > 0 ? totalPnl / totalDeals : 0;
   const avgPnlPerBacktest = totalSelected > 0 ? totalPnl / totalSelected : 0;
   const avgTradeDurationDays = totalDeals > 0 ? totalTradeDurationSec / totalDeals / 86400 : 0;
+  const openPositionRisks = metricsList.flatMap((metrics) => metrics.openPositions ?? []);
+  const sortedRisks = openPositionRisks
+    .map((position) => (Number.isFinite(position.mpu) ? Math.max(0, position.mpu) : 0))
+    .filter((value) => value > 0)
+    .sort((a, b) => b - a);
+  const limitedCount = Math.min(limit, sortedRisks.length);
+  const totalOpenDeals = Math.min(limit, openPositionRisks.length);
+  const totalActiveMpu = sortedRisks.slice(0, limitedCount).reduce((acc, value) => acc + value, 0);
 
   const perBacktestDrawdowns = metricsList.map((metrics) => {
     const trades = tradesByBacktest.get(metrics.id) ?? [];
@@ -1604,6 +1652,8 @@ const summarizeWithConcurrencyLimit = (
     totalProfits,
     totalLosses,
     totalDeals,
+    openDeals: totalOpenDeals,
+    activeMpu: totalActiveMpu,
     avgPnlPerDeal,
     avgPnlPerBacktest,
     avgNetPerDay,

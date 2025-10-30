@@ -823,6 +823,13 @@ const BacktestAggregationPanel = ({
         render: (_metrics, record) => (record.metrics ? formatSignedAmount(record.metrics.avgNetPerDay) : '—'),
       },
       {
+        title: 'Акт. МПУ',
+        dataIndex: 'metrics',
+        key: 'activeMpu',
+        sorter: buildMetricNumberSorter((metrics) => metrics.activeMpu),
+        render: (_metrics, record) => (record.metrics ? formatAggregationValue(record.metrics.activeMpu) : '—'),
+      },
+      {
         title: 'Сделки',
         dataIndex: 'metrics',
         key: 'deals',
@@ -1053,10 +1060,19 @@ const BacktestAggregationPanel = ({
                         trend={resolveTrend(aggregationSummary.aggregateRiskEfficiency)}
                       />
                       <StatisticCard
-                        title="Сделки P/L"
-                        tooltip={<InfoTooltip text="Распределение сделок по прибыльным и убыточным" />}
-                        value={`${formatAggregationInteger(aggregationSummary.totalProfits, true)} / ${formatAggregationInteger(aggregationSummary.totalLosses, true)}`}
+                        title="Сделки (Σ)"
+                        tooltip={
+                          <InfoTooltip text="Количество сделок и распределение по прибыльным, убыточным и активным операциям." />
+                        }
+                        value={`${formatAggregationInteger(aggregationSummary.totalProfits, true)} / ${formatAggregationInteger(aggregationSummary.totalLosses, true)} / ${formatAggregationInteger(aggregationSummary.openDeals, true)}`}
                         trend={aggregationSummary.totalDeals > 0 ? 'neutral' : 'muted'}
+                      />
+                      <StatisticCard
+                        title="Акт. МПУ"
+                        tooltip={<InfoTooltip text="Совокупный МПУ по незакрытым сделкам." />}
+                        value={aggregationSummary.activeMpu}
+                        formatter={(raw) => formatAggregationValue(ensureNumber(raw))}
+                        trend={aggregationSummary.activeMpu > 0 ? 'negative' : 'muted'}
                       />
                       <StatisticCard
                         title="Длит. сделки"

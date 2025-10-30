@@ -1,5 +1,5 @@
-import { Space, Statistic, Typography } from 'antd';
 import type { StatisticProps } from 'antd';
+import { Space, Statistic, Typography } from 'antd';
 import type { CSSProperties, ReactNode } from 'react';
 
 type StatisticTrend = 'default' | 'positive' | 'negative' | 'neutral' | 'muted';

@@ -130,15 +130,13 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
 
   const connectionPopover = (
     <Space direction="vertical" size={8} style={{ minWidth: 220 }}>
-      <Typography.Text type="secondary">
-        Обновлено: {lastCheckedLabel}
-      </Typography.Text>
+      <Typography.Text type="secondary">Обновлено: {lastCheckedLabel}</Typography.Text>
       <Typography.Text type={connectionStatus.ok ? 'secondary' : 'danger'}>
-        {connectionStatus.ok ? 'Соединение с вкладкой активно.' : connectionStatus.error ?? 'Нет соединения с вкладкой.'}
+        {connectionStatus.ok
+          ? 'Соединение с вкладкой активно.'
+          : (connectionStatus.error ?? 'Нет соединения с вкладкой.')}
       </Typography.Text>
-      {connectionStatus.origin && (
-        <Typography.Text type="secondary">Домен: {connectionStatus.origin}</Typography.Text>
-      )}
+      {connectionStatus.origin && <Typography.Text type="secondary">Домен: {connectionStatus.origin}</Typography.Text>}
       <Button size="small" type="primary" icon={<ReloadOutlined />} onClick={onPing}>
         Обновить
       </Button>

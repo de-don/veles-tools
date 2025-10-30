@@ -174,7 +174,7 @@ describe('computeBacktestMetrics', () => {
       buildCycle({
         id: 4,
         date: '2024-01-08T00:00:00Z',
-        status: 'RUNNING',
+        status: 'STARTED',
         duration: 3600,
         netQuote: 30,
       }),
@@ -256,7 +256,7 @@ describe('computeBacktestMetrics', () => {
 
     const runningCycle = buildCycle({
       id: 503,
-      status: 'RUNNING',
+      status: 'STARTED',
       date: '2024-02-03T08:00:00Z',
       duration: 3600,
       netQuote: 40,
@@ -793,7 +793,7 @@ describe('summarizeAggregations', () => {
       }),
       buildCycle({
         id: 33,
-        status: 'RUNNING',
+        status: 'STARTED',
         date: '2024-03-03T06:00:00Z',
         duration: 5400,
         netQuote: 30,
