@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Button, message, Space, Table } from 'antd';
+import { Button, Modal, message, Space, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { ChangeEvent } from 'react';
@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AddToBacktestGroupModal from '../components/backtests/AddToBacktestGroupModal';
 import { buildBacktestColumns } from '../components/backtests/backtestTableColumns';
 import SaveBacktestGroupModal from '../components/backtests/SaveBacktestGroupModal';
+import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import { BacktestsSyncProvider, useBacktestsSync } from '../context/BacktestsSyncContext';
@@ -31,6 +32,21 @@ const formatCountValue = (value: number | null | undefined): string => {
   return countFormatter.format(value);
 };
 
+const getBacktestsNoun = (count: number): string => {
+  const abs = Math.abs(count) % 100;
+  const last = abs % 10;
+  if (abs > 10 && abs < 20) {
+    return 'бэктестов';
+  }
+  if (last === 1) {
+    return 'бэктест';
+  }
+  if (last >= 2 && last <= 4) {
+    return 'бэктеста';
+  }
+  return 'бэктестов';
+};
+
 const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
   const { backtests, backtestsLoading, localCount, syncSnapshot, isSyncRunning, startSync, autoSyncPending } =
     useBacktestsSync();
@@ -43,6 +59,7 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
   const [messageApi, messageContextHolder] = message.useMessage();
   const [saveGroupModalOpen, setSaveGroupModalOpen] = useState(false);
   const [addToGroupModalOpen, setAddToGroupModalOpen] = useState(false);
+  const [selectionDetailsOpen, setSelectionDetailsOpen] = useState(false);
 
   const backtestsById = useMemo(() => {
     const map = new Map<number, BacktestStatistics>();
@@ -93,6 +110,12 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
 
   const totalElements = filteredBacktests.length;
   const totalSelected = selectedBacktests.length;
+
+  useEffect(() => {
+    if (totalSelected === 0 && selectionDetailsOpen) {
+      setSelectionDetailsOpen(false);
+    }
+  }, [totalSelected, selectionDetailsOpen]);
 
   const handleOpenSaveGroup = useCallback(() => {
     if (selectedIds.length === 0) {
@@ -331,6 +354,32 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
                   />
                 </div>
               </div>
+              {totalSelected > 0 ? (
+                <SelectionSummaryBar
+                  message={
+                    <>
+                      Выбрано {totalSelected}{' '}
+                      <Button type="link" size="small" onClick={() => setSelectionDetailsOpen(true)}>
+                        {getBacktestsNoun(totalSelected)}
+                      </Button>
+                    </>
+                  }
+                  actions={
+                    <>
+                      <Button type="primary" onClick={handleOpenSaveGroup}>
+                        Сохранить как группу
+                      </Button>
+                      <Button
+                        onClick={handleOpenAddToGroup}
+                        disabled={groups.length === 0}
+                        title={groups.length === 0 ? 'Нет доступных групп' : undefined}
+                      >
+                        Добавить в группу
+                      </Button>
+                    </>
+                  }
+                />
+              ) : null}
               <div className="table-container">
                 <Table<BacktestStatistics>
                   columns={backtestColumns}
@@ -351,27 +400,30 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
             </div>
           </div>
 
-          <div className="panel">
-            <h2 className="panel__title">Выбранные бэктесты</h2>
-            <p className="panel__description">
-              Эти результаты будут использоваться для дальнейшего анализа и интеграции с мультизапуском.
-            </p>
-            <Space className="panel__actions" size={[8, 8]} wrap style={{ marginBottom: totalSelected === 0 ? 0 : 12 }}>
-              <Button type="primary" onClick={handleOpenSaveGroup} disabled={totalSelected === 0}>
-                Сохранить как группу
-              </Button>
-              <Button
-                onClick={handleOpenAddToGroup}
-                disabled={totalSelected === 0 || groups.length === 0}
-                title={groups.length === 0 ? 'Нет доступных групп' : undefined}
-              >
-                Добавить в группу
-              </Button>
-            </Space>
-            {totalSelected === 0 ? (
-              <div className="empty-state">Выберите один или несколько бэктестов в таблице.</div>
+          <SaveBacktestGroupModal
+            open={saveGroupModalOpen}
+            selectedBacktests={selectedBacktests}
+            onCancel={handleCloseSaveGroup}
+            onSubmit={handleSaveGroupSubmit}
+          />
+          <AddToBacktestGroupModal
+            open={addToGroupModalOpen}
+            groups={groups}
+            selectedBacktests={selectedBacktests}
+            onCancel={handleCloseAddToGroup}
+            onSubmit={handleAddToGroupSubmit}
+          />
+          <Modal
+            title={`Выбрано ${totalSelected} ${getBacktestsNoun(totalSelected)}`}
+            open={selectionDetailsOpen}
+            onCancel={() => setSelectionDetailsOpen(false)}
+            footer={null}
+            width={560}
+          >
+            {selectedBacktests.length === 0 ? (
+              <Typography.Text type="secondary">Список пуст — выберите бэктесты в таблице.</Typography.Text>
             ) : (
-              <ul className="panel__list--compact">
+              <ul className="panel__list--compact" style={{ maxHeight: 320, overflowY: 'auto' }}>
                 {selectedBacktests.map((item) => (
                   <li key={item.id}>
                     <span className="chip">
@@ -389,43 +441,16 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
                         {item.symbol}
                       </span>
                     </span>
-                    <span
-                      style={{
-                        marginLeft: 8,
-                        color: '#94a3b8',
-                      }}
-                    >
-                      {formatAmount(item.profitQuote, item.quote)}
-                    </span>
-                    {item.netQuote !== null && (
-                      <span
-                        style={{
-                          marginLeft: 8,
-                          color: '#94a3b8',
-                        }}
-                      >
-                        Net: {formatAmount(item.netQuote, item.quote)}
-                      </span>
-                    )}
                   </li>
                 ))}
               </ul>
             )}
-          </div>
-
-          <SaveBacktestGroupModal
-            open={saveGroupModalOpen}
-            selectedBacktests={selectedBacktests}
-            onCancel={handleCloseSaveGroup}
-            onSubmit={handleSaveGroupSubmit}
-          />
-          <AddToBacktestGroupModal
-            open={addToGroupModalOpen}
-            groups={groups}
-            selectedBacktests={selectedBacktests}
-            onCancel={handleCloseAddToGroup}
-            onSubmit={handleAddToGroupSubmit}
-          />
+          </Modal>
+          {totalSelected === 0 ? (
+            <Typography.Text type="secondary">
+              Выберите бэктесты, чтобы сохранить в группу или добавить в существующую.
+            </Typography.Text>
+          ) : null}
         </>
       )}
     </section>

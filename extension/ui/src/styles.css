@@ -633,7 +633,7 @@ body {
   color: #475467;
 }
 
-.panel__bulk-actions {
+.selection-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -645,15 +645,16 @@ body {
   flex-wrap: wrap;
 }
 
-.panel__bulk-info {
+.selection-summary__message {
   font-weight: 600;
   color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.panel__bulk-buttons {
+.selection-summary__actions {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .chip {

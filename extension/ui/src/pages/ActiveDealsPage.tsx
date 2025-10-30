@@ -488,7 +488,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           </div>
         )}
 
-        <div className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel">
           <div className="panel__header">
             <div>
               <h2 className="panel__title">Мониторинг сделок</h2>
@@ -565,7 +565,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           </div>
         </div>
 
-        <div className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel">
           <div className="panel__header">
             <div>
               <h2 className="panel__title">Динамика агрегированного P&amp;L</h2>
