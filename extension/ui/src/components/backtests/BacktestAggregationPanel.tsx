@@ -24,6 +24,7 @@ import { DailyConcurrencyChart } from '../charts/DailyConcurrencyChart';
 import { LimitImpactChart, LimitRiskEfficiencyChart } from '../charts/LimitImpactChart';
 import { PortfolioEquityChart } from '../charts/PortfolioEquityChart';
 import { InfoTooltip } from '../ui/InfoTooltip';
+import { StatisticCard, type StatisticCardProps } from '../ui/StatisticCard';
 import { TableColumnSettingsButton } from '../ui/TableColumnSettingsButton';
 import { type TabItem, Tabs } from '../ui/Tabs';
 
@@ -80,21 +81,24 @@ const formatAggregationValue = (value: number): string => {
   return aggregationNumberFormatter.format(value);
 };
 
-const formatAggregationInteger = (value: number | null | undefined): string => {
+const formatAggregationInteger = (value: number | null | undefined, noSpace = false): string => {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return '—';
   }
-  return aggregationIntegerFormatter.format(value);
+
+  const result = aggregationIntegerFormatter.format(value);
+
+  return noSpace ? result.replace(/\s/g, '') : result;
 };
 
-const resolveTrendClass = (value: number): string => {
-  if (!Number.isFinite(value)) {
-    return 'aggregation-metric__value aggregation-metric__value--muted';
+const resolveTrend = (value: number | null | undefined): StatisticCardProps['trend'] => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 'muted';
   }
   if (Math.abs(value) < 1e-9) {
-    return 'aggregation-metric__value aggregation-metric__value--neutral';
+    return 'neutral';
   }
-  return `aggregation-metric__value ${value > 0 ? 'aggregation-metric__value--positive' : 'aggregation-metric__value--negative'}`;
+  return value > 0 ? 'positive' : 'negative';
 };
 
 const logBacktestsError = (context: string, error: unknown): string => {
@@ -339,6 +343,17 @@ const BacktestAggregationPanel = ({
 
   const canAdjustLimit = allMetricsReady && includedMetrics.length > 0;
   const limitDisabled = !canAdjustLimit || aggregationState.running;
+
+  const ensureNumber = (raw: number | string | undefined): number => {
+    if (typeof raw === 'number') {
+      return raw;
+    }
+    if (typeof raw === 'string') {
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : Number.NaN;
+    }
+    return Number.NaN;
+  };
 
   const aggregationSummary = useMemo<AggregationSummary | null>(() => {
     if (!allMetricsReady || includedMetrics.length === 0) {
@@ -980,128 +995,104 @@ const BacktestAggregationPanel = ({
                   label: 'Показатели',
                   content: (
                     <div className="aggregation-summary">
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Бэктестов в статистике
+                      <StatisticCard
+                        title="Бэктесты (Σ)"
+                        tooltip={
                           <InfoTooltip text="Количество бэктестов, включённых в расчёт агрегированных показателей." />
-                        </div>
-                        <div className="aggregation-metric__value">
-                          {formatAggregationInteger(aggregationSummary.totalSelected)}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Суммарный P&L
-                          <InfoTooltip text="Совокупный результат всех включённых бэктестов в выбранной валюте." />
-                        </div>
-                        <div className={resolveTrendClass(aggregationSummary.totalPnl)}>
-                          {formatSignedAmount(aggregationSummary.totalPnl)}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Avg P&L / сделка
-                          <InfoTooltip text="Средний результат одной сделки по всем включённым бэктестам." />
-                        </div>
-                        <div className={resolveTrendClass(aggregationSummary.avgPnlPerDeal)}>
-                          {formatSignedAmount(aggregationSummary.avgPnlPerDeal)}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Avg P&L / бэктест
-                          <InfoTooltip text="Средний итог на один бэктест в агрегированной выборке." />
-                        </div>
-                        <div className={resolveTrendClass(aggregationSummary.avgPnlPerBacktest)}>
-                          {formatSignedAmount(aggregationSummary.avgPnlPerBacktest)}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Средняя эффективность (Net/день)
-                          <InfoTooltip text="Средний дневной результат по всем бэктестам, включённым в агрегированную статистику." />
-                        </div>
-                        <div className={resolveTrendClass(aggregationSummary.avgNetPerDay)}>
-                          {formatSignedAmount(aggregationSummary.avgNetPerDay)}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          P&L / макс риск
-                          <InfoTooltip text="Отношение совокупного P&L к наибольшему из значений МПУ или просадки." />
-                        </div>
-                        <div
-                          className={
-                            typeof aggregationSummary.aggregateRiskEfficiency === 'number'
-                              ? resolveTrendClass(aggregationSummary.aggregateRiskEfficiency)
-                              : 'aggregation-metric__value aggregation-metric__value--muted'
+                        }
+                        value={aggregationSummary.totalSelected}
+                        formatter={(raw) => formatAggregationInteger(ensureNumber(raw))}
+                        trend={aggregationSummary.totalSelected > 0 ? 'neutral' : 'muted'}
+                      />
+                      {typeof botLimit === 'number' ? (
+                        <StatisticCard
+                          title="Лимит ботов"
+                          tooltip={
+                            <InfoTooltip text="Максимальное число ботов, учитываемое при расчёте агрегированных метрик." />
                           }
-                        >
-                          {typeof aggregationSummary.aggregateRiskEfficiency === 'number'
-                            ? formatSignedAmount(aggregationSummary.aggregateRiskEfficiency)
-                            : '—'}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Сделки (P/L/Σ)
-                          <InfoTooltip text="Количество сделок и распределение по прибыльным, убыточным и нейтральным операциям." />
-                        </div>
-                        <div className="aggregation-metric__value aggregation-metric__value--muted">
-                          {formatAggregationInteger(aggregationSummary.totalDeals)}
-                          <span className="aggregation-metric__sub">
-                            {' '}
-                            P:
-                            {formatAggregationInteger(aggregationSummary.totalProfits)} / L:
-                            {formatAggregationInteger(aggregationSummary.totalLosses)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Средняя длительность сделки
+                          value={botLimit}
+                          formatter={(raw) => formatAggregationInteger(ensureNumber(raw))}
+                          trend="neutral"
+                        />
+                      ) : null}
+                      <StatisticCard
+                        title="P&L (Σ)"
+                        tooltip={
+                          <InfoTooltip text="Совокупный результат всех включённых бэктестов в выбранной валюте." />
+                        }
+                        value={aggregationSummary.totalPnl}
+                        formatter={(raw) => formatSignedAmount(ensureNumber(raw))}
+                        trend={resolveTrend(aggregationSummary.totalPnl)}
+                      />
+                      <StatisticCard
+                        title="P&L / сделку"
+                        tooltip={<InfoTooltip text="Средний результат одной сделки по всем включённым бэктестам." />}
+                        value={aggregationSummary.avgPnlPerDeal}
+                        formatter={(raw) => formatSignedAmount(ensureNumber(raw))}
+                        trend={resolveTrend(aggregationSummary.avgPnlPerDeal)}
+                      />
+                      <StatisticCard
+                        title="Net/день"
+                        tooltip={
+                          <InfoTooltip text="Средний дневной результат по всем бэктестам, включённым в агрегированную статистику." />
+                        }
+                        value={aggregationSummary.avgNetPerDay}
+                        formatter={(raw) => formatSignedAmount(ensureNumber(raw))}
+                        trend={resolveTrend(aggregationSummary.avgNetPerDay)}
+                      />
+                      <StatisticCard
+                        title="P&L к риску"
+                        tooltip={
+                          <InfoTooltip text="Отношение совокупного P&L к наибольшему из значений МПУ или просадки." />
+                        }
+                        value={aggregationSummary.aggregateRiskEfficiency ?? Number.NaN}
+                        formatter={(raw) => {
+                          const numeric = ensureNumber(raw);
+                          return Number.isFinite(numeric) ? formatSignedAmount(numeric) : '—';
+                        }}
+                        trend={resolveTrend(aggregationSummary.aggregateRiskEfficiency)}
+                      />
+                      <StatisticCard
+                        title="Сделки P/L"
+                        tooltip={<InfoTooltip text="Распределение сделок по прибыльным и убыточным" />}
+                        value={`${formatAggregationInteger(aggregationSummary.totalProfits, true)} / ${formatAggregationInteger(aggregationSummary.totalLosses, true)}`}
+                        trend={aggregationSummary.totalDeals > 0 ? 'neutral' : 'muted'}
+                      />
+                      <StatisticCard
+                        title="Длит. сделки"
+                        tooltip={
                           <InfoTooltip text="Средняя продолжительность одной сделки среди всех участников агрегированной выборки." />
-                        </div>
-                        <div className="aggregation-metric__value aggregation-metric__value--muted">
-                          {formatAggregationValue(aggregationSummary.avgTradeDurationDays)} д
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Дни без торговли (Σ)
-                          <InfoTooltip text="Суммарное количество дней, когда в выборке не было сделок." />
-                        </div>
-                        <div className="aggregation-metric__value aggregation-metric__value--muted">
-                          {formatAggregationInteger(aggregationSummary.noTradeDays)}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Max просадка
-                          <InfoTooltip text="Максимальная совокупная просадка портфеля при выбранном лимите ботов." />
-                        </div>
-                        <div className={resolveTrendClass(-Math.abs(aggregationSummary.avgMaxDrawdown))}>
-                          {formatSignedAmount(-Math.abs(aggregationSummary.avgMaxDrawdown))}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Совокупная просадка
-                          <InfoTooltip text="Фактическая просадка портфеля при агрегировании всех бэктестов." />
-                        </div>
-                        <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateDrawdown))}>
-                          {formatSignedAmount(-Math.abs(aggregationSummary.aggregateDrawdown))}
-                        </div>
-                      </div>
-                      <div className="aggregation-metric">
-                        <div className="aggregation-metric__label">
-                          Совокупный МПУ
+                        }
+                        value={aggregationSummary.avgTradeDurationDays}
+                        formatter={(raw) => {
+                          const numeric = ensureNumber(raw);
+                          return Number.isFinite(numeric) ? `${formatAggregationValue(numeric)} д` : '—';
+                        }}
+                        trend="muted"
+                      />
+                      <StatisticCard
+                        title="Дни без сделок"
+                        tooltip={<InfoTooltip text="Суммарное количество дней, когда в выборке не было сделок." />}
+                        value={aggregationSummary.noTradeDays}
+                        formatter={(raw) => formatAggregationInteger(ensureNumber(raw))}
+                        trend={aggregationSummary.noTradeDays ? 'neutral' : 'muted'}
+                      />
+                      <StatisticCard
+                        title="Портф. просадка"
+                        tooltip={<InfoTooltip text="Фактическая просадка портфеля при агрегировании всех бэктестов." />}
+                        value={-Math.abs(aggregationSummary.aggregateDrawdown)}
+                        formatter={(raw) => formatSignedAmount(ensureNumber(raw))}
+                        trend={resolveTrend(-Math.abs(aggregationSummary.aggregateDrawdown))}
+                      />
+                      <StatisticCard
+                        title="Портф. МПУ"
+                        tooltip={
                           <InfoTooltip text="Максимальное преминимальное удержание портфеля по совокупности результатов." />
-                        </div>
-                        <div className={resolveTrendClass(-Math.abs(aggregationSummary.aggregateMPU))}>
-                          {formatSignedAmount(-Math.abs(aggregationSummary.aggregateMPU))}
-                        </div>
-                      </div>
+                        }
+                        value={-Math.abs(aggregationSummary.aggregateMPU)}
+                        formatter={(raw) => formatSignedAmount(ensureNumber(raw))}
+                        trend={resolveTrend(-Math.abs(aggregationSummary.aggregateMPU))}
+                      />
                     </div>
                   ),
                 },
@@ -1125,18 +1116,15 @@ const BacktestAggregationPanel = ({
                         )}
                       </div>
                       <div className="aggregation-equity__metrics">
-                        <div className="aggregation-metric">
-                          <div className="aggregation-metric__label">Финальный результат</div>
-                          <div
-                            className={
-                              portfolioFinalValue
-                                ? resolveTrendClass(portfolioFinalValue)
-                                : 'aggregation-metric__value aggregation-metric__value--neutral'
-                            }
-                          >
-                            {portfolioFinalValue !== null ? formatSignedAmount(portfolioFinalValue) : '—'}
-                          </div>
-                        </div>
+                        <StatisticCard
+                          title="Финальный P&L"
+                          value={portfolioFinalValue ?? Number.NaN}
+                          formatter={(raw) => {
+                            const numeric = ensureNumber(raw);
+                            return Number.isFinite(numeric) ? formatSignedAmount(numeric) : '—';
+                          }}
+                          trend={resolveTrend(portfolioFinalValue ?? Number.NaN)}
+                        />
                       </div>
                     </div>
                   ),
@@ -1154,18 +1142,15 @@ const BacktestAggregationPanel = ({
                         </p>
                       </div>
                       <div className="aggregation-risk__metrics">
-                        <div className="aggregation-metric">
-                          <div className="aggregation-metric__label">Пиковое значение</div>
-                          <div
-                            className={
-                              aggregateRiskPeak
-                                ? resolveTrendClass(-Math.abs(aggregateRiskPeak))
-                                : 'aggregation-metric__value aggregation-metric__value--muted'
-                            }
-                          >
-                            {aggregateRiskPeak !== null ? formatSignedAmount(-Math.abs(aggregateRiskPeak)) : '—'}
-                          </div>
-                        </div>
+                        <StatisticCard
+                          title="Пиковый МПУ"
+                          value={aggregateRiskPeak !== null ? -Math.abs(aggregateRiskPeak) : Number.NaN}
+                          formatter={(raw) => {
+                            const numeric = ensureNumber(raw);
+                            return Number.isFinite(numeric) ? formatSignedAmount(numeric) : '—';
+                          }}
+                          trend={resolveTrend(aggregateRiskPeak !== null ? -Math.abs(aggregateRiskPeak) : Number.NaN)}
+                        />
                       </div>
                       <div className="aggregation-risk__chart">
                         {aggregateRiskSeries && aggregateRiskSeries.points.length > 0 ? (
@@ -1221,42 +1206,48 @@ const BacktestAggregationPanel = ({
                         </p>
                       </div>
                       <div className="aggregation-concurrency__metrics">
-                        <div className="aggregation-metric">
-                          <div className="aggregation-metric__label">
-                            Средний дневной пик
+                        <StatisticCard
+                          title="Средний пик"
+                          tooltip={
                             <InfoTooltip text="Среднее значение дневного максимума активных позиций по совокупности бэктестов." />
-                          </div>
-                          <div className="aggregation-metric__value">
-                            {formatAggregationValue(dailyConcurrencyStats?.meanMax ?? 0)}
-                          </div>
-                        </div>
-                        <div className="aggregation-metric">
-                          <div className="aggregation-metric__label">
-                            P75
-                            <InfoTooltip text="75-й перцентиль дневных максимумов активных позиций." />
-                          </div>
-                          <div className="aggregation-metric__value">
-                            {formatAggregationValue(dailyConcurrencyStats?.p75 ?? 0)}
-                          </div>
-                        </div>
-                        <div className="aggregation-metric">
-                          <div className="aggregation-metric__label">
-                            P90
-                            <InfoTooltip text="90-й перцентиль дневных максимумов активных позиций." />
-                          </div>
-                          <div className="aggregation-metric__value">
-                            {formatAggregationValue(dailyConcurrencyStats?.p90 ?? 0)}
-                          </div>
-                        </div>
-                        <div className="aggregation-metric">
-                          <div className="aggregation-metric__label">
-                            P95
-                            <InfoTooltip text="95-й перцентиль дневных максимумов активных позиций." />
-                          </div>
-                          <div className="aggregation-metric__value">
-                            {formatAggregationValue(dailyConcurrencyStats?.p95 ?? 0)}
-                          </div>
-                        </div>
+                          }
+                          value={dailyConcurrencyStats?.meanMax ?? Number.NaN}
+                          formatter={(raw) => {
+                            const numeric = ensureNumber(raw);
+                            return Number.isFinite(numeric) ? formatAggregationValue(numeric) : '—';
+                          }}
+                          trend="neutral"
+                        />
+                        <StatisticCard
+                          title="P75"
+                          tooltip={<InfoTooltip text="75-й перцентиль дневных максимумов активных позиций." />}
+                          value={dailyConcurrencyStats?.p75 ?? Number.NaN}
+                          formatter={(raw) => {
+                            const numeric = ensureNumber(raw);
+                            return Number.isFinite(numeric) ? formatAggregationValue(numeric) : '—';
+                          }}
+                          trend="neutral"
+                        />
+                        <StatisticCard
+                          title="P90"
+                          tooltip={<InfoTooltip text="90-й перцентиль дневных максимумов активных позиций." />}
+                          value={dailyConcurrencyStats?.p90 ?? Number.NaN}
+                          formatter={(raw) => {
+                            const numeric = ensureNumber(raw);
+                            return Number.isFinite(numeric) ? formatAggregationValue(numeric) : '—';
+                          }}
+                          trend="neutral"
+                        />
+                        <StatisticCard
+                          title="P95"
+                          tooltip={<InfoTooltip text="95-й перцентиль дневных максимумов активных позиций." />}
+                          value={dailyConcurrencyStats?.p95 ?? Number.NaN}
+                          formatter={(raw) => {
+                            const numeric = ensureNumber(raw);
+                            return Number.isFinite(numeric) ? formatAggregationValue(numeric) : '—';
+                          }}
+                          trend="neutral"
+                        />
                       </div>
                       <div className="aggregation-concurrency__chart">
                         {dailyConcurrencyRecords.length > 0 ? (

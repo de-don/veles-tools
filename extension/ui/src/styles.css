@@ -1063,48 +1063,33 @@ body {
   margin-top: 12px;
 }
 
-.aggregation-metric {
+.statistic-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   padding: 12px 14px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   background-color: #f8fafc;
 }
 
-.aggregation-metric__label {
+.statistic-card .ant-statistic-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
-.aggregation-metric__value {
+.statistic-card .ant-statistic-content {
   font-size: 18px;
   font-weight: 600;
   color: #0f172a;
 }
 
-.aggregation-metric__value--positive {
-  color: #047857;
-}
-
-.aggregation-metric__value--negative {
-  color: #b91c1c;
-}
-
-.aggregation-metric__value--neutral {
-  color: #334155;
-}
-
-.aggregation-metric__value--muted {
-  color: #475467;
-  font-size: 16px;
-}
-
-.aggregation-metric__sub {
-  display: block;
+.statistic-card__description {
   font-size: 12px;
   color: #94a3b8;
 }
