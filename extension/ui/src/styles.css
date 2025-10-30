@@ -947,56 +947,6 @@ body {
   color: #475467;
 }
 
-.support-modal__address-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.support-modal__address-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.support-modal__address-row {
-  display: flex;
-  gap: 8px;
-}
-
-.support-modal__address-input {
-  flex: 1;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #cbd5f5;
-  background-color: #fff;
-  font-family: "JetBrains Mono", "Fira Code", "SFMono-Regular", ui-monospace, monospace;
-  font-size: 13px;
-  color: #0f172a;
-}
-
-.support-modal__address-input:focus-visible {
-  outline: 2px solid #1d4ed8;
-  outline-offset: 2px;
-}
-
-.support-modal__copy-button {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.support-modal__copy-status {
-  font-size: 12px;
-}
-
-.support-modal__copy-status--success {
-  color: #16a34a;
-}
-
-.support-modal__copy-status--error {
-  color: #dc2626;
-}
-
 .support-modal__link {
   align-self: flex-start;
   font-weight: 600;

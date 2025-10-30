@@ -1,6 +1,5 @@
-import { CopyOutlined } from '@ant-design/icons';
-import { Button, Input, Modal } from 'antd';
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { Modal } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import Tabs, { type TabItem } from './ui/Tabs';
 
 interface SupportProjectModalProps {
@@ -8,38 +7,20 @@ interface SupportProjectModalProps {
   onClose: () => void;
 }
 
-type SupportTab = 'bybit' | 'crypto' | 'coffee';
+type SupportTab = 'bybit' | 'binance' | 'other';
 
-const WALLET_ADDRESS = '0xDAa8A9B232A06616a0b0F9E91D6913A0b7555643';
-const DEBANK_URL = `https://debank.com/profile/${WALLET_ADDRESS}`;
-const BUY_ME_A_COFFEE_URL = 'https://www.buymeacoffee.com/dedon';
 const BYBIT_UID = '496946534';
+const BINANCE_UID = '64125639';
+const TELEGRAM_URL = 'https://t.me/dontsov';
 
 const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
   const [activeTab, setActiveTab] = useState<SupportTab>('bybit');
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle');
-  const addressInputId = useId();
 
   useEffect(() => {
     if (open) {
       setActiveTab('bybit');
-      setCopyStatus('idle');
     }
   }, [open]);
-
-  const handleCopyAddress = useCallback(async () => {
-    if (!navigator?.clipboard?.writeText) {
-      setCopyStatus('error');
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(WALLET_ADDRESS);
-      setCopyStatus('copied');
-    } catch (_error) {
-      setCopyStatus('error');
-    }
-  }, []);
 
   const tabItems: TabItem[] = useMemo<TabItem[]>(
     () => [
@@ -56,66 +37,38 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
         ),
       },
       {
-        id: 'crypto',
-        label: 'Крипта',
+        id: 'binance',
+        label: 'Binance перевод',
         content: (
           <div className="support-modal__tab">
             <p>
-              Можно отправить любую сумму в любой криптовалюте (USDT, USDC, ETH, WBTC, DAI, и т.д.) на протоколе
-              Ethereum (ERC-20) — в любой совместимой сети (например, Ethereum Mainnet, Arbitrum, Base и др.).
+              На Binance можно отправить любую сумму по UID <strong>{BINANCE_UID}</strong>. Укажите его в разделе
+              «Перевод по UID» и выберите удобную валюту.
             </p>
-            <div className="support-modal__address-block">
-              <label className="support-modal__address-label" htmlFor={addressInputId}>
-                Адрес кошелька
-              </label>
-              <div className="support-modal__address-row">
-                <Input
-                  id={addressInputId}
-                  className="support-modal__address-input"
-                  value={WALLET_ADDRESS}
-                  readOnly
-                  aria-readonly="true"
-                />
-                <Button icon={<CopyOutlined />} onClick={handleCopyAddress} className="support-modal__copy-button">
-                  Скопировать
-                </Button>
-              </div>
-              {copyStatus === 'copied' && (
-                <span className="support-modal__copy-status support-modal__copy-status--success">Адрес скопирован</span>
-              )}
-              {copyStatus === 'error' && (
-                <span className="support-modal__copy-status support-modal__copy-status--error">
-                  Не удалось скопировать — выдели адрес вручную
-                </span>
-              )}
-            </div>
-            <a className="support-modal__link" href={DEBANK_URL} target="_blank" rel="noreferrer noopener">
-              Открыть профиль в DeBank
-            </a>
           </div>
         ),
       },
       {
-        id: 'coffee',
-        label: 'Buy Me a Coffee',
+        id: 'other',
+        label: 'Другой вариант',
         content: (
           <div className="support-modal__tab">
             <p>
-              Если удобнее воспользоваться Buy Me a Coffee, можно оставить любое пожертвование и добавить сообщение
-              команде. Это быстрый способ сказать спасибо.
+              Если удобнее другой способ поддержки —{' '}
+              <a href={TELEGRAM_URL} target="_blank" rel="noreferrer noopener">
+                напишите в Telegram
+              </a>
+              , обсудим удобный для вас вариант.
             </p>
-            <a className="support-modal__link" href={BUY_ME_A_COFFEE_URL} target="_blank" rel="noreferrer noopener">
-              Открыть Buy Me a Coffee
-            </a>
           </div>
         ),
       },
     ],
-    [addressInputId, copyStatus, handleCopyAddress],
+    [],
   );
 
   const handleTabChange = (nextTabId: string) => {
-    if (nextTabId === 'bybit' || nextTabId === 'crypto' || nextTabId === 'coffee') {
+    if (nextTabId === 'bybit' || nextTabId === 'binance' || nextTabId === 'other') {
       setActiveTab(nextTabId);
     }
   };

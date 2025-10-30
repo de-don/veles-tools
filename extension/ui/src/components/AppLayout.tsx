@@ -4,7 +4,7 @@ import {
   CloudUploadOutlined,
   ExclamationCircleOutlined,
   ExperimentOutlined,
-  HeartOutlined,
+  HeartFilled,
   HomeOutlined,
   ReloadOutlined,
   RobotOutlined,
@@ -196,7 +196,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
                 Открыть veles.finance
               </Button>
             )}
-            <Button icon={<HeartOutlined />} onClick={() => setSupportModalOpen(true)}>
+            <Button icon={<HeartFilled style={{ color: '#f5222d' }} />} onClick={() => setSupportModalOpen(true)}>
               Поддержать проект
             </Button>
           </Space>
