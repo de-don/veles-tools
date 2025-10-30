@@ -3,43 +3,18 @@ import { Link } from 'react-router-dom';
 import { APP_NAME, APP_VERSION } from '../config/version';
 
 const completedHighlights: string[] = [
-  'Мультизапуск бэктестов для любых ботов.',
-  'Детальные метрики с агрегацией и графиком одновременных позиций.',
-  'Отслеживание активных позиций и их закрытие',
-  'Массовый запуск и остановка ботов',
-  'Импорт пользовательских ботов с локальным хранилищем стратегий и быстрым доступом.',
+  'Агрегированная статистика бэктестов с лимитом ботов и активным МПУ.',
+  'Мониторинг активных сделок с графиком P&L.',
+  'Массовый менеджмент ботов (запуск/остановка/удаление).',
+  'Удобный поиск, фильтрация и сортировка бектестов.',
+  'Разделение бэктестов на группы для удобства анализа.',
 ];
 
 const roadmapHighlights: string[] = [
-  'Фильтры и сортировки для списков ботов и бэктестов.',
-  'Экспорт и импорт ботов и бэктестов.',
-  'Дополнительные визуализации и метрики для анализа результатов.',
-  'Группы символов, ботов и бектестов.',
-  'Конфигурируемые таблицы для гибкой аналитики.',
-  'Новый дизайн и улучшенный UX.',
-];
-
-const quickLinks = [
-  {
-    to: '/active-deals',
-    label: 'Активные сделки',
-    description: 'Отслеживайте и управляйте открытыми позициями.',
-  },
-  {
-    to: '/bots',
-    label: 'Мои боты',
-    description: 'Запускайте бэктесты для своих ботов сразу на большом наборе валют.',
-  },
-  {
-    to: '/backtests',
-    label: 'К бэктестам',
-    description: 'Собирайте статистику, анализируйте результаты.',
-  },
-  {
-    to: '/import',
-    label: 'Импорт ботов',
-    description: 'Импортируйте публичных ботов для дальнейших бэктестов.',
-  },
+  'Группы ботов и символов для более удобного управления.',
+  'Экспорт публичных ссылок для бектестов и ботов',
+  'Блокировка по позиции при анализе бэктестов.',
+  'Дополнительные визуализации результатов бэктестов.',
 ];
 
 const faqItems = [
@@ -93,32 +68,6 @@ const HomePage = () => {
             — v{APP_VERSION}.
           </Typography.Paragraph>
         </Space>
-
-        <Card
-          title="Быстрый старт"
-          bordered
-          extra={<Typography.Text type="secondary">Готовые действия для работы каждый день</Typography.Text>}
-        >
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
-            <Typography.Paragraph style={{ marginBottom: 0 }}>
-              Собирайте метрики, управляйте очередью бэктестов и сохраняйте стратегии без переключения между страницами.
-            </Typography.Paragraph>
-            <Row gutter={[16, 16]}>
-              {quickLinks.map((link) => (
-                <Col key={link.to} xs={24} sm={12}>
-                  <Link to={link.to} className="home-quick-card">
-                    <Card hoverable size="small" className="home-quick-card__inner">
-                      <Space direction="vertical" size={4}>
-                        <Typography.Text strong>{link.label}</Typography.Text>
-                        <Typography.Text type="secondary">{link.description}</Typography.Text>
-                      </Space>
-                    </Card>
-                  </Link>
-                </Col>
-              ))}
-            </Row>
-          </Space>
-        </Card>
 
         <Row gutter={[16, 16]}>
           <Col xs={24} md={12}>
