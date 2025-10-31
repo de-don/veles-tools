@@ -194,7 +194,12 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
                 Открыть veles.finance
               </Button>
             )}
-            <Button icon={<HeartFilled style={{ color: '#f5222d' }} />} onClick={() => setSupportModalOpen(true)}>
+            <Button
+              type="primary"
+              icon={<HeartFilled style={{ color: '#fff' }} />}
+              className="support-button support-button--wave"
+              onClick={() => setSupportModalOpen(true)}
+            >
               Поддержать проект
             </Button>
           </Space>

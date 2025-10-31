@@ -220,6 +220,61 @@ body {
   background-color: #f8fafc;
 }
 
+.support-button.ant-btn {
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.45s ease;
+  isolation: isolate;
+}
+
+.support-button--wave.ant-btn-primary {
+  background: transparent;
+  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.25);
+  color: #fff;
+}
+
+.support-button--wave.ant-btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, #0ea5e9, #22d3ee, #6366f1);
+  background-size: 200% 200%;
+  animation: supportWave 6s linear infinite;
+  z-index: -1;
+  transition: filter 0.35s ease;
+}
+
+@keyframes supportWave {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.support-button--wave.ant-btn-primary:hover,
+.support-button--wave.ant-btn-primary:focus {
+  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.15);
+}
+
+.support-button--wave.ant-btn-primary:hover::before,
+.support-button--wave.ant-btn-primary:focus::before {
+  filter: brightness(1.08);
+}
+
+.support-button--wave.ant-btn-primary:active {
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.3);
+}
+
+.support-button--wave.ant-btn-primary:active::before {
+  filter: brightness(0.92);
+}
+
 .faq__question {
   font-weight: 600;
   margin-bottom: 6px;
