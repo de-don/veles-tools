@@ -151,18 +151,17 @@ export interface BacktestStatisticsDetail extends BacktestStatistics {
 }
 
 export interface BacktestOrder {
-  category?: string | null;
-  side?: string | null;
-  type?: string | null;
-  position?: number | null;
-  quantity?: number | null;
-  price?: number | null;
-  status?: string | null;
-  createdAt?: string | null;
-  executedAt?: string | null;
-  updatedAt?: string | null;
-  commissionAmount?: number | null;
-  commissionAsset?: string | null;
+  category: 'GRID';
+  side: 'BUY' | 'SELL';
+  type: 'MARKET';
+  position: number;
+  quantity: number;
+  price: number;
+  status: 'EXECUTED';
+  createdAt: string;
+  executedAt: string;
+  commissionAmount: number;
+  commissionAsset: string;
 }
 
 export interface BacktestCycle {
@@ -173,6 +172,7 @@ export interface BacktestCycle {
   symbol?: string | null;
   base?: string | null;
   quote?: string | null;
+  /** Completion date of the cycle */
   date: string;
   duration?: number | null;
   netQuote?: number | null;

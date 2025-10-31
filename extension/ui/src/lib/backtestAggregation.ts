@@ -54,9 +54,8 @@ export interface BacktestAggregationMetrics {
   worstRisk: number;
   riskEfficiency: number | null;
   downtimeDays: number;
-  openDeals: number;
   activeMpu: number;
-  openPositions: OpenPositionRisk[];
+  openPosition: OpenPositionRisk | null;
   spanStart: number | null;
   spanEnd: number | null;
   activeDurationMs: number;
@@ -249,31 +248,39 @@ const isStartedCycle = (cycle: BacktestCycle | null | undefined): cycle is Backt
 
 const resolveCycleInterval = (cycle: BacktestCycle): TimeInterval | null => {
   const end = parseTimestamp(cycle.date);
-  if (!Number.isFinite(end)) {
+  const orderTimes = Array.isArray(cycle.orders)
+    ? cycle.orders
+        .map((order) => parseTimestamp(order.executedAt ?? order.createdAt ?? null))
+        .filter((value): value is number => Number.isFinite(value))
+    : [];
+
+  let resolvedEnd = Number(end);
+  if (!Number.isFinite(resolvedEnd) && orderTimes.length > 0) {
+    resolvedEnd = Math.max(...orderTimes);
+  }
+
+  if (!Number.isFinite(resolvedEnd)) {
     return null;
   }
 
-  const durationSec = toNumber(cycle.duration);
-  let start = Number.isFinite(durationSec) ? Number(end) - durationSec * 1000 : Number.NaN;
+  let start = orderTimes.length > 0 ? Math.min(...orderTimes) : Number.NaN;
 
-  if (!Number.isFinite(start) && Array.isArray(cycle.orders)) {
-    const orderTimes = cycle.orders
-      .map((order) => parseTimestamp(order.executedAt ?? order.createdAt ?? order.updatedAt ?? null))
-      .filter((value): value is number => Number.isFinite(value));
-    if (orderTimes.length > 0) {
-      start = Math.min(...orderTimes);
+  if (!Number.isFinite(start)) {
+    const durationSec = toNumber(cycle.duration);
+    if (Number.isFinite(durationSec)) {
+      start = resolvedEnd - Number(durationSec) * 1000;
     }
   }
 
   if (!Number.isFinite(start)) {
-    start = Number(end);
+    start = resolvedEnd;
   }
 
-  if (start > Number(end)) {
-    start = Number(end);
+  if (start > resolvedEnd) {
+    start = resolvedEnd;
   }
 
-  return { start, end: Number(end) };
+  return { start, end: resolvedEnd };
 };
 
 const collectCycleIntervals = (cycles: BacktestCycle[]): CycleInterval[] => {
@@ -470,9 +477,9 @@ export const computeBacktestMetrics = (
   const finishedCycleIntervals = cycleIntervals.filter(({ cycle }) => isFinishedCycle(cycle));
   const trades: AggregationTrade[] = [];
   let maxMPP = 0;
-  let openDeals = 0;
   let activeMpu = 0;
-  const openPositions: OpenPositionRisk[] = [];
+  let latestOpenPosition: OpenPositionRisk | null = null;
+  let latestOpenPositionEnd = Number.NEGATIVE_INFINITY;
 
   cycleIntervals.forEach(({ cycle }) => {
     const mfe = Math.max(0, toNumber(cycle.mfeAbsolute ?? 0));
@@ -497,21 +504,30 @@ export const computeBacktestMetrics = (
     });
   });
 
-  cycleIntervals.forEach(({ cycle }) => {
+  for (const { cycle, interval } of cycleIntervals) {
     if (!isStartedCycle(cycle)) {
-      return;
+      continue;
     }
-    openDeals += 1;
+
     const maeValue = toNumber(cycle.maeAbsolute ?? 0);
     const normalizedMae = Number.isFinite(maeValue) ? Math.abs(maeValue) : 0;
     const netValue = toNumber(cycle.netQuote ?? cycle.profitQuote ?? cycle.pnl ?? 0);
     const unrealizedLoss = Number.isFinite(netValue) && netValue < 0 ? Math.abs(netValue) : 0;
-    const mpu = Math.max(normalizedMae, unrealizedLoss);
-    if (mpu > 0) {
-      activeMpu += mpu;
+    const rawMpu = Math.max(normalizedMae, unrealizedLoss);
+    const sanitizedMpu = Number.isFinite(rawMpu) && rawMpu > 0 ? rawMpu : 0;
+    const position: OpenPositionRisk = { cycleId: cycle.id, mpu: sanitizedMpu };
+    const intervalEnd = Number(interval.end);
+    if (
+      !latestOpenPosition ||
+      !Number.isFinite(latestOpenPositionEnd) ||
+      (Number.isFinite(intervalEnd) && intervalEnd >= latestOpenPositionEnd)
+    ) {
+      latestOpenPosition = position;
+      latestOpenPositionEnd = intervalEnd;
     }
-    openPositions.push({ cycleId: cycle.id, mpu });
-  });
+  }
+
+  activeMpu = latestOpenPosition?.mpu ?? 0;
 
   const drawdownTimeline = computeDrawdownTimeline(cycles);
   const concurrencyIntervals = computeIntervals(cycleIntervals);
@@ -547,7 +563,7 @@ export const computeBacktestMetrics = (
     markActiveRange(activeDaySet, interval.start, interval.end);
     if (Array.isArray(cycle.orders)) {
       cycle.orders.forEach((order) => {
-        const timestamp = parseTimestamp(order.executedAt ?? order.createdAt ?? order.updatedAt ?? null);
+        const timestamp = parseTimestamp(order.executedAt ?? order.createdAt ?? null);
         if (Number.isFinite(timestamp)) {
           const dayIndex = Math.floor(Number(timestamp) / MS_IN_DAY);
           activeDaySet.add(dayIndex);
@@ -586,9 +602,8 @@ export const computeBacktestMetrics = (
     worstRisk,
     riskEfficiency,
     downtimeDays,
-    openDeals,
     activeMpu,
-    openPositions,
+    openPosition: latestOpenPosition,
     spanStart: Number.isFinite(spanStart) ? spanStart : null,
     spanEnd: Number.isFinite(spanEnd) ? spanEnd : null,
     activeDurationMs: coverage.totalActiveMs,
@@ -1524,13 +1539,19 @@ const computeNoTradeInfoFromTrades = (trades: NormalizedTrade[]): { totalDays: n
   return { totalDays, noTradeDays };
 };
 
+const collectOpenPositionRisks = (metricsList: BacktestAggregationMetrics[]): OpenPositionRisk[] => {
+  return metricsList
+    .map((metrics) => metrics.openPosition)
+    .filter((position): position is OpenPositionRisk => position !== null && position !== undefined);
+};
+
 const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): AggregationSummary => {
   const totalSelected = metricsList.length;
   const totalPnl = metricsList.reduce((acc, metrics) => acc + (Number(metrics.pnl) || 0), 0);
   const totalProfits = metricsList.reduce((acc, metrics) => acc + (Number(metrics.profitsCount) || 0), 0);
   const totalLosses = metricsList.reduce((acc, metrics) => acc + (Number(metrics.lossesCount) || 0), 0);
   const totalDeals = metricsList.reduce((acc, metrics) => acc + (Number(metrics.totalDeals) || 0), 0);
-  const openPositionRisks = metricsList.flatMap((metrics) => metrics.openPositions ?? []);
+  const openPositionRisks = collectOpenPositionRisks(metricsList);
   const totalOpenDeals = openPositionRisks.length;
   const totalActiveMpu = openPositionRisks.reduce(
     (acc, position) => acc + (Number.isFinite(position.mpu) ? position.mpu : 0),
@@ -1553,7 +1574,11 @@ const summarizeWithoutLimit = (metricsList: BacktestAggregationMetrics[]): Aggre
 
   const aggregateDrawdown = computeAggregateDrawdown(metricsList);
   const aggregateRiskSeries = computeAggregateRiskSeriesFromMetrics(metricsList);
-  const aggregateMPU = aggregateRiskSeries.maxValue;
+  const openRiskMax = openPositionRisks.reduce((acc, position) => {
+    const mpu = Number.isFinite(position.mpu) ? Math.max(0, position.mpu) : 0;
+    return mpu > acc ? mpu : acc;
+  }, 0);
+  const aggregateMPU = Math.max(aggregateRiskSeries.maxValue, openRiskMax);
   const aggregateWorstRisk = Math.max(0, aggregateDrawdown, aggregateMPU);
   const aggregateRiskEfficiency = aggregateWorstRisk > 0 ? totalPnl / aggregateWorstRisk : null;
   const concurrency = computeConcurrency(metricsList);
@@ -1617,7 +1642,7 @@ const summarizeWithConcurrencyLimit = (
   const avgPnlPerDeal = totalDeals > 0 ? totalPnl / totalDeals : 0;
   const avgPnlPerBacktest = totalSelected > 0 ? totalPnl / totalSelected : 0;
   const avgTradeDurationDays = totalDeals > 0 ? totalTradeDurationSec / totalDeals / 86400 : 0;
-  const openPositionRisks = metricsList.flatMap((metrics) => metrics.openPositions ?? []);
+  const openPositionRisks = collectOpenPositionRisks(metricsList);
   const sortedRisks = openPositionRisks
     .map((position) => (Number.isFinite(position.mpu) ? Math.max(0, position.mpu) : 0))
     .filter((value) => value > 0)
@@ -1637,7 +1662,8 @@ const summarizeWithConcurrencyLimit = (
 
   const aggregateDrawdown = computeAggregateDrawdownFromTrades(acceptedTrades);
   const aggregateRiskSeries = computeAggregateRiskSeriesFromTrades(acceptedTrades, metricsList);
-  const aggregateMPU = aggregateRiskSeries.maxValue;
+  const limitedOpenRiskMax = limitedCount > 0 ? sortedRisks[0] ?? 0 : 0;
+  const aggregateMPU = Math.max(aggregateRiskSeries.maxValue, limitedOpenRiskMax);
   const aggregateWorstRisk = Math.max(0, aggregateDrawdown, aggregateMPU);
   const aggregateRiskEfficiency = aggregateWorstRisk > 0 ? totalPnl / aggregateWorstRisk : null;
   const concurrency = computeConcurrencyFromTrades(acceptedTrades);

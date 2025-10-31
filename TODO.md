@@ -14,6 +14,9 @@
 - [ ] Export backtests links (public)
 - [ ] Import backtests by links (public) - directly to aggregation
 - [ ] block by position
+- [ ] предупреждение если бектесты имеют разный период
+- [ ] продливать активные сделки до конца максимального периода
+- [ ] учет незакрытых сделок в метриках (например, средний профит за день)
 
 ## Other Features
 

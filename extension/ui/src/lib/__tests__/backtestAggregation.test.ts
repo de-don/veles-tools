@@ -71,6 +71,20 @@ const buildCycle = (overrides: Partial<BacktestCycle> = {}, orders: BacktestOrde
   ...overrides,
 });
 
+const buildOrder = (overrides: Partial<BacktestOrder> = {}): BacktestOrder => ({
+  category: 'GRID',
+  side: 'BUY',
+  type: 'MARKET',
+  position: overrides.position ?? 0,
+  quantity: overrides.quantity ?? 1,
+  price: overrides.price ?? 1,
+  status: 'EXECUTED',
+  createdAt: overrides.createdAt ?? '2024-01-01T00:00:00Z',
+  executedAt: overrides.executedAt ?? overrides.createdAt ?? '2024-01-01T00:00:01Z',
+  commissionAmount: overrides.commissionAmount ?? 0,
+  commissionAsset: overrides.commissionAsset ?? 'USDT',
+});
+
 const buildMetricsWithRiskWindow = ({
   id,
   start,
@@ -153,7 +167,12 @@ describe('computeBacktestMetrics', () => {
           mfeAbsolute: 120,
           maeAbsolute: 25,
         },
-        [{ executedAt: '2024-01-02T22:30:00Z' }],
+        [
+          buildOrder({
+            createdAt: '2024-01-02T22:30:00Z',
+            executedAt: '2024-01-02T22:30:00Z',
+          }),
+        ],
       ),
       buildCycle({
         id: 2,
@@ -200,13 +219,15 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.depositCurrency).toBe('USDT');
     expect(metrics.winRatePercent).toBeCloseTo((2 / 3) * 100, 6);
     expect(metrics.concurrencyIntervals).toHaveLength(4);
-    expect(metrics.concurrencyIntervals[0].start).toBe(new Date('2024-01-02T22:00:00Z').getTime());
+    expect(metrics.concurrencyIntervals[0].start).toBe(new Date('2024-01-02T22:30:00Z').getTime());
     expect(metrics.concurrencyIntervals[0].end).toBe(new Date('2024-01-03T00:00:00Z').getTime());
     expect(metrics.equityEvents).toHaveLength(3);
-    expect(metrics.activeDurationMs).toBe(16_200_000);
-    expect(metrics.downtimeDays).toBeCloseTo(8.8125, 4);
+    expect(metrics.activeDurationMs).toBe(14_400_000);
+    expect(metrics.downtimeDays).toBeCloseTo(8.8333, 4);
     expect(metrics.spanStart).toBe(new Date('2024-01-01T00:00:00Z').getTime());
     expect(metrics.spanEnd).toBe(new Date('2024-01-10T00:00:00Z').getTime());
+    expect(metrics.activeMpu).toBe(0);
+    expect(metrics.openPosition).toEqual({ cycleId: 4, mpu: 0 });
 
     const jan2Index = Math.floor(new Date('2024-01-02T00:00:00Z').getTime() / MS_IN_DAY);
     const jan7Index = Math.floor(new Date('2024-01-07T00:00:00Z').getTime() / MS_IN_DAY);
@@ -242,7 +263,10 @@ describe('computeBacktestMetrics', () => {
         mfeAbsolute: 50,
         maeAbsolute: -20,
       },
-      [{ createdAt: '2024-02-02T08:00:00Z' }, { executedAt: '2024-02-02T09:30:00Z' }],
+      [
+        buildOrder({ createdAt: '2024-02-02T08:00:00Z', executedAt: '2024-02-02T08:00:00Z' }),
+        buildOrder({ createdAt: '2024-02-02T09:30:00Z', executedAt: '2024-02-02T09:30:00Z' }),
+      ],
     );
 
     const finishedWithoutOrders = buildCycle({
@@ -298,6 +322,8 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.activeDayIndices[0]).toBeLessThanOrEqual(
       metrics.activeDayIndices[metrics.activeDayIndices.length - 1],
     );
+    expect(metrics.activeMpu).toBe(5);
+    expect(metrics.openPosition).toEqual({ cycleId: 503, mpu: 5 });
     expect(metrics.depositAmount).toBeNull();
     expect(metrics.depositLeverage).toBeNull();
     expect(metrics.winRatePercent).toBeCloseTo((3 / 4) * 100, 6);
@@ -323,6 +349,64 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.depositCurrency).toBe('USDT');
     expect(metrics.depositLeverage).toBe(10);
     expect(metrics.winRatePercent).toBe(50);
+  });
+
+  it('derives started cycle start time from the earliest order', () => {
+    const firstOrder = '2024-07-01T08:15:00Z';
+    const secondOrder = '2024-07-01T09:45:00Z';
+    const closingTime = '2024-07-01T12:00:00Z';
+
+    const stats = buildDetail({
+      id: 1001,
+      from: '2024-07-01T00:00:00Z',
+      to: '2024-07-02T00:00:00Z',
+    });
+
+    const startedCycle = buildCycle(
+      {
+        id: 7001,
+        status: 'STARTED',
+        date: closingTime,
+        duration: 18_000,
+      },
+      [
+        buildOrder({ createdAt: firstOrder, executedAt: firstOrder }),
+        buildOrder({ createdAt: secondOrder, executedAt: secondOrder }),
+      ],
+    );
+
+    const metrics = computeBacktestMetrics(stats, [startedCycle]);
+
+    const expectedStart = new Date(firstOrder).getTime();
+    const expectedEnd = new Date(closingTime).getTime();
+
+    expect(metrics.concurrencyIntervals).toHaveLength(1);
+    expect(metrics.concurrencyIntervals[0].start).toBe(expectedStart);
+    expect(metrics.concurrencyIntervals[0].end).toBe(expectedEnd);
+    const statsStart = new Date('2024-07-01T00:00:00Z').getTime();
+    expect(metrics.spanStart).toBe(Math.min(statsStart, expectedStart));
+    const statsEnd = new Date('2024-07-02T00:00:00Z').getTime();
+    expect(metrics.spanEnd).toBe(Math.max(statsEnd, expectedEnd));
+    expect(metrics.activeDayIndices).toContain(Math.floor(expectedStart / MS_IN_DAY));
+  });
+
+  it('returns null openPosition when no cycles are running', () => {
+    const stats = buildDetail({
+      id: 321,
+      totalDeals: 2,
+      profits: 2,
+      losses: 0,
+    });
+
+    const cycles = [
+      buildCycle({ id: 11, date: '2024-03-01T00:00:00Z', netQuote: 25, mfeAbsolute: 15, maeAbsolute: 4 }),
+      buildCycle({ id: 12, date: '2024-03-02T00:00:00Z', netQuote: -10, mfeAbsolute: 8, maeAbsolute: 6 }),
+    ];
+
+    const metrics = computeBacktestMetrics(stats, cycles);
+
+    expect(metrics.activeMpu).toBe(0);
+    expect(metrics.openPosition).toBeNull();
   });
 });
 
@@ -434,7 +518,12 @@ describe('summarizeAggregations', () => {
           netQuote: -70,
           mfeAbsolute: 20,
           maeAbsolute: 35,
-          orders: [{ executedAt: '2024-01-04T05:30:00Z' }],
+          orders: [
+            buildOrder({
+              createdAt: '2024-01-04T05:30:00Z',
+              executedAt: '2024-01-04T05:30:00Z',
+            }),
+          ],
         }),
       ],
     );
@@ -498,6 +587,136 @@ describe('summarizeAggregations', () => {
     });
 
     expect(summary.portfolioEquity.maxValue).toBeGreaterThanOrEqual(summary.portfolioEquity.minValue);
+  });
+
+  it('includes open positions in aggregate risk metrics', () => {
+    const metricsClosedOnly = computeBacktestMetrics(
+      buildDetail({
+        id: 601,
+        from: '2024-05-01T00:00:00Z',
+        to: '2024-05-02T00:00:00Z',
+        netQuote: 30,
+        totalDeals: 1,
+        profits: 1,
+      }),
+      [
+        buildCycle({
+          id: 6011,
+          date: '2024-05-02T00:00:00Z',
+          duration: 3600,
+          netQuote: 30,
+          mfeAbsolute: 18,
+          maeAbsolute: 6,
+        }),
+      ],
+    );
+
+    const metricsWithOpen = computeBacktestMetrics(
+      buildDetail({
+        id: 602,
+        from: '2024-05-01T00:00:00Z',
+        to: '2024-05-04T00:00:00Z',
+        netQuote: 20,
+        totalDeals: 1,
+        profits: 1,
+      }),
+      [
+        buildCycle({
+          id: 6021,
+          date: '2024-05-02T00:00:00Z',
+          duration: 3600,
+          netQuote: 20,
+          mfeAbsolute: 12,
+          maeAbsolute: 3,
+        }),
+        buildCycle({
+          id: 6022,
+          status: 'STARTED',
+          date: '2024-05-04T00:00:00Z',
+          duration: 7200,
+          netQuote: -5,
+          mfeAbsolute: 40,
+          maeAbsolute: 25,
+        }),
+      ],
+    );
+
+    const summary = summarizeAggregations([metricsClosedOnly, metricsWithOpen]);
+
+    expect(metricsWithOpen.openPosition).toEqual({ cycleId: 6022, mpu: 25 });
+    expect(summary.openDeals).toBe(1);
+    expect(summary.activeMpu).toBe(25);
+    expect(summary.aggregateMPU).toBeGreaterThanOrEqual(25);
+    expect(summary.aggregateWorstRisk).toBe(Math.max(summary.aggregateDrawdown, summary.aggregateMPU));
+  });
+
+  it('preserves open position risk under concurrency limit', () => {
+    const metricsWithOpenA = computeBacktestMetrics(
+      buildDetail({
+        id: 701,
+        from: '2024-06-01T00:00:00Z',
+        to: '2024-06-04T00:00:00Z',
+        netQuote: 18,
+        totalDeals: 1,
+        profits: 1,
+      }),
+      [
+        buildCycle({
+          id: 7011,
+          date: '2024-06-02T00:00:00Z',
+          duration: 3600,
+          netQuote: 18,
+          mfeAbsolute: 20,
+          maeAbsolute: 8,
+        }),
+        buildCycle({
+          id: 7012,
+          status: 'STARTED',
+          date: '2024-06-04T00:00:00Z',
+          duration: 7200,
+          netQuote: -7,
+          mfeAbsolute: 30,
+          maeAbsolute: 25,
+        }),
+      ],
+    );
+
+    const metricsWithOpenB = computeBacktestMetrics(
+      buildDetail({
+        id: 702,
+        from: '2024-06-01T00:00:00Z',
+        to: '2024-06-05T00:00:00Z',
+        netQuote: 12,
+        totalDeals: 1,
+        profits: 1,
+      }),
+      [
+        buildCycle({
+          id: 7021,
+          date: '2024-06-02T00:30:00Z',
+          duration: 5400,
+          netQuote: 12,
+          mfeAbsolute: 14,
+          maeAbsolute: 6,
+        }),
+        buildCycle({
+          id: 7022,
+          status: 'STARTED',
+          date: '2024-06-05T00:00:00Z',
+          duration: 3600,
+          netQuote: -3,
+          mfeAbsolute: 18,
+          maeAbsolute: 15,
+        }),
+      ],
+    );
+
+    const summary = summarizeAggregations([metricsWithOpenA, metricsWithOpenB], { maxConcurrentBots: 1 });
+
+    expect(summary.openDeals).toBe(1);
+    expect(summary.activeMpu).toBe(25);
+    expect(summary.aggregateMPU).toBe(25);
+    expect(summary.aggregateWorstRisk).toBe(Math.max(summary.aggregateDrawdown, summary.aggregateMPU));
   });
 
   it('returns the highest individual MPU when risk intervals do not overlap', () => {
