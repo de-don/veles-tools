@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Table, Tag } from 'antd';
+import { Button, Modal, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -7,6 +7,7 @@ import { fetchApiKeys } from '../api/apiKeys';
 import { fetchBots } from '../api/bots';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
 import BulkActionsMenu from '../components/bots/BulkActionsMenu';
+import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { resolveBotStatusColor } from '../lib/statusColors';
 import { parseSortDescriptor, serializeSortDescriptor } from '../lib/tableSort';
@@ -54,6 +55,21 @@ const formatExchangeLabel = (exchange: string): string => {
     .trim();
 };
 
+const getBotsNoun = (count: number): string => {
+  const abs = Math.abs(count) % 100;
+  const last = abs % 10;
+  if (abs > 10 && abs < 20) {
+    return 'ботов';
+  }
+  if (last === 1) {
+    return 'бот';
+  }
+  if (last >= 2 && last <= 4) {
+    return 'бота';
+  }
+  return 'ботов';
+};
+
 const _createSummary = (bot: TradingBot): BotSummary => ({
   id: bot.id,
   name: bot.name,
@@ -83,6 +99,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const [apiKeysLoading, setApiKeysLoading] = useState(false);
   const [apiKeysError, setApiKeysError] = useState<string | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
+  const [selectionDetailsOpen, setSelectionDetailsOpen] = useState(false);
 
   useEffect(() => {
     void reloadCounter;
@@ -251,7 +268,12 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         render: (_value, botRecord) => (
           <div>
             <div>{botRecord.name}</div>
-            <div className="panel__description">ID: {botRecord.id}</div>
+            <div className="panel__description">
+              ID:{' '}
+              <a href={`https://veles.finance/cabinet/bot/${botRecord.id}`} target="_blank" rel="noreferrer noopener">
+                {botRecord.id}
+              </a>
+            </div>
           </div>
         ),
       },
@@ -377,10 +399,15 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   };
 
   useEffect(() => {
-    if (totalSelected === 0 && activeModal) {
-      setActiveModal(null);
+    if (totalSelected === 0) {
+      if (activeModal) {
+        setActiveModal(null);
+      }
+      if (selectionDetailsOpen) {
+        setSelectionDetailsOpen(false);
+      }
     }
-  }, [totalSelected, activeModal]);
+  }, [totalSelected, activeModal, selectionDetailsOpen]);
 
   const openModal = (variant: BacktestVariant) => {
     if (totalSelected === 0) {
@@ -491,19 +518,14 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
               ))}
             </select>
           </div>
-          <div className="panel__filters-actions">
-            <button type="submit" className="button">
+          <Space className="panel__filters-actions">
+            <Button type="primary" htmlType="submit">
               Применить
-            </button>
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={handleFiltersReset}
-              disabled={isResetDisabled}
-            >
+            </Button>
+            <Button type="default" onClick={handleFiltersReset} disabled={isResetDisabled}>
               Сбросить фильтры
-            </button>
-          </div>
+            </Button>
+          </Space>
           <div className="panel__filters-actions" style={{ marginLeft: 'auto' }}>
             <TableColumnSettingsButton
               settings={columnSettings}
@@ -520,25 +542,32 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
           </div>
         )}
 
-        {totalSelected > 0 && (
-          <div className="panel__bulk-actions">
-            <span className="panel__bulk-info">Выбрано {totalSelected} ботов</span>
-            <div className="panel__bulk-buttons">
-              <button type="button" className="button" onClick={() => openModal('single')}>
-                Бэктест
-              </button>
-              <button type="button" className="button button--secondary" onClick={() => openModal('multiCurrency')}>
-                Мультивалютный бэктест
-              </button>
-              <BulkActionsMenu
-                bots={selection}
-                apiKeys={apiKeys}
-                onReloadRequested={forceReloadBots}
-                onSelectionUpdate={setSelection}
-              />
-            </div>
-          </div>
-        )}
+        {totalSelected > 0 ? (
+          <SelectionSummaryBar
+            message={
+              <>
+                Выбрано {totalSelected}{' '}
+                <Button type="link" size="small" onClick={() => setSelectionDetailsOpen(true)}>
+                  {getBotsNoun(totalSelected)}
+                </Button>
+              </>
+            }
+            actions={
+              <>
+                <Button type="primary" onClick={() => openModal('single')}>
+                  Бэктест
+                </Button>
+                <Button onClick={() => openModal('multiCurrency')}>Мультивалютный бэктест</Button>
+                <BulkActionsMenu
+                  bots={selection}
+                  apiKeys={apiKeys}
+                  onReloadRequested={forceReloadBots}
+                  onSelectionUpdate={setSelection}
+                />
+              </>
+            }
+          />
+        ) : null}
 
         <div className="table-container">
           <Table<TradingBot>
@@ -561,15 +590,18 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         {error && <div className="banner banner--warning">Ошибка загрузки: {error}</div>}
       </div>
 
-      <div className="panel">
-        <h2 className="panel__title">Выбранные боты</h2>
-        <p className="panel__description">
-          Эти боты будут доступны для последующих действий (массовые операции, запуск бэктестов и т. д.).
-        </p>
-        {totalSelected === 0 ? (
-          <div className="empty-state">Выберите одного или несколько ботов в таблице.</div>
+      {activeModal && <BacktestModal variant={activeModal} selectedBots={selectedBotsList} onClose={closeModal} />}
+
+      <Modal
+        title={`Выбрано ${totalSelected} ${getBotsNoun(totalSelected)}`}
+        open={selectionDetailsOpen}
+        onCancel={() => setSelectionDetailsOpen(false)}
+        footer={null}
+      >
+        {selection.length === 0 ? (
+          <Typography.Text type="secondary">Список пуст — выберите ботов в таблице.</Typography.Text>
         ) : (
-          <ul className="panel__list--compact">
+          <ul className="panel__list--compact" style={{ maxHeight: 320, overflowY: 'auto' }}>
             {selection.map((bot) => (
               <li key={bot.id}>
                 <span className="chip">
@@ -578,13 +610,11 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
                     {bot.exchange} · {bot.algorithm}
                   </span>
                 </span>
-                <span style={{ marginLeft: 8, color: '#94a3b8' }}>Статус: {bot.status}</span>
-                {bot.substatus && <span style={{ marginLeft: 8, color: '#94a3b8' }}>({bot.substatus})</span>}
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </Modal>
 
       {activeModal && <BacktestModal variant={activeModal} selectedBots={selectedBotsList} onClose={closeModal} />}
     </section>

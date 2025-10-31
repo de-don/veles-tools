@@ -1,44 +1,19 @@
-import { Link } from 'react-router-dom';
+import { Card, Col, List, Row, Space, Typography } from 'antd';
 import { APP_NAME, APP_VERSION } from '../config/version';
 
 const completedHighlights: string[] = [
-  'Мультизапуск бэктестов для любых ботов.',
-  'Детальные метрики с агрегацией и графиком одновременных позиций.',
-  'Отслеживание активных позиций и их закрытие',
-  'Массовый запуск и остановка ботов',
-  'Импорт пользовательских ботов с локальным хранилищем стратегий и быстрым доступом.',
+  'Агрегированная статистика бэктестов с лимитом ботов и активным МПУ.',
+  'Мониторинг активных сделок с графиком P&L.',
+  'Массовый менеджмент ботов (запуск/остановка/удаление).',
+  'Удобный поиск, фильтрация и сортировка бектестов.',
+  'Разделение бэктестов на группы для удобства анализа.',
 ];
 
 const roadmapHighlights: string[] = [
-  'Фильтры и сортировки для списков ботов и бэктестов.',
-  'Экспорт и импорт ботов и бэктестов.',
-  'Дополнительные визуализации и метрики для анализа результатов.',
-  'Группы символов, ботов и бектестов.',
-  'Конфигурируемые таблицы для гибкой аналитики.',
-  'Новый дизайн и улучшенный UX.',
-];
-
-const quickLinks = [
-  {
-    to: '/active-deals',
-    label: 'Активные сделки',
-    description: 'Отслеживайте и управляйте открытыми позициями.',
-  },
-  {
-    to: '/bots',
-    label: 'Мои боты',
-    description: 'Запускайте бэктесты для своих ботов сразу на большом наборе валют.',
-  },
-  {
-    to: '/backtests',
-    label: 'К бэктестам',
-    description: 'Собирайте статистику, анализируйте результаты.',
-  },
-  {
-    to: '/import',
-    label: 'Импорт ботов',
-    description: 'Импортируйте публичных ботов для дальнейших бэктестов.',
-  },
+  'Группы ботов и символов для более удобного управления.',
+  'Экспорт публичных ссылок для бектестов и ботов',
+  'Блокировка по позиции при анализе бэктестов.',
+  'Дополнительные визуализации результатов бэктестов.',
 ];
 
 const faqItems = [
@@ -81,66 +56,62 @@ const faqItems = [
 
 const HomePage = () => {
   return (
-    <section className="page">
-      <header className="page__header">
-        <h1 className="page__title">{APP_NAME}</h1>
-        <p className="page__subtitle">
-          Veles Tools — рабочая панель для управления мультизапусками бэктестов и ботами veles.finance. Текущая версия —
-          v{APP_VERSION}.
-        </p>
-      </header>
+    <div className="page">
+      <Space direction="vertical" size={24} style={{ width: '100%' }}>
+        <Space direction="vertical" size={4} className="page__header">
+          <Typography.Title level={1} style={{ marginBottom: 0 }}>
+            {APP_NAME}
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" className="page__subtitle" style={{ marginBottom: 0 }}>
+            Veles Tools — рабочая панель для управления мультизапусками бэктестов и ботами veles.finance. Текущая версия
+            — v{APP_VERSION}.
+          </Typography.Paragraph>
+        </Space>
 
-      <div className="panel panel--hero">
-        <div className="home-hero">
-          <div>
-            <h2 className="panel__title">Быстрый старт</h2>
-            <p className="panel__description">
-              Собирайте метрики, управляйте очередью бэктестов и сохраняйте стратегии без переключения между страницами.
-            </p>
-          </div>
-          <div className="home-quick-links">
-            {quickLinks.map((link) => (
-              <Link key={link.to} to={link.to} className="home-quick-link">
-                <span className="home-quick-link__label">{link.label}</span>
-                <span className="home-quick-link__hint">{link.description}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={12}>
+            <Card title="Функционал" bordered>
+              <List
+                dataSource={completedHighlights}
+                renderItem={(item) => (
+                  <List.Item>
+                    <Typography.Text>{item}</Typography.Text>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} md={12}>
+            <Card title="В планах" bordered>
+              <List
+                dataSource={roadmapHighlights}
+                renderItem={(item) => (
+                  <List.Item>
+                    <Typography.Text>{item}</Typography.Text>
+                  </List.Item>
+                )}
+              />
+            </Card>
+          </Col>
+        </Row>
 
-      <div className="home-grid">
-        <div className="panel">
-          <h2 className="panel__title">Функционал</h2>
-          <ul className="panel__list">
-            {completedHighlights.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="panel">
-          <h2 className="panel__title">В планах</h2>
-          <ul className="panel__list">
-            {roadmapHighlights.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="panel">
-        <h2 className="panel__title">Часто задаваемые вопросы</h2>
-        <div className="faq">
-          {faqItems.map((item) => (
-            <div key={item.question} className="faq__item">
-              <div className="faq__question">{item.question}</div>
-              <div className="faq__answer">{item.answer}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+        <Card title="Часто задаваемые вопросы" bordered>
+          <List
+            itemLayout="vertical"
+            dataSource={faqItems}
+            split={false}
+            renderItem={(item) => (
+              <List.Item key={item.question}>
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  <Typography.Text strong>{item.question}</Typography.Text>
+                  <Typography.Paragraph style={{ marginBottom: 0 }}>{item.answer}</Typography.Paragraph>
+                </Space>
+              </List.Item>
+            )}
+          />
+        </Card>
+      </Space>
+    </div>
   );
 };
 

@@ -1,6 +1,27 @@
 (() => {
   const PAGE_SOURCE = 'veles-bridge';
   const INJECTED_SOURCE = 'veles-injected';
+  const VELES_BASE_DOMAIN = 'veles.finance';
+
+  const isVelesHostname = (hostname) => {
+    if (typeof hostname !== 'string' || hostname.length === 0) {
+      return false;
+    }
+    const normalized = hostname.toLowerCase();
+    return normalized === VELES_BASE_DOMAIN || normalized.endsWith(`.${VELES_BASE_DOMAIN}`);
+  };
+
+  const isAllowedProtocol = (protocol) => protocol === 'https:' || protocol === 'http:';
+
+  // Получаем nonce, переданный через data-атрибут инжектящего script-тега
+  const BRIDGE_NONCE = document.currentScript?.dataset?.velesBridgeNonce
+    ? String(document.currentScript.dataset.velesBridgeNonce)
+    : null;
+
+  if (!BRIDGE_NONCE) {
+    console.warn('[Veles page bridge] Missing bridge nonce — aborting initialization');
+    return;
+  }
 
   const normalizeHeaders = (headers) => {
     const result = {};
@@ -67,17 +88,33 @@
   };
 
   const respond = (requestId, payload) => {
-    window.postMessage({
-      source: INJECTED_SOURCE,
-      action: 'proxy-response',
-      requestId,
-      payload,
-    });
+    window.postMessage(
+      {
+        source: INJECTED_SOURCE,
+        action: 'proxy-response',
+        requestId,
+        payload,
+        nonce: BRIDGE_NONCE,
+      },
+      window.location.origin,
+    );
   };
 
   const handleProxyRequest = async (requestId, payload) => {
     if (!payload || typeof payload.url !== 'string') {
       respond(requestId, { ok: false, error: 'Некорректный URL.' });
+      return;
+    }
+
+    // Базовая защита: разрешаем делать запросы только к veles.finance
+    try {
+      const parsed = new URL(payload.url);
+      if (!isAllowedProtocol(parsed.protocol) || !isVelesHostname(parsed.hostname)) {
+        respond(requestId, { ok: false, error: `Запросы разрешены только к ${VELES_BASE_DOMAIN}` });
+        return;
+      }
+    } catch {
+      respond(requestId, { ok: false, error: 'Некорректный URL формата' });
       return;
     }
 
@@ -102,11 +139,15 @@
   };
 
   const handlePing = () => {
-    window.postMessage({
-      source: INJECTED_SOURCE,
-      action: 'ping-response',
-      payload: { ok: true, origin: window.location.origin },
-    });
+    window.postMessage(
+      {
+        source: INJECTED_SOURCE,
+        action: 'ping-response',
+        payload: { ok: true, origin: window.location.origin },
+        nonce: BRIDGE_NONCE,
+      },
+      window.location.origin,
+    );
   };
 
   window.addEventListener('message', (event) => {
@@ -116,6 +157,10 @@
 
     const data = event.data;
     if (!data || typeof data !== 'object') {
+      return;
+    }
+
+    if (data.nonce !== BRIDGE_NONCE) {
       return;
     }
 

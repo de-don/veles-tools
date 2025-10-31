@@ -1,10 +1,11 @@
-import { message, Popconfirm, Table } from 'antd';
+import { Button, message, Popconfirm, Segmented, Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { Sparkline } from '../components/charts/Sparkline';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
+import { StatisticCard } from '../components/ui/StatisticCard';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
@@ -442,13 +443,13 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               onConfirm={() => handleCloseDeal(record.deal)}
               disabled={actionsDisabled}
             >
-              <button
-                type="button"
-                className={`button active-deals__close-button ${buttonToneClass}`}
+              <Button
+                className={`active-deals__close-button ${buttonToneClass}`}
                 disabled={actionsDisabled}
+                loading={isClosing}
               >
-                {isClosing ? 'Закрытие...' : 'Закрыть'}
-              </button>
+                Закрыть
+              </Button>
             </Popconfirm>
           );
         },
@@ -487,7 +488,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           </div>
         )}
 
-        <div className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel">
           <div className="panel__header">
             <div>
               <h2 className="panel__title">Мониторинг сделок</h2>
@@ -510,62 +511,61 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           </div>
 
           <div className="aggregation-summary">
-            <div className="aggregation-metric">
-              <div className="aggregation-metric__label">Суммарный P&amp;L</div>
-              <div
-                className={`aggregation-metric__value ${
-                  summary.pnl >= 0 ? 'aggregation-metric__value--positive' : 'aggregation-metric__value--negative'
-                }`}
-              >
-                {formatSignedCurrency(summary.pnl)} USDT
-              </div>
-            </div>
-            <div className="aggregation-metric">
-              <div className="aggregation-metric__label">
-                Экспозиция
+            <StatisticCard
+              title="Суммарный P&L"
+              value={summary.pnl}
+              trend={summary.pnl >= 0 ? 'positive' : 'negative'}
+              formatter={(rawValue) => {
+                const numeric = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+                if (!Number.isFinite(numeric)) {
+                  return '—';
+                }
+                return `${formatSignedCurrency(numeric)} USDT`;
+              }}
+            />
+            <StatisticCard
+              title="Экспозиция"
+              tooltip={
                 <InfoTooltip text="Совокупный объём позиций: сумма |количество| × средняя цена входа по каждой сделке." />
-              </div>
-              <div className="aggregation-metric__value">{formatCurrency(summary.exposure)} USDT</div>
-            </div>
-            <div className="aggregation-metric">
-              <div className="aggregation-metric__label">
-                Всего сделок
-                <InfoTooltip text="Количество активных сделок, полученных из эндпоинта /api/cycles/active." />
-              </div>
-              <div className="aggregation-metric__value">{dealsState.totalDeals}</div>
-            </div>
-            <div className="aggregation-metric">
-              <div className="aggregation-metric__label">
-                В плюсе
-                <InfoTooltip text="Число сделок с положительным текущим P&L." />
-              </div>
-              <div className="aggregation-metric__value">{summary.profitable}</div>
-            </div>
-            <div className="aggregation-metric">
-              <div className="aggregation-metric__label">
-                В минусе
-                <InfoTooltip text="Число сделок с отрицательным текущим P&L." />
-              </div>
-              <div className="aggregation-metric__value">{summary.losing}</div>
-            </div>
-            <div className="aggregation-metric">
-              <div className="aggregation-metric__label">
-                Без изменений
-                <InfoTooltip text="Сделки, у которых рассчитанный P&L равен нулю." />
-              </div>
-              <div className="aggregation-metric__value">{summary.flat}</div>
-            </div>
-            <div className="aggregation-metric">
-              <div className="aggregation-metric__label">
-                Последнее обновление
-                <InfoTooltip text="Местное время последнего успешного запроса к API." />
-              </div>
-              <div className="aggregation-metric__value aggregation-metric__value--muted">{lastUpdatedLabel}</div>
-            </div>
+              }
+              value={summary.exposure}
+              formatter={(rawValue) => {
+                const numeric = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+                if (!Number.isFinite(numeric)) {
+                  return '—';
+                }
+                return `${formatCurrency(numeric)} USDT`;
+              }}
+            />
+            <StatisticCard
+              title="Всего сделок"
+              tooltip={<InfoTooltip text="Количество активных сделок, полученных из эндпоинта /api/cycles/active." />}
+              value={dealsState.totalDeals}
+              precision={0}
+            />
+            <StatisticCard
+              title="В плюсе"
+              tooltip={<InfoTooltip text="Число сделок с положительным текущим P&L." />}
+              value={summary.profitable}
+              precision={0}
+            />
+            <StatisticCard
+              title="В минусе"
+              tooltip={<InfoTooltip text="Число сделок с отрицательным текущим P&L." />}
+              value={summary.losing}
+              precision={0}
+            />
+            <StatisticCard
+              title="Без изменений"
+              tooltip={<InfoTooltip text="Сделки, у которых рассчитанный P&L равен нулю." />}
+              value={summary.flat}
+              precision={0}
+            />
+            <StatisticCard title="Обновлено" value={lastUpdatedLabel} trend="muted" />
           </div>
         </div>
 
-        <div className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel">
           <div className="panel__header">
             <div>
               <h2 className="panel__title">Динамика агрегированного P&amp;L</h2>
@@ -575,25 +575,18 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               </p>
             </div>
           </div>
-          <fieldset className="chart-zoom-presets" aria-label="Интервалы отображения графика">
-            {ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => {
-              const isActive = zoomPreset === preset.key;
-              return (
-                <button
-                  key={preset.key}
-                  type="button"
-                  className={`chart-zoom-presets__button${isActive ? ' chart-zoom-presets__button--active' : ''}`}
-                  onClick={() => applyZoomPreset(preset.key)}
-                  aria-pressed={isActive}
-                >
-                  {preset.label}
-                </button>
-              );
-            })}
-            <button type="button" className="button button--ghost" onClick={handleResetHistory}>
-              Сбросить данные
-            </button>
-          </fieldset>
+          <Space className="chart-zoom-presets" align="center" size="middle" wrap>
+            <Segmented
+              options={ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => ({
+                label: preset.label,
+                value: preset.key,
+              }))}
+              value={zoomPreset}
+              size="middle"
+              onChange={(value) => applyZoomPreset(value as ActiveDealsZoomPresetKey)}
+            />
+            <Button onClick={handleResetHistory}>Сбросить данные</Button>
+          </Space>
           <div className="aggregation-equity__chart">
             {pnlSeries.points.length === 0 ? (
               <div className="empty-state">Нет данных для отображения. Подождите первое обновление.</div>

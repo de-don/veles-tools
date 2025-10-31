@@ -1,3 +1,4 @@
+import { Alert, Button, Card, Space, Typography } from 'antd';
 import { useState } from 'react';
 import { clearBacktestCache } from '../storage/backtestCache';
 
@@ -21,39 +22,44 @@ const SettingsPage = () => {
     }
   };
 
-  const renderStatusNote = () => {
+  const statusNote = (() => {
     if (status === 'success') {
-      return <div className="banner banner--success">Кэш очищен.</div>;
+      return <Alert type="success" showIcon message="Кэш очищен." />;
     }
     if (status === 'error') {
       return (
-        <div className="banner banner--warning">Не удалось очистить кэш: {errorMessage ?? 'неизвестная ошибка'}.</div>
+        <Alert type="warning" showIcon message={`Не удалось очистить кэш: ${errorMessage ?? 'неизвестная ошибка'}.`} />
       );
     }
     return null;
-  };
-
-  const statusNote = renderStatusNote();
+  })();
 
   return (
-    <section className="page">
-      <header className="page__header">
-        <h1 className="page__title">Настройки</h1>
-        <p className="page__subtitle">Управление локальными кэшами и вспомогательными параметрами.</p>
-      </header>
+    <div className="page">
+      <Space direction="vertical" size={24} style={{ width: '100%' }}>
+        <Space direction="vertical" size={4} className="page__header">
+          <Typography.Title level={1} style={{ marginBottom: 0 }}>
+            Настройки
+          </Typography.Title>
+          <Typography.Paragraph type="secondary" className="page__subtitle" style={{ marginBottom: 0 }}>
+            Управление локальными кэшами и вспомогательными параметрами.
+          </Typography.Paragraph>
+        </Space>
 
-      <div className="panel">
-        <h2 className="panel__title">Очистка данных</h2>
-        <p className="panel__description">
-          Удаляет сохранённые детальные данные бэктестов и их циклов из локального кэша. При повторном обращении
-          информация будет загружена заново с сервера.
-        </p>
-        <button type="button" className="button" onClick={handleClearCache} disabled={status === 'pending'}>
-          {status === 'pending' ? 'Очищаем…' : 'Очистить кэш'}
-        </button>
-        {statusNote ? <div style={{ marginTop: 12 }}>{statusNote}</div> : null}
-      </div>
-    </section>
+        <Card title="Очистка данных" bordered>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Typography.Paragraph style={{ marginBottom: 0 }}>
+              Удаляет сохранённые детальные данные бэктестов и их циклов из локального кэша. При повторном обращении
+              информация будет загружена заново с сервера.
+            </Typography.Paragraph>
+            <Button type="primary" onClick={handleClearCache} loading={status === 'pending'}>
+              Очистить кэш
+            </Button>
+            {statusNote}
+          </Space>
+        </Card>
+      </Space>
+    </div>
   );
 };
 

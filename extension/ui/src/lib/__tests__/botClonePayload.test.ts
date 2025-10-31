@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SymbolDescriptor } from '../../api/backtestRunner';
-import type { BotDepositConfig, BotProfitConfig, BotSettings, TradingBot } from '../../types/bots';
+import type { BotDepositConfig, BotProfitConfig, BotSettings, BotStopLossConfig, TradingBot } from '../../types/bots';
 import { buildBotClonePayload } from '../botClonePayload';
 
 const buildProfit = (overrides: Partial<BotProfitConfig> = {}): BotProfitConfig => ({
@@ -22,6 +22,14 @@ const buildSettings = (overrides: Partial<BotSettings> = {}): BotSettings => ({
   orders: overrides.orders ?? null,
   indentType: overrides.indentType ?? null,
   includePosition: overrides.includePosition ?? true,
+});
+
+const buildStopLoss = (overrides: Partial<BotStopLossConfig> = {}): BotStopLossConfig => ({
+  indent: overrides.indent ?? 1,
+  termination: overrides.termination ?? false,
+  conditionalIndent: overrides.conditionalIndent ?? null,
+  conditions: overrides.conditions ?? null,
+  conditionalIndentType: overrides.conditionalIndentType ?? null,
 });
 
 const buildBot = (overrides: Partial<TradingBot> = {}): TradingBot => ({
@@ -131,5 +139,29 @@ describe('buildBotClonePayload', () => {
     expect(payload.profit).not.toBe(bot.profit);
     expect(payload.conditions).not.toBe(bot.conditions);
     expect(bot.profit?.currency).toBe('USDT');
+  });
+
+  it('clones stopLoss configuration from the source bot', () => {
+    const stopLoss = buildStopLoss({ indent: 5, termination: true });
+    const bot = buildBot({ stopLoss });
+    const descriptor: SymbolDescriptor = {
+      base: 'XRP',
+      quote: 'USDT',
+      display: 'XRP/USDT',
+      pairCode: 'XRPUSDT',
+    };
+
+    const payload = buildBotClonePayload(bot, descriptor, {
+      apiKeyId: 12,
+      name: 'XRP clone',
+      depositAmount: 80,
+      depositLeverage: 3,
+      marginType: null,
+      depositCurrency: null,
+      profitCurrency: null,
+    });
+
+    expect(payload.stopLoss).toEqual(stopLoss);
+    expect(payload.stopLoss).not.toBe(stopLoss);
   });
 });

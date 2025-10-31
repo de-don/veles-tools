@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { BacktestStatisticsDetail } from '../../types/backtests';
+import type { BotStopLossConfig } from '../../types/bots';
 import { buildBotCreationPayload } from '../backtestBotPayload';
+
+const buildStopLoss = (overrides: Partial<BotStopLossConfig> = {}): BotStopLossConfig => ({
+  indent: overrides.indent ?? 1,
+  termination: overrides.termination ?? false,
+  conditionalIndent: overrides.conditionalIndent ?? null,
+  conditions: overrides.conditions ?? null,
+  conditionalIndentType: overrides.conditionalIndentType ?? null,
+});
 
 const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): BacktestStatisticsDetail => ({
   id: overrides.id ?? 1,
@@ -66,6 +75,7 @@ const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): Backtes
   cursor: overrides.cursor ?? null,
   includePosition: overrides.includePosition ?? true,
   symbols: overrides.symbols ?? ['AAA/BBB'],
+  stopLoss: overrides.stopLoss ?? null,
   start: overrides.start ?? null,
   end: overrides.end ?? null,
   periodStart: overrides.periodStart ?? null,
@@ -116,5 +126,20 @@ describe('buildBotCreationPayload', () => {
 
     expect(payload.symbols).toEqual(['AAA/BBB']);
     expect(payload.symbol).toBe('AAA/BBB');
+  });
+
+  it('clones stopLoss configuration from detail when present', () => {
+    const stopLoss = buildStopLoss({ indent: 3, termination: true });
+    const detail = buildDetail({ stopLoss });
+
+    const payload = buildBotCreationPayload(detail, {
+      apiKeyId: 5,
+      depositAmount: 250,
+      depositLeverage: 7,
+      marginType: 'isolated',
+    });
+
+    expect(payload.stopLoss).toEqual(stopLoss);
+    expect(payload.stopLoss).not.toBe(stopLoss);
   });
 });

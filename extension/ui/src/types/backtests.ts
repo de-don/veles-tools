@@ -1,4 +1,4 @@
-import type { StrategyCondition } from './bots';
+import type { BotStopLossConfig, StrategyCondition } from './bots';
 
 export interface BacktestStatisticsListResponse {
   totalElements: number;
@@ -45,6 +45,7 @@ export interface BacktestConfig {
   portion: number | null;
   profit: BacktestProfitConfig | null;
   deposit: BacktestDepositConfig | null;
+  stopLoss: BotStopLossConfig | null;
   settings: BacktestSettings;
   conditions: StrategyCondition[] | null;
   from: string | null;
@@ -119,6 +120,7 @@ export interface BacktestStatisticsDetail extends BacktestStatistics {
   portion?: number | null;
   profit?: BacktestProfitConfig | null;
   deposit?: BacktestDepositConfig | null;
+  stopLoss?: BotStopLossConfig | null;
   settings?: BacktestSettings;
   conditions?: StrategyCondition[] | null;
   commissions?: BacktestCommissionsConfig | null;
@@ -149,28 +151,28 @@ export interface BacktestStatisticsDetail extends BacktestStatistics {
 }
 
 export interface BacktestOrder {
-  category?: string | null;
-  side?: string | null;
-  type?: string | null;
-  position?: number | null;
-  quantity?: number | null;
-  price?: number | null;
-  status?: string | null;
-  createdAt?: string | null;
-  executedAt?: string | null;
-  updatedAt?: string | null;
-  commissionAmount?: number | null;
-  commissionAsset?: string | null;
+  category: 'GRID';
+  side: 'BUY' | 'SELL';
+  type: 'MARKET';
+  position: number;
+  quantity: number;
+  price: number;
+  status: 'EXECUTED';
+  createdAt: string;
+  executedAt: string;
+  commissionAmount: number;
+  commissionAsset: string;
 }
 
 export interface BacktestCycle {
   id: number;
-  status: 'CANCELED' | 'FINISHED' | string;
+  status: 'CANCELLED' | 'FINISHED' | 'STARTED';
   substatus?: 'PULL_UP' | 'TAKE_PROFIT' | string | null;
   exchange?: 'BYBIT_FUTURES' | string | null;
   symbol?: string | null;
   base?: string | null;
   quote?: string | null;
+  /** Completion date of the cycle */
   date: string;
   duration?: number | null;
   netQuote?: number | null;

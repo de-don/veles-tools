@@ -14,9 +14,12 @@ import { ACTIVE_DEALS_DEFAULT_SIZE, fetchAllActiveDeals } from '../api/activeDea
 import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
 import {
+  clampDealHistory,
   DEAL_HISTORY_LIMIT,
+  DEAL_HISTORY_WINDOW_MS,
   type DealHistoryMap,
   type DealHistoryPoint,
+  filterDealHistoryByTimeWindow,
   mapHistoryToSnapshot,
   snapshotHistoryToMap,
 } from '../lib/activeDealsHistory';
@@ -149,8 +152,12 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
           const dealId = position.deal.id;
           activeIds.add(dealId);
           const previous = next.get(dealId) ?? [];
-          const appended = [...previous, { time: timestamp, pnl: position.pnl, pnlPercent: position.pnlPercent }];
-          const trimmed = appended.length > DEAL_HISTORY_LIMIT ? appended.slice(-DEAL_HISTORY_LIMIT) : appended;
+          const filteredPrevious = filterDealHistoryByTimeWindow(previous, DEAL_HISTORY_WINDOW_MS, timestamp);
+          const appended = [
+            ...filteredPrevious,
+            { time: timestamp, pnl: position.pnl, pnlPercent: position.pnlPercent },
+          ];
+          const trimmed = clampDealHistory(appended, DEAL_HISTORY_LIMIT);
           next.set(dealId, trimmed);
         });
 
@@ -261,10 +268,24 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     });
     setZoomRange(snapshot.zoomRange ?? undefined);
     setZoomPreset(snapshot.zoomPreset ?? 'all');
+    let historyRestored = false;
     const restoredHistory = snapshotHistoryToMap(snapshot.positionHistory);
     if (restoredHistory.size > 0) {
-      setPositionHistory(restoredHistory);
-    } else if (snapshot.lastUpdated) {
+      const now = Date.now();
+      const normalizedHistory: DealHistoryMap = new Map();
+      restoredHistory.forEach((points, dealId) => {
+        const filteredPoints = filterDealHistoryByTimeWindow(points, DEAL_HISTORY_WINDOW_MS, now);
+        const trimmedPoints = clampDealHistory(filteredPoints, DEAL_HISTORY_LIMIT);
+        if (trimmedPoints.length > 0) {
+          normalizedHistory.set(dealId, trimmedPoints);
+        }
+      });
+      if (normalizedHistory.size > 0) {
+        setPositionHistory(normalizedHistory);
+        historyRestored = true;
+      }
+    }
+    if (!historyRestored && snapshot.lastUpdated) {
       const history = new Map<number, DealHistoryPoint[]>();
       aggregation.positions.forEach((position) => {
         history.set(position.deal.id, [

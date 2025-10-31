@@ -1,9 +1,10 @@
 import type { TableProps } from 'antd';
-import { Table, Tag } from 'antd';
+import { Button, Modal, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type BotStrategy, fetchBotStrategy } from '../api/backtestRunner';
 import BacktestModal, { type BacktestVariant } from '../components/BacktestModal';
+import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { type ImportedBotEntry, useImportedBots } from '../context/ImportedBotsContext';
 import { resolveBotStatusColor } from '../lib/statusColors';
@@ -107,6 +108,21 @@ const deduplicate = (items: string[]): string[] => {
   return result;
 };
 
+const getBotsNoun = (count: number): string => {
+  const abs = Math.abs(count) % 100;
+  const last = abs % 10;
+  if (abs > 10 && abs < 20) {
+    return 'ботов';
+  }
+  if (last === 1) {
+    return 'бот';
+  }
+  if (last >= 2 && last <= 4) {
+    return 'бота';
+  }
+  return 'ботов';
+};
+
 const parseAliasInput = (raw: string): string[] => {
   if (!raw.trim()) {
     return [];
@@ -168,6 +184,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
   const [logs, setLogs] = useState<ImportLogEntry[]>([]);
   const [activeModal, setActiveModal] = useState<BacktestVariant | null>(null);
   const [selection, setSelection] = useState<SelectionMap>(new Map());
+  const [selectionDetailsOpen, setSelectionDetailsOpen] = useState(false);
 
   const importedIds = useMemo(() => new Set(importedBots.map((entry) => entry.id)), [importedBots]);
   const lastSelectedKeyRef = useRef<string | null>(null);
@@ -255,6 +272,12 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
 
   const selectedBotsList = useMemo(() => Array.from(selection.values()), [selection]);
   const totalSelected = selection.size;
+
+  useEffect(() => {
+    if (totalSelected === 0 && selectionDetailsOpen) {
+      setSelectionDetailsOpen(false);
+    }
+  }, [totalSelected, selectionDetailsOpen]);
 
   const appendLog = useCallback((message: string, kind: LogKind) => {
     setLogs((current) => [{ id: buildLogEntryId(kind), message, kind }, ...current]);
@@ -367,9 +390,9 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
         title: 'Действия',
         key: 'actions',
         render: (_value, entry) => (
-          <button type="button" className="button button--ghost" onClick={() => handleRemove(entry)}>
+          <Button type="link" danger onClick={() => handleRemove(entry)}>
             Удалить
-          </button>
+          </Button>
         ),
       },
     ],
@@ -435,9 +458,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
     <section className="page">
       <header className="page__header">
         <h1 className="page__title">Импорт ботов</h1>
-        <p className="page__subtitle">
-          Вставьте ссылки или идентификаторы, чтобы загрузить конфигурации ботов по общему доступу.
-        </p>
+        <p className="page__subtitle">Вставьте публичные ссылки на ботов, чтобы загрузить их конфигурации.</p>
       </header>
 
       {!extensionReady && (
@@ -460,19 +481,14 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
 https://veles.finance/share/q1w2e`}
           rows={4}
         />
-        <div className="panel__actions" style={{ marginTop: 12 }}>
-          <button type="button" className="button" onClick={handleImport} disabled={!extensionReady || isImporting}>
-            {isImporting ? 'Импортируем…' : 'Импортировать'}
-          </button>
-          <button
-            type="button"
-            className="button button--ghost"
-            onClick={() => setInputValue('')}
-            disabled={isImporting}
-          >
+        <Space className="panel__actions" style={{ marginTop: 12 }} wrap>
+          <Button type="primary" onClick={handleImport} loading={isImporting} disabled={!extensionReady}>
+            Импортировать
+          </Button>
+          <Button onClick={() => setInputValue('')} disabled={isImporting}>
             Очистить поле
-          </button>
-        </div>
+          </Button>
+        </Space>
         {logs.length > 0 && (
           <ul className="panel__list" style={{ marginTop: 16 }}>
             {logs.map((log) => (
@@ -497,7 +513,7 @@ https://veles.finance/share/q1w2e`}
               Храним конфигурации локально. Можно выбрать ботов для запуска бэктестов или удалить ненужных.
             </p>
           </div>
-          <div className="panel__actions">
+          <Space className="panel__actions" size={[8, 8]} wrap>
             <TableColumnSettingsButton
               settings={tableColumnSettings}
               moveColumn={moveTableColumn}
@@ -505,10 +521,10 @@ https://veles.finance/share/q1w2e`}
               reset={resetTableColumns}
               hasCustomSettings={tableHasCustomSettings}
             />
-            <button type="button" className="button button--ghost" onClick={handleClearAll} disabled={!hasImportedBots}>
+            <Button onClick={handleClearAll} disabled={!hasImportedBots}>
               Очистить список
-            </button>
-          </div>
+            </Button>
+          </Space>
         </div>
 
         {hasImportedBots ? (
@@ -527,22 +543,55 @@ https://veles.finance/share/q1w2e`}
           <div className="empty-state">Ещё нет импортированных ботов.</div>
         )}
 
-        {totalSelected > 0 && (
-          <div className="panel__bulk-actions">
-            <span className="panel__bulk-info">Выбрано {totalSelected} ботов</span>
-            <div className="panel__bulk-buttons">
-              <button type="button" className="button" onClick={() => openModal('single')}>
-                Бэктест
-              </button>
-              <button type="button" className="button button--secondary" onClick={() => openModal('multiCurrency')}>
-                Мультивалютный бэктест
-              </button>
-            </div>
-          </div>
-        )}
+        {totalSelected > 0 ? (
+          <SelectionSummaryBar
+            message={
+              <>
+                Выбрано {totalSelected}{' '}
+                <Button type="link" size="small" onClick={() => setSelectionDetailsOpen(true)}>
+                  {getBotsNoun(totalSelected)}
+                </Button>
+              </>
+            }
+            actions={
+              <>
+                <Button type="primary" onClick={() => openModal('single')}>
+                  Бэктест
+                </Button>
+                <Button onClick={() => openModal('multiCurrency')}>Мультивалютный бэктест</Button>
+              </>
+            }
+          />
+        ) : null}
       </div>
 
       {activeModal && <BacktestModal variant={activeModal} selectedBots={selectedBotsList} onClose={closeModal} />}
+
+      <Modal
+        title={`Выбрано ${totalSelected} ${getBotsNoun(totalSelected)}`}
+        open={selectionDetailsOpen}
+        onCancel={() => setSelectionDetailsOpen(false)}
+        footer={null}
+        width={520}
+      >
+        {selectedBotsList.length === 0 ? (
+          <Typography.Text type="secondary">Список пуст — выберите ботов в таблице.</Typography.Text>
+        ) : (
+          <ul className="panel__list--compact" style={{ maxHeight: 320, overflowY: 'auto' }}>
+            {selectedBotsList.map((bot) => (
+              <li key={bot.id}>
+                <span className="chip">
+                  <strong>{bot.name}</strong>
+                  <span>
+                    {bot.exchange} · {bot.algorithm}
+                  </span>
+                </span>
+                <span style={{ marginLeft: 8, color: '#94a3b8' }}>ID: {bot.id}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Modal>
     </section>
   );
 };

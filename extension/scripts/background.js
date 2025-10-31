@@ -6,11 +6,13 @@ const REQUEST_TIMEOUT_MS = 15000;
 const MAX_ATTEMPTS = 3;
 const RECONNECT_INTERVAL_MS = 1500;
 
+const VELES_BASE_DOMAIN = 'veles.finance';
+
 const VELES_URL_PATTERNS = [
-  'https://veles.finance/*',
-  'https://*.veles.finance/*',
-  'http://veles.finance/*',
-  'http://*.veles.finance/*',
+  `https://${VELES_BASE_DOMAIN}/*`,
+  `https://*.${VELES_BASE_DOMAIN}/*`,
+  `http://${VELES_BASE_DOMAIN}/*`,
+  `http://*.${VELES_BASE_DOMAIN}/*`,
 ];
 
 const pendingRequests = new Map();
@@ -25,13 +27,22 @@ let isConnected = true;
 let reconnectTimer = null;
 let activeOrigin = null;
 
+const isVelesHostname = (hostname) => {
+  if (typeof hostname !== 'string' || hostname.length === 0) {
+    return false;
+  }
+  const normalized = hostname.toLowerCase();
+  return normalized === VELES_BASE_DOMAIN || normalized.endsWith(`.${VELES_BASE_DOMAIN}`);
+};
+
 const isVelesUrl = (url) => {
   if (!url || typeof url !== 'string') {
     return false;
   }
   try {
     const parsed = new URL(url);
-    return (parsed.protocol === 'https:' || parsed.protocol === 'http:') && parsed.hostname.endsWith('veles.finance');
+    const isAllowedProtocol = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    return isAllowedProtocol && isVelesHostname(parsed.hostname);
   } catch {
     return false;
   }
@@ -58,7 +69,7 @@ const normalizePayloadForOrigin = (payload) => {
     const targetOrigin = new URL(activeOrigin);
     const requestUrl = new URL(payload.url);
 
-    if (!requestUrl.hostname.endsWith('veles.finance')) {
+    if (!isVelesHostname(requestUrl.hostname)) {
       return payload;
     }
 
@@ -220,7 +231,7 @@ const finalizeRequest = (requestId, sendResponse, payload) => {
 const attemptReconnect = async () => {
   const tabId = await findActiveVelesTab();
   if (!tabId) {
-    updateConnectionStatus(false, 'Не найдена вкладка veles.finance');
+    updateConnectionStatus(false, `Не найдена вкладка ${VELES_BASE_DOMAIN}`);
     return;
   }
 
@@ -264,7 +275,7 @@ const processQueue = () => {
     .then((tabId) => {
       if (!tabId) {
         requestQueue.unshift(queueItem);
-        updateConnectionStatus(false, 'Не найдена вкладка veles.finance');
+        updateConnectionStatus(false, `Не найдена вкладка ${VELES_BASE_DOMAIN}`);
         return;
       }
 
@@ -332,14 +343,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
 
+  if (message.source === UI_MESSAGE_SOURCE) {
+    const senderUrl = _sender?.url ?? '';
+    const trustedPrefix = chrome.runtime.getURL('ui/dist/');
+    if (!senderUrl || !senderUrl.startsWith(trustedPrefix)) {
+      sendResponse({ ok: false, error: 'Unauthorized sender' });
+      return false;
+    }
+  }
+
   if (message.source === UI_MESSAGE_SOURCE && message.action === 'ping') {
     findActiveVelesTab()
       .then((tabId) => {
         if (!tabId) {
-          updateConnectionStatus(false, 'Не найдена вкладка veles.finance');
+          updateConnectionStatus(false, `Не найдена вкладка ${VELES_BASE_DOMAIN}`);
           sendResponse({
             ok: false,
-            error: 'Не найдена вкладка veles.finance',
+            error: `Не найдена вкладка ${VELES_BASE_DOMAIN}`,
           });
           return;
         }
@@ -447,7 +467,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   findActiveVelesTab()
     .then((foundTabId) => {
       if (!foundTabId) {
-        updateConnectionStatus(false, 'Нет вкладки veles.finance');
+        updateConnectionStatus(false, `Нет вкладки ${VELES_BASE_DOMAIN}`);
       }
     })
     .catch((error) => {
@@ -460,14 +480,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     const url = changeInfo.url ?? tab.url;
     if (url && !isVelesUrl(url)) {
       if (activeRequest && activeRequest.tabId === tabId) {
-        retryActiveRequest('Вкладка покинула veles.finance', {
+        retryActiveRequest(`Вкладка покинула ${VELES_BASE_DOMAIN}`, {
           incrementAttempt: false,
         });
       }
       findActiveVelesTab()
         .then((foundTabId) => {
           if (!foundTabId) {
-            updateConnectionStatus(false, 'Нет вкладки veles.finance');
+            updateConnectionStatus(false, `Нет вкладки ${VELES_BASE_DOMAIN}`);
           }
         })
         .catch((error) => {

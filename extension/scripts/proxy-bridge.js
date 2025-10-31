@@ -7,6 +7,12 @@
   const pendingRequestIds = new Set();
   let injected = false;
 
+  // Генерируем nonce для handshake
+  const BRIDGE_NONCE =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
   const injectPageBridge = () => {
     if (injected) {
       return;
@@ -16,7 +22,8 @@
       const script = document.createElement('script');
       script.src = chrome.runtime.getURL('scripts/page-fetch-bridge.js');
       script.async = false;
-      script.dataset.velesBridge = 'true';
+      // передаём nonce инжектируемому скрипту через data атрибут
+      script.dataset.velesBridgeNonce = BRIDGE_NONCE;
       script.addEventListener('load', () => {
         script.remove();
       });
@@ -29,12 +36,16 @@
   };
 
   const forwardToPage = (requestId, payload) => {
-    window.postMessage({
-      source: PAGE_SOURCE,
-      action: 'proxy-request',
-      requestId,
-      payload,
-    });
+    window.postMessage(
+      {
+        source: PAGE_SOURCE,
+        action: 'proxy-request',
+        requestId,
+        payload,
+        nonce: BRIDGE_NONCE,
+      },
+      window.location.origin,
+    );
   };
 
   window.addEventListener('message', (event) => {
@@ -48,7 +59,11 @@
     }
 
     if (data.source === INJECTED_SOURCE && data.action === 'proxy-response') {
-      const { requestId, payload } = data;
+      const { requestId, payload, nonce } = data;
+      if (nonce !== BRIDGE_NONCE) {
+        console.warn('[Veles proxy bridge] Ignored proxy-response with invalid nonce');
+        return;
+      }
       if (!pendingRequestIds.has(requestId)) {
         return;
       }
@@ -65,10 +80,15 @@
     }
 
     if (data.source === INJECTED_SOURCE && data.action === 'ping-response') {
+      const { payload, nonce } = data;
+      if (nonce !== BRIDGE_NONCE) {
+        console.warn('[Veles proxy bridge] Ignored ping-response with invalid nonce');
+        return;
+      }
       chrome.runtime.sendMessage({
         source: CONTENT_SOURCE,
         action: 'ping-response',
-        payload: data.payload,
+        payload,
       });
     }
   });
@@ -98,10 +118,14 @@
 
     if (message.source === BACKGROUND_SOURCE && message.action === 'ping') {
       injectPageBridge();
-      window.postMessage({
-        source: PAGE_SOURCE,
-        action: 'ping',
-      });
+      window.postMessage(
+        {
+          source: PAGE_SOURCE,
+          action: 'ping',
+          nonce: BRIDGE_NONCE,
+        },
+        window.location.origin,
+      );
       sendResponse({ accepted: true });
       return false;
     }
