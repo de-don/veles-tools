@@ -1,3 +1,26 @@
+## [1.7.0](https://github.com/de-don/veles-tools/compare/v1.6.0...v1.7.0) (2025-10-31)
+
+### Features
+
+* **active-deals:** restrict position history to 1 hour ([0ea0a31](https://github.com/de-don/veles-tools/commit/0ea0a316d44cd95d346a51cbad5839d87a33c5b9))
+* **backtest:** add backtests-groups & update sync logic ([dc94647](https://github.com/de-don/veles-tools/commit/dc94647a888e6dd405f706d375b36fedda9564ba))
+* **backtest:** add worst risk and risk efficiency metrics to backtest calculations and charts ([7ee124c](https://github.com/de-don/veles-tools/commit/7ee124c7512bc5cd29315d2402c9da5e2d32949f))
+* **backtest:** include open positions in risk metrics ([d37a66d](https://github.com/de-don/veles-tools/commit/d37a66d03605fbf3e2264b1444a4f84dd3561bef))
+* **backtests:** local work with loaded backtests ([84fce02](https://github.com/de-don/veles-tools/commit/84fce02108de42bdbdc1ea454f8df4b95cce8e0f))
+* **bots:** make bot ID clickable with a link to the bot's page ([6656aac](https://github.com/de-don/veles-tools/commit/6656aaced03831b017cec9dae9130ea6ecb3e507))
+* **extension:** enhance security with nonce validation and iframe restrictions ([7806e71](https://github.com/de-don/veles-tools/commit/7806e71219df439d8f0d90b7881dbe58401c5bb2))
+* **layout:** refactor AppLayout with new navigation structure and improved styling ([43ce9b6](https://github.com/de-don/veles-tools/commit/43ce9b6115c0ff45cd099180eb9cc029691f1721))
+* **ui:** add open deals and active Mpu metrics to BacktestAggregationPanel and update BacktestCycle status ([8bc0553](https://github.com/de-don/veles-tools/commit/8bc0553570c7d7d3f02763672372238060a4372d))
+* **ui:** enhance BacktestsPage with selection summary and improved empty state messaging ([abf2338](https://github.com/de-don/veles-tools/commit/abf2338dcb20e27f9dbac34df97e6682148de50d))
+* **ui:** introduce StatisticCard component and replace aggregation metrics with it in ActiveDealsPage and BacktestAggregationPanel ([41d9512](https://github.com/de-don/veles-tools/commit/41d9512db521942b3c8e850407d8e2ab2626e8c5))
+* **ui:** sort BacktestGroups by recent activity and set default sort order ([4f03018](https://github.com/de-don/veles-tools/commit/4f03018d45a2ba3a9a17b8b6c427efb936f5d6ff))
+* **ui:** update "Support Project" button with dynamic wave styling and improved colors ([7929c98](https://github.com/de-don/veles-tools/commit/7929c9853b95e51bad4fa967a30ed2e162d5787a))
+
+### Bug Fixes
+
+* **active-deals:** correct max orders count ([3468f26](https://github.com/de-don/veles-tools/commit/3468f2630552311eae5e58e98e0467705010b70f)), closes [#10](https://github.com/de-don/veles-tools/issues/10)
+* add stopLoss configuration when creating bots ([41945a0](https://github.com/de-don/veles-tools/commit/41945a0246be4ad40244878dc6bc70eaadf4fd73))
+
 ## [1.6.0](https://github.com/de-don/veles-tools/compare/v1.5.1...v1.6.0) (2025-10-16)
 
 ### Features
