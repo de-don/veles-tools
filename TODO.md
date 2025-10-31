@@ -21,7 +21,6 @@
 ## Other Features
 
 - [ ] Symbols groups
-- [ ] Configurable tables
 
 
 ## FAQ

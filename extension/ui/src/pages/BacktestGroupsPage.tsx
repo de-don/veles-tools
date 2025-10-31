@@ -23,6 +23,17 @@ const BacktestGroupsPage = () => {
   const [messageApi, messageContextHolder] = message.useMessage();
   const navigate = useNavigate();
 
+  const sortedGroups = useMemo(() => {
+    return [...groups].sort((a, b) => {
+      const aRecent = Math.max(a.updatedAt ?? 0, a.createdAt ?? 0);
+      const bRecent = Math.max(b.updatedAt ?? 0, b.createdAt ?? 0);
+      if (bRecent !== aRecent) {
+        return bRecent - aRecent;
+      }
+      return b.createdAt - a.createdAt;
+    });
+  }, [groups]);
+
   const columns = useMemo<ColumnsType<BacktestGroup>>(
     () => [
       {
@@ -51,6 +62,7 @@ const BacktestGroupsPage = () => {
         dataIndex: 'updatedAt',
         key: 'updatedAt',
         sorter: (a, b) => a.updatedAt - b.updatedAt,
+        defaultSortOrder: 'descend',
         render: (value: number) => formatTimestamp(value),
         width: 200,
       },
@@ -132,7 +144,7 @@ const BacktestGroupsPage = () => {
           <Table<BacktestGroup>
             rowKey={(record) => record.id}
             columns={columns}
-            dataSource={groups}
+            dataSource={sortedGroups}
             pagination={false}
             size="middle"
           />
