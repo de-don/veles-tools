@@ -1662,7 +1662,7 @@ const summarizeWithConcurrencyLimit = (
 
   const aggregateDrawdown = computeAggregateDrawdownFromTrades(acceptedTrades);
   const aggregateRiskSeries = computeAggregateRiskSeriesFromTrades(acceptedTrades, metricsList);
-  const limitedOpenRiskMax = limitedCount > 0 ? sortedRisks[0] ?? 0 : 0;
+  const limitedOpenRiskMax = limitedCount > 0 ? (sortedRisks[0] ?? 0) : 0;
   const aggregateMPU = Math.max(aggregateRiskSeries.maxValue, limitedOpenRiskMax);
   const aggregateWorstRisk = Math.max(0, aggregateDrawdown, aggregateMPU);
   const aggregateRiskEfficiency = aggregateWorstRisk > 0 ? totalPnl / aggregateWorstRisk : null;

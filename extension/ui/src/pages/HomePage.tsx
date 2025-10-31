@@ -1,5 +1,4 @@
 import { Card, Col, List, Row, Space, Typography } from 'antd';
-import { Link } from 'react-router-dom';
 import { APP_NAME, APP_VERSION } from '../config/version';
 
 const completedHighlights: string[] = [

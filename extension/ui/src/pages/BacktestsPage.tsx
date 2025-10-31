@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Button, Modal, message, Space, Table, Typography } from 'antd';
+import { Button, Modal, message, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { ChangeEvent } from 'react';
@@ -11,7 +11,6 @@ import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import { BacktestsSyncProvider, useBacktestsSync } from '../context/BacktestsSyncContext';
-import { formatAmount } from '../lib/backtestFormatting';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { BacktestStatistics } from '../types/backtests';
 
