@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SymbolDescriptor } from '../../api/backtestRunner';
-import type { BotDepositConfig, BotProfitConfig, BotSettings, BotStopLossConfig, TradingBot } from '../../types/bots';
+import type { BotDepositConfig, BotProfitConfig, BotSettings, TradingBot } from '../../types/bots';
 import { buildBotClonePayload } from '../botClonePayload';
 
 const buildProfit = (overrides: Partial<BotProfitConfig> = {}): BotProfitConfig => ({
@@ -22,14 +22,6 @@ const buildSettings = (overrides: Partial<BotSettings> = {}): BotSettings => ({
   orders: overrides.orders ?? null,
   indentType: overrides.indentType ?? null,
   includePosition: overrides.includePosition ?? true,
-});
-
-const buildStopLoss = (overrides: Partial<BotStopLossConfig> = {}): BotStopLossConfig => ({
-  indent: overrides.indent ?? 1,
-  termination: overrides.termination ?? false,
-  conditionalIndent: overrides.conditionalIndent ?? null,
-  conditions: overrides.conditions ?? null,
-  conditionalIndentType: overrides.conditionalIndentType ?? null,
 });
 
 const buildBot = (overrides: Partial<TradingBot> = {}): TradingBot => ({
@@ -87,7 +79,9 @@ describe('buildBotClonePayload', () => {
     });
 
     expect(payload.apiKey).toBe(77);
-    expect(payload.symbol).toBe('ETH/USDT');
+    expect(payload.id).toBeNull();
+    expect(payload.termination).toBeNull();
+    expect(payload.symbols).toEqual(['ETH/USDT']);
     expect(payload.deposit?.marginType).toBe('CROSS');
     expect(payload.deposit?.currency).toBe('USDT');
     expect(payload.profit?.currency).toBe('USDT');
@@ -112,9 +106,9 @@ describe('buildBotClonePayload', () => {
       profitCurrency: 'busd',
     });
 
-    expect(payload.includePosition).toBe(false);
     expect(payload.deposit?.currency).toBe('SOL');
     expect(payload.profit?.currency).toBe('BUSD');
+    expect(payload.id).toBeNull();
   });
 
   it('returns deep copies so original bot stays untouched', () => {
@@ -139,29 +133,31 @@ describe('buildBotClonePayload', () => {
     expect(payload.profit).not.toBe(bot.profit);
     expect(payload.conditions).not.toBe(bot.conditions);
     expect(bot.profit?.currency).toBe('USDT');
+    expect(payload.id).toBeNull();
   });
 
-  it('clones stopLoss configuration from the source bot', () => {
-    const stopLoss = buildStopLoss({ indent: 5, termination: true });
-    const bot = buildBot({ stopLoss });
+  it('applies override flags when provided', () => {
+    const bot = buildBot({ symbols: [] });
     const descriptor: SymbolDescriptor = {
-      base: 'XRP',
+      base: 'APT',
       quote: 'USDT',
-      display: 'XRP/USDT',
-      pairCode: 'XRPUSDT',
+      display: 'APT/USDT',
+      pairCode: 'APTUSDT',
     };
 
     const payload = buildBotClonePayload(bot, descriptor, {
-      apiKeyId: 12,
-      name: 'XRP clone',
-      depositAmount: 80,
-      depositLeverage: 3,
+      apiKeyId: 99,
+      name: 'APT clone',
+      depositAmount: 300,
+      depositLeverage: 6,
       marginType: null,
       depositCurrency: null,
       profitCurrency: null,
+      symbols: ['APT/USDT', ''],
     });
 
-    expect(payload.stopLoss).toEqual(stopLoss);
-    expect(payload.stopLoss).not.toBe(stopLoss);
+    expect(payload.symbols).toEqual(['APT/USDT']);
+    expect(payload.apiKey).toBe(99);
+    expect(payload.id).toBeNull();
   });
 });

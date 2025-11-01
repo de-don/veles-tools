@@ -1,7 +1,7 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { BotStrategy, BotStrategyCommissions, BotStrategyPair } from '../api/backtestRunner';
 import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
-import type { BotIdentifier, BotOrder, BotSettings, BotStatus, BotSummary, StrategyCondition } from '../types/bots';
+import type { BotIdentifier, BotOrder, BotSettings, BotStatus, BotSummary, StrategyConditionDto } from '../types/bots';
 
 export interface ImportedBotEntry {
   id: string;
@@ -54,7 +54,7 @@ const toNullableNumber = (value: unknown): number | null => {
   return null;
 };
 
-const parseStrategyCondition = (raw: unknown): StrategyCondition | null => {
+const parseStrategyCondition = (raw: unknown): StrategyConditionDto | null => {
   if (!isRecord(raw)) {
     return null;
   }
@@ -74,13 +74,13 @@ const parseStrategyCondition = (raw: unknown): StrategyCondition | null => {
   };
 };
 
-const parseConditions = (raw: unknown): StrategyCondition[] | null => {
+const parseConditions = (raw: unknown): StrategyConditionDto[] | null => {
   if (!Array.isArray(raw)) {
     return null;
   }
   const parsed = raw
     .map((item) => parseStrategyCondition(item))
-    .filter((item): item is StrategyCondition => Boolean(item));
+    .filter((item): item is StrategyConditionDto => Boolean(item));
   return parsed.length > 0 ? parsed : null;
 };
 

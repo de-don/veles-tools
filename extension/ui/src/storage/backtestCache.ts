@@ -1,6 +1,8 @@
+import type { BacktestConfigDto, BacktestCycleDto, BacktestStatisticsDto } from '../api/backtests.dtos';
 import type { IndexedDbConfig } from '../lib/indexedDb';
 import { deleteIndexedDb, getObjectStore, openIndexedDb } from '../lib/indexedDb';
-import type { BacktestCycle, BacktestStatistics, BacktestStatisticsDetail } from '../types/backtests';
+import { mapDetailFromDto, mapStatisticsFromDto } from '../services/backtests.mappers';
+import type { BacktestDetail, BacktestStatistics } from '../types/backtests';
 
 const DB_NAME = 'veles-backtests-cache';
 const DB_VERSION = 3;
@@ -38,8 +40,15 @@ const databaseConfig: IndexedDbConfig = {
 
 type CachedBacktestDetailRecord = {
   id: number;
-  detail: BacktestStatisticsDetail;
+  detail: BacktestDetail;
   storedAt: number;
+};
+
+type LegacyBacktestDetailRecord = {
+  id: number;
+  statistics?: BacktestStatisticsDto;
+  config?: BacktestConfigDto | null;
+  storedAt?: number;
 };
 
 interface NormalizedCyclesParams {
@@ -52,13 +61,20 @@ type CachedBacktestCyclesRecord = {
   key: string;
   id: number;
   params: NormalizedCyclesParams;
-  cycles: BacktestCycle[];
+  cycles: BacktestCycleDto[];
   storedAt: number;
 };
 
 type CachedBacktestListRecord = {
   id: number;
   snapshot: BacktestStatistics;
+  storedAt: number;
+  sortTimestamp: number;
+};
+
+type LegacyBacktestListRecord = {
+  id: number;
+  snapshot: BacktestStatisticsDto;
   storedAt: number;
   sortTimestamp: number;
 };
@@ -87,9 +103,70 @@ export const subscribeBacktestList = (listener: (event: BacktestListEvent) => vo
   };
 };
 
-const readDetailFromMemory = (id: number): BacktestStatisticsDetail | null => {
-  const cached = detailMemoryStore.get(id);
-  return cached ? cached.detail : null;
+const readDetailFromMemory = (id: number): CachedBacktestDetailRecord | null => {
+  return detailMemoryStore.get(id) ?? null;
+};
+
+const upgradeLegacyRecord = (legacy: LegacyBacktestDetailRecord): CachedBacktestDetailRecord | null => {
+  if (!legacy.statistics || !legacy.config) {
+    return null;
+  }
+  const detail = mapDetailFromDto(legacy.statistics, legacy.config);
+  return {
+    id: legacy.id,
+    detail,
+    storedAt: Number.isFinite(legacy.storedAt) ? Number(legacy.storedAt) : Date.now(),
+  };
+};
+
+const normalizeDetailRecord = (
+  raw: CachedBacktestDetailRecord | LegacyBacktestDetailRecord | undefined,
+): CachedBacktestDetailRecord | null => {
+  if (!raw) {
+    return null;
+  }
+
+  if ('detail' in raw && raw.detail) {
+    const storedAt = Number.isFinite(raw.storedAt) ? Number(raw.storedAt) : Date.now();
+    return {
+      id: raw.id,
+      detail: raw.detail,
+      storedAt,
+    };
+  }
+
+  return upgradeLegacyRecord(raw);
+};
+
+const readDetailRecord = async (id: number): Promise<CachedBacktestDetailRecord | null> => {
+  const memoryHit = readDetailFromMemory(id);
+  if (memoryHit) {
+    return memoryHit;
+  }
+
+  const store = await getObjectStore(databaseConfig, DETAILS_STORE_NAME, 'readonly');
+  if (!store) {
+    return readDetailFromMemory(id);
+  }
+
+  return new Promise<CachedBacktestDetailRecord | null>((resolve) => {
+    const request = store.get(id) as IDBRequest<CachedBacktestDetailRecord | LegacyBacktestDetailRecord | undefined>;
+
+    request.onsuccess = () => {
+      const normalized = normalizeDetailRecord(request.result);
+      if (normalized) {
+        detailMemoryStore.set(id, normalized);
+        resolve(normalized);
+        return;
+      }
+      resolve(null);
+    };
+
+    request.onerror = () => {
+      console.warn('[Veles Tools] Не удалось прочитать кэш бэктеста', request.error);
+      resolve(readDetailFromMemory(id));
+    };
+  });
 };
 
 const normalizeCycleParams = (params: {
@@ -109,47 +186,28 @@ const buildCyclesKey = (id: number, params: NormalizedCyclesParams): string => {
   return `${id}::${fromKey}::${toKey}::${params.pageSize}`;
 };
 
-const readCyclesFromMemory = (key: string): BacktestCycle[] | null => {
+const readCyclesFromMemory = (key: string): BacktestCycleDto[] | null => {
   const cached = cyclesMemoryStore.get(key);
   return cached ? cached.cycles : null;
 };
 
-export const readCachedBacktestDetail = async (id: number): Promise<BacktestStatisticsDetail | null> => {
+const normalizeListSnapshot = (snapshot: BacktestStatistics | BacktestStatisticsDto): BacktestStatistics => {
+  if ('deposit' in snapshot) {
+    return snapshot;
+  }
+  return mapStatisticsFromDto(snapshot);
+};
+
+export const readCachedBacktestDetail = async (id: number): Promise<BacktestDetail | null> => {
   if (!Number.isFinite(id)) {
     return null;
   }
 
-  const memoryHit = readDetailFromMemory(id);
-  if (memoryHit) {
-    return memoryHit;
-  }
-
-  const store = await getObjectStore(databaseConfig, DETAILS_STORE_NAME, 'readonly');
-  if (!store) {
-    return readDetailFromMemory(id);
-  }
-
-  return new Promise<BacktestStatisticsDetail | null>((resolve) => {
-    const request = store.get(id) as IDBRequest<CachedBacktestDetailRecord | undefined>;
-
-    request.onsuccess = () => {
-      const record = request.result;
-      if (record) {
-        detailMemoryStore.set(id, record);
-        resolve(record.detail);
-        return;
-      }
-      resolve(null);
-    };
-
-    request.onerror = () => {
-      console.warn('[Veles Tools] Не удалось прочитать кэш бэктеста', request.error);
-      resolve(readDetailFromMemory(id));
-    };
-  });
+  const record = await readDetailRecord(id);
+  return record ? record.detail : null;
 };
 
-export const writeCachedBacktestDetail = async (id: number, detail: BacktestStatisticsDetail): Promise<void> => {
+export const writeCachedBacktestDetail = async (id: number, detail: BacktestDetail): Promise<void> => {
   if (!Number.isFinite(id)) {
     return;
   }
@@ -169,9 +227,7 @@ export const writeCachedBacktestDetail = async (id: number, detail: BacktestStat
 
   await new Promise<void>((resolve) => {
     const request = store.put(record) as IDBRequest<IDBValidKey>;
-    request.onsuccess = () => {
-      resolve();
-    };
+    request.onsuccess = () => resolve();
     request.onerror = () => {
       console.warn('[Veles Tools] Не удалось сохранить кэш бэктеста', request.error);
       resolve();
@@ -182,7 +238,7 @@ export const writeCachedBacktestDetail = async (id: number, detail: BacktestStat
 export const readCachedBacktestCycles = async (
   id: number,
   params: { from?: string | null; to?: string | null; pageSize?: number } = {},
-): Promise<BacktestCycle[] | null> => {
+): Promise<BacktestCycleDto[] | null> => {
   if (!Number.isFinite(id)) {
     return null;
   }
@@ -200,7 +256,7 @@ export const readCachedBacktestCycles = async (
     return readCyclesFromMemory(key);
   }
 
-  return new Promise<BacktestCycle[] | null>((resolve) => {
+  return new Promise<BacktestCycleDto[] | null>((resolve) => {
     const request = store.get(key) as IDBRequest<CachedBacktestCyclesRecord | undefined>;
 
     request.onsuccess = () => {
@@ -223,7 +279,7 @@ export const readCachedBacktestCycles = async (
 export const writeCachedBacktestCycles = async (
   id: number,
   params: { from?: string | null; to?: string | null; pageSize?: number } = {},
-  cycles: BacktestCycle[],
+  cycles: BacktestCycleDto[],
 ): Promise<void> => {
   if (!Number.isFinite(id)) {
     return;
@@ -249,9 +305,7 @@ export const writeCachedBacktestCycles = async (
 
   await new Promise<void>((resolve) => {
     const request = store.put(record) as IDBRequest<IDBValidKey>;
-    request.onsuccess = () => {
-      resolve();
-    };
+    request.onsuccess = () => resolve();
     request.onerror = () => {
       console.warn('[Veles Tools] Не удалось сохранить кэш циклов бэктеста', request.error);
       resolve();
@@ -299,9 +353,7 @@ export const writeCachedBacktestListBatch = async (snapshots: BacktestStatistics
       (record) =>
         new Promise<void>((resolve) => {
           const request = store.put(record) as IDBRequest<IDBValidKey>;
-          request.onsuccess = () => {
-            resolve();
-          };
+          request.onsuccess = () => resolve();
           request.onerror = () => {
             console.warn('[Veles Tools] Не удалось сохранить запись списка бэктестов', request.error);
             resolve();
@@ -322,9 +374,7 @@ export const clearCachedBacktestList = async (): Promise<void> => {
 
   await new Promise<void>((resolve) => {
     const request = store.clear();
-    request.onsuccess = () => {
-      resolve();
-    };
+    request.onsuccess = () => resolve();
     request.onerror = () => {
       console.warn('[Veles Tools] Не удалось очистить список бэктестов', request.error);
       resolve();
@@ -351,8 +401,8 @@ export const readCachedBacktestList = async (): Promise<BacktestStatistics[]> =>
         resolve(results);
         return;
       }
-      const record = cursor.value as CachedBacktestListRecord;
-      results.push(record.snapshot);
+      const record = cursor.value as CachedBacktestListRecord | LegacyBacktestListRecord;
+      results.push(normalizeListSnapshot(record.snapshot));
       cursor.continue();
     };
 
@@ -399,8 +449,8 @@ export const readCachedBacktestListSummary = async (): Promise<BacktestListSumma
         resolve(null);
         return;
       }
-      const record = cursor.value as CachedBacktestListRecord;
-      resolve(record.snapshot);
+      const record = cursor.value as CachedBacktestListRecord | LegacyBacktestListRecord;
+      resolve(normalizeListSnapshot(record.snapshot));
     };
 
     request.onerror = () => {

@@ -1,17 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { BacktestStatisticsDetail } from '../../types/backtests';
-import type { BotStopLossConfig } from '../../types/bots';
+import type { BacktestConfigDto, BacktestDepositConfigDto, BacktestStatisticsDto } from '../../api/backtests.dtos';
+import type { BacktestDetail } from '../../types/backtests';
 import { buildBotCreationPayload } from '../backtestBotPayload';
 
-const buildStopLoss = (overrides: Partial<BotStopLossConfig> = {}): BotStopLossConfig => ({
-  indent: overrides.indent ?? 1,
-  termination: overrides.termination ?? false,
-  conditionalIndent: overrides.conditionalIndent ?? null,
-  conditions: overrides.conditions ?? null,
-  conditionalIndentType: overrides.conditionalIndentType ?? null,
-});
-
-const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): BacktestStatisticsDetail => ({
+const buildStatistics = (overrides: Partial<BacktestStatisticsDto> = {}): BacktestStatisticsDto => ({
   id: overrides.id ?? 1,
   name: overrides.name ?? 'Sample Backtest',
   date: overrides.date ?? '2024-01-01T00:00:00Z',
@@ -58,44 +50,93 @@ const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): Backtes
   maeAbsolute: overrides.maeAbsolute ?? 0,
   commissionBase: overrides.commissionBase ?? 0,
   commissionQuote: overrides.commissionQuote ?? 0,
-  deposit: overrides.deposit ?? {
+});
+
+const buildConfig = (overrides: Partial<BacktestConfigDto> = {}): BacktestConfigDto => {
+  const defaultDeposit: BacktestDepositConfigDto = {
     amount: 500,
     leverage: 5,
     marginType: 'CROSS',
     currency: 'BBB',
-  },
-  pullUp: overrides.pullUp ?? 1,
-  portion: overrides.portion ?? 2,
-  profit: overrides.profit ?? null,
-  settings: overrides.settings ?? { type: 'SIMPLE' },
-  conditions: overrides.conditions ?? null,
-  commissions: overrides.commissions ?? { maker: 0.01, taker: 0.02 },
-  public: overrides.public ?? false,
-  useWicks: overrides.useWicks ?? true,
-  cursor: overrides.cursor ?? null,
-  includePosition: overrides.includePosition ?? true,
-  symbols: overrides.symbols ?? ['AAA/BBB'],
-  stopLoss: overrides.stopLoss ?? null,
-  start: overrides.start ?? null,
-  end: overrides.end ?? null,
-  periodStart: overrides.periodStart ?? null,
-  periodEnd: overrides.periodEnd ?? null,
-  dateFrom: overrides.dateFrom ?? null,
-  dateTo: overrides.dateTo ?? null,
-  date_from: overrides.date_from ?? null,
-  date_to: overrides.date_to ?? null,
-  range: overrides.range ?? null,
-  period: overrides.period ?? null,
-});
+  };
+
+  return {
+    id: overrides.id ?? 1,
+    name: overrides.name ?? 'Sample Backtest',
+    symbol: overrides.symbol ?? 'AAA/BBB',
+    exchange: overrides.exchange ?? 'BYBIT_FUTURES',
+    algorithm: overrides.algorithm ?? 'LONG',
+    pullUp: overrides.pullUp ?? 1,
+    portion: overrides.portion ?? 2,
+    profit:
+      overrides.profit ??
+      ({
+        type: 'ABSOLUTE',
+        currency: 'BBB',
+        checkPnl: null,
+        conditions: null,
+      } satisfies BacktestConfigDto['profit']),
+    deposit: overrides.deposit ?? defaultDeposit,
+    stopLoss:
+      overrides.stopLoss ??
+      ({
+        indent: null,
+        termination: null,
+        conditionalIndent: null,
+        conditions: null,
+        conditionalIndentType: null,
+      } satisfies BacktestConfigDto['stopLoss']),
+    settings: overrides.settings ?? null,
+    conditions: overrides.conditions ?? [],
+    from: overrides.from ?? '2024-01-01T00:00:00Z',
+    to: overrides.to ?? '2024-02-01T00:00:00Z',
+    status: overrides.status ?? 'FINISHED',
+    commissions:
+      overrides.commissions ??
+      ({
+        maker: null,
+        taker: null,
+      } satisfies BacktestConfigDto['commissions']),
+    public: overrides.public ?? false,
+    useWicks: overrides.useWicks ?? true,
+    cursor: overrides.cursor ?? '',
+  };
+};
+
+const buildDetail = ({
+  stats,
+  config,
+  symbols,
+  includePosition,
+}: {
+  stats?: Partial<BacktestStatisticsDto>;
+  config?: Partial<BacktestConfigDto>;
+  symbols?: string[] | null;
+  includePosition?: boolean | null;
+} = {}): BacktestDetail => {
+  const resolvedConfig = buildConfig(config ?? {});
+  const statistics = buildStatistics(stats);
+  return {
+    statistics: {
+      ...statistics,
+      deposit: resolvedConfig.deposit ?? null,
+    },
+    config: resolvedConfig,
+    symbols: symbols ?? [resolvedConfig.symbol],
+    includePosition: includePosition ?? true,
+  };
+};
 
 describe('buildBotCreationPayload', () => {
   it('applies overrides for deposit and api key', () => {
     const detail = buildDetail({
-      deposit: {
-        amount: 1000,
-        leverage: 8,
-        marginType: 'ISOLATED',
-        currency: 'BBB',
+      config: {
+        deposit: {
+          amount: 1000,
+          leverage: 8,
+          marginType: 'ISOLATED',
+          currency: 'BBB',
+        },
       },
     });
 
@@ -107,15 +148,23 @@ describe('buildBotCreationPayload', () => {
     });
 
     expect(payload.apiKey).toBe(123);
-    expect(payload.deposit?.amount).toBe(2000);
-    expect(payload.deposit?.leverage).toBe(12);
-    expect(payload.deposit?.marginType).toBe('CROSS');
-    expect(payload.deposit?.currency).toBe('BBB');
-    expect(payload.name).toBe(detail.name);
+    expect(payload.id).toBeNull();
+    expect(payload.termination).toBeNull();
+    expect(payload.deposit.amount).toBe(2000);
+    expect(payload.deposit.leverage).toBe(12);
+    expect(payload.deposit.marginType).toBe('CROSS');
+    expect(payload.deposit.currency).toBe('BBB');
+    expect(payload.name).toBe('Sample Backtest');
+    expect(payload.stopLoss).toEqual(detail.config.stopLoss);
+    expect(payload.stopLoss).not.toBe(detail.config.stopLoss);
   });
 
   it('derives symbols when missing directly', () => {
-    const detail = buildDetail({ symbol: '', symbols: null });
+    const detail = buildDetail({
+      stats: { symbol: '', base: 'AAA', quote: 'BBB' },
+      config: { symbol: '' },
+      symbols: null,
+    });
 
     const payload = buildBotCreationPayload(detail, {
       apiKeyId: 1,
@@ -125,21 +174,22 @@ describe('buildBotCreationPayload', () => {
     });
 
     expect(payload.symbols).toEqual(['AAA/BBB']);
-    expect(payload.symbol).toBe('AAA/BBB');
+    expect(payload.stopLoss).toEqual(detail.config.stopLoss);
   });
 
-  it('clones stopLoss configuration from detail when present', () => {
-    const stopLoss = buildStopLoss({ indent: 3, termination: true });
-    const detail = buildDetail({ stopLoss });
+  it('uses override flags and symbols when provided', () => {
+    const detail = buildDetail();
 
     const payload = buildBotCreationPayload(detail, {
-      apiKeyId: 5,
-      depositAmount: 250,
-      depositLeverage: 7,
+      apiKeyId: 42,
+      depositAmount: 500,
+      depositLeverage: 10,
       marginType: 'isolated',
+      symbols: ['  custom/usdt  ', ''],
     });
 
-    expect(payload.stopLoss).toEqual(stopLoss);
-    expect(payload.stopLoss).not.toBe(stopLoss);
+    expect(payload.symbols).toEqual(['custom/usdt']);
+    expect(payload.apiKey).toBe(42);
+    expect(payload.stopLoss).toEqual(detail.config.stopLoss);
   });
 });

@@ -5,7 +5,6 @@ import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { Key } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DEFAULT_CYCLES_PAGE_SIZE, fetchBacktestCycles, fetchBacktestDetails } from '../../api/backtests';
 import {
   type AggregationSummary,
   type BacktestAggregationMetrics,
@@ -16,8 +15,8 @@ import { formatAmount, formatDateRu, formatLeverage, formatPercent } from '../..
 import { resolveSortableNumber } from '../../lib/backtestSorting';
 import type { LimitImpactPoint } from '../../lib/chartOptions';
 import { useTableColumnSettings } from '../../lib/useTableColumnSettings';
-import { readCachedBacktestCycles, readCachedBacktestDetail } from '../../storage/backtestCache';
-import type { BacktestStatistics, BacktestStatisticsDetail } from '../../types/backtests';
+import { backtestsService, DEFAULT_CYCLES_PAGE_SIZE } from '../../services/backtests';
+import type { BacktestDetail, BacktestStatistics } from '../../types/backtests';
 import CreateBotsFromBacktestsModal, { type BacktestBotTarget } from '../CreateBotsFromBacktestsModal';
 import { AggregateRiskChart } from '../charts/AggregateRiskChart';
 import { DailyConcurrencyChart } from '../charts/DailyConcurrencyChart';
@@ -42,7 +41,7 @@ interface AggregationItemState {
   status: AggregationStatus;
   included: boolean;
   metrics?: BacktestAggregationMetrics;
-  detail?: BacktestStatisticsDetail;
+  detail?: BacktestDetail;
   error?: string;
 }
 
@@ -202,7 +201,7 @@ const BacktestAggregationPanel = ({
         .filter((item) => item.status === 'success' && item.included && item.detail)
         .map((item) => ({
           id: item.id,
-          detail: item.detail as BacktestStatisticsDetail,
+          detail: item.detail as BacktestDetail,
         })),
     [aggregationItems],
   );
@@ -249,21 +248,21 @@ const BacktestAggregationPanel = ({
           return;
         }
 
-        const detail = await readCachedBacktestDetail(id);
+        const detail = await backtestsService.readCachedBacktestDetail(id);
         if (!detail) {
           continue;
         }
 
-        const from = summary.from ?? detail.from ?? null;
-        const to = summary.to ?? detail.to ?? null;
+        const from = summary.from ?? detail.statistics.from ?? detail.config?.from ?? null;
+        const to = summary.to ?? detail.statistics.to ?? detail.config?.to ?? null;
 
-        let cycles = await readCachedBacktestCycles(id, {
+        let cycles = await backtestsService.readCachedBacktestCycles(id, {
           from,
           to,
           pageSize: DEFAULT_CYCLES_PAGE_SIZE,
         });
         if (!cycles) {
-          cycles = await readCachedBacktestCycles(id, {
+          cycles = await backtestsService.readCachedBacktestCycles(id, {
             pageSize: DEFAULT_CYCLES_PAGE_SIZE,
           });
         }
@@ -469,9 +468,9 @@ const BacktestAggregationPanel = ({
         });
 
         try {
-          const details = await fetchBacktestDetails(id);
-          const cycles = await fetchBacktestCycles(id);
-          const metrics = computeBacktestMetrics(details, cycles);
+          const detail = await backtestsService.getBacktestDetail(id, { forceRefresh: true });
+          const cycles = await backtestsService.getBacktestCycles(id, { forceRefresh: true });
+          const metrics = computeBacktestMetrics(detail, cycles);
 
           setAggregationState((prev) => {
             const nextCompleted = Math.min(prev.completed + 1, prev.total || targets.length);
@@ -484,7 +483,7 @@ const BacktestAggregationPanel = ({
               ...current,
               status: 'success',
               metrics,
-              detail: details,
+              detail,
               error: undefined,
             });
             return { ...prev, items: nextItems, completed: nextCompleted };
@@ -719,16 +718,22 @@ const BacktestAggregationPanel = ({
         title: 'Период',
         key: 'period',
         sorter: (a, b) => {
-          const aFrom = a.detail?.from ?? a.detail?.date ?? null;
-          const bFrom = b.detail?.from ?? b.detail?.date ?? null;
+          const aStats = a.detail?.statistics;
+          const aConfig = a.detail?.config;
+          const bStats = b.detail?.statistics;
+          const bConfig = b.detail?.config;
+          const aFrom = aStats?.from ?? aConfig?.from ?? aStats?.date ?? null;
+          const bFrom = bStats?.from ?? bConfig?.from ?? bStats?.date ?? null;
           const aTime = aFrom ? Date.parse(aFrom) : Number.NEGATIVE_INFINITY;
           const bTime = bFrom ? Date.parse(bFrom) : Number.NEGATIVE_INFINITY;
           return aTime - bTime;
         },
         render: (_metrics, record) => (
           <div>
-            <div>{formatDateRu(record.detail?.from ?? null)}</div>
-            <div className="panel__description">до {formatDateRu(record.detail?.to ?? null)}</div>
+            <div>{formatDateRu(record.detail?.statistics.from ?? record.detail?.config?.from ?? null)}</div>
+            <div className="panel__description">
+              до {formatDateRu(record.detail?.statistics.to ?? record.detail?.config?.to ?? null)}
+            </div>
           </div>
         ),
       },
@@ -736,23 +741,28 @@ const BacktestAggregationPanel = ({
         title: 'Биржа',
         key: 'exchange',
         sorter: (a, b) => {
-          const aValue = a.detail?.exchange ?? '';
-          const bValue = b.detail?.exchange ?? '';
+          const aValue = a.detail?.statistics.exchange ?? a.detail?.config?.exchange ?? '';
+          const bValue = b.detail?.statistics.exchange ?? b.detail?.config?.exchange ?? '';
           return aValue.localeCompare(bValue, 'ru', { sensitivity: 'base' });
         },
-        render: (_metrics, record) => record.detail?.exchange ?? '—',
+        render: (_metrics, record) => record.detail?.statistics.exchange ?? record.detail?.config?.exchange ?? '—',
       },
       {
         title: 'Пара',
         dataIndex: 'metrics',
         key: 'symbol',
         sorter: buildMetricStringSorter((metrics) => metrics.symbol),
-        render: (_metrics, record) => (
-          <div>
-            <div>{record.metrics?.symbol ?? record.detail?.symbol ?? '—'}</div>
-            <div className="panel__description">{record.detail?.algorithm ?? record.metrics?.name ?? ''}</div>
-          </div>
-        ),
+        render: (_metrics, record) => {
+          const fallbackSymbol = record.detail?.symbols?.[0] ?? record.detail?.statistics.symbol;
+          const algorithm =
+            record.detail?.config?.algorithm ?? record.detail?.statistics.algorithm ?? record.metrics?.name ?? '';
+          return (
+            <div>
+              <div>{record.metrics?.symbol ?? fallbackSymbol ?? '—'}</div>
+              <div className="panel__description">{algorithm}</div>
+            </div>
+          );
+        },
       },
       {
         title: 'Депозит',

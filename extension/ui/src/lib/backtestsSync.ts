@@ -1,4 +1,4 @@
-import { fetchBacktests } from '../api/backtests';
+import { backtestsService } from '../services/backtests';
 import {
   clearCachedBacktestList,
   readCachedBacktestIdSet,
@@ -94,7 +94,7 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
     for (;;) {
       ensureNotAborted(signal);
 
-      const response = await fetchBacktests({ page, size: pageSize, sort });
+      const response = await backtestsService.getBacktestsList({ page, size: pageSize, sort });
       fetchedPages += 1;
       if (typeof response.totalElements === 'number') {
         remoteTotal = response.totalElements;

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchBacktests } from '../../api/backtests';
+import { backtestsService } from '../../services/backtests';
 import {
   clearCachedBacktestList,
   readCachedBacktestIdSet,
@@ -8,8 +8,10 @@ import {
 import type { BacktestStatistics } from '../../types/backtests';
 import { performBacktestsSync } from '../backtestsSync';
 
-vi.mock('../../api/backtests', () => ({
-  fetchBacktests: vi.fn(),
+vi.mock('../../services/backtests', () => ({
+  backtestsService: {
+    getBacktestsList: vi.fn(),
+  },
 }));
 
 vi.mock('../../storage/backtestCache', () => ({
@@ -30,48 +32,47 @@ const buildBacktest = (id: number, overrides: Partial<BacktestStatistics> = {}):
     symbol: 'BTCUSDT',
     base: 'BTC',
     quote: 'USDT',
-    duration: null,
-    profitBase: null,
-    profitQuote: null,
-    netBase: null,
-    netQuote: null,
-    netBasePerDay: null,
-    netQuotePerDay: null,
-    minProfitBase: null,
-    maxProfitBase: null,
-    avgProfitBase: null,
-    minProfitQuote: null,
-    maxProfitQuote: null,
-    avgProfitQuote: null,
-    volume: null,
-    minDuration: null,
-    maxDuration: null,
-    avgDuration: null,
-    profits: null,
-    losses: null,
-    breakevens: null,
-    pullUps: null,
-    winRateProfits: null,
-    winRateLosses: null,
-    totalDeals: null,
-    minGrid: null,
-    maxGrid: null,
-    avgGrid: null,
-    minProfit: null,
-    maxProfit: null,
-    avgProfit: null,
-    mfePercent: null,
-    mfeAbsolute: null,
-    maePercent: null,
-    maeAbsolute: null,
-    commissionBase: null,
-    commissionQuote: null,
-    deposit: null,
+    duration: 0,
+    profitBase: 0,
+    profitQuote: 0,
+    netBase: 0,
+    netQuote: 0,
+    netBasePerDay: 0,
+    netQuotePerDay: 0,
+    minProfitBase: 0,
+    maxProfitBase: 0,
+    avgProfitBase: 0,
+    minProfitQuote: 0,
+    maxProfitQuote: 0,
+    avgProfitQuote: 0,
+    volume: 0,
+    minDuration: 0,
+    maxDuration: 0,
+    avgDuration: 0,
+    profits: 0,
+    losses: 0,
+    breakevens: 0,
+    pullUps: 0,
+    winRateProfits: 0,
+    winRateLosses: 0,
+    totalDeals: 0,
+    minGrid: 0,
+    maxGrid: 0,
+    avgGrid: 0,
+    minProfit: 0,
+    maxProfit: 0,
+    avgProfit: 0,
+    mfePercent: 0,
+    mfeAbsolute: 0,
+    maePercent: 0,
+    maeAbsolute: 0,
+    commissionBase: 0,
+    commissionQuote: 0,
   };
   return { ...base, ...overrides };
 };
 
-const fetchBacktestsMock = vi.mocked(fetchBacktests);
+const getBacktestsListMock = vi.mocked(backtestsService.getBacktestsList);
 const readIdsMock = vi.mocked(readCachedBacktestIdSet);
 const writeBatchMock = vi.mocked(writeCachedBacktestListBatch);
 const clearListMock = vi.mocked(clearCachedBacktestList);
@@ -81,7 +82,7 @@ beforeEach(() => {
   readIdsMock.mockResolvedValue(new Set());
   writeBatchMock.mockResolvedValue();
   clearListMock.mockResolvedValue();
-  fetchBacktestsMock.mockResolvedValue({
+  getBacktestsListMock.mockResolvedValue({
     content: [],
     totalElements: 0,
     totalPages: 0,
@@ -96,7 +97,7 @@ describe('performBacktestsSync', () => {
     const freshFour = buildBacktest(4);
     const existingThree = buildBacktest(3);
     const existingTwo = buildBacktest(2);
-    fetchBacktestsMock.mockResolvedValueOnce({
+    getBacktestsListMock.mockResolvedValueOnce({
       content: [freshFive, freshFour, existingThree, existingTwo],
       totalElements: 4,
       totalPages: 1,
@@ -110,7 +111,7 @@ describe('performBacktestsSync', () => {
     expect(result.processed).toBe(4);
     expect(result.totalRemote).toBe(4);
     expect(writeBatchMock).toHaveBeenCalledWith([freshFive, freshFour]);
-    expect(fetchBacktestsMock).toHaveBeenCalledTimes(1);
+    expect(getBacktestsListMock).toHaveBeenCalledTimes(1);
   });
 
   it('clears local cache when requested', async () => {
@@ -132,7 +133,7 @@ describe('performBacktestsSync', () => {
     const page0Entries = [buildBacktest(200), buildBacktest(199)];
     const page1Entries = [buildBacktest(196), buildBacktest(195)];
 
-    fetchBacktestsMock.mockImplementation(async ({ page, size }) => {
+    getBacktestsListMock.mockImplementation(async ({ page, size }) => {
       expect(size).toBe(2);
       if (page === 0) {
         return {
@@ -160,7 +161,7 @@ describe('performBacktestsSync', () => {
 
     const result = await performBacktestsSync({ pageSize: 2 });
 
-    const requestedPages = fetchBacktestsMock.mock.calls.map(([params]) => params.page);
+    const requestedPages = getBacktestsListMock.mock.calls.map(([params]) => params.page);
     expect(requestedPages).toEqual([0, 1]);
     expect(writeBatchMock).toHaveBeenCalledWith(page1Entries);
     expect(result.stored).toBe(2);

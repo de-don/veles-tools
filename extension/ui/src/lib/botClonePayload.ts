@@ -1,6 +1,12 @@
 import type { SymbolDescriptor } from '../api/backtestRunner';
 import type { CreateBotPayload } from '../api/bots';
-import type { BacktestDepositConfig, BacktestSettings } from '../types/backtests';
+import type {
+  BotDepositConfigDto,
+  BotProfitConfigDto,
+  BotSettingsDto,
+  BotStopLossConfigDto,
+  StrategyConditionDto,
+} from '../api/bots.dtos';
 import type { TradingBot } from '../types/bots';
 
 export interface BotCloneOverrides {
@@ -11,6 +17,7 @@ export interface BotCloneOverrides {
   marginType: string | null;
   depositCurrency: string | null;
   profitCurrency: string | null;
+  symbols?: string[] | null;
 }
 
 const deepClone = <T>(value: T): T => {
@@ -69,11 +76,12 @@ export const buildBotClonePayload = (
     clonedProfit.currency = normalizedProfitCurrency;
   }
 
-  const clonedConditions = bot.conditions ? deepClone(bot.conditions) : null;
-  const clonedStopLoss = bot.stopLoss ? deepClone(bot.stopLoss) : null;
-  const includePosition = typeof bot.settings?.includePosition === 'boolean' ? bot.settings.includePosition : null;
+  const clonedConditions: StrategyConditionDto[] = bot.conditions ? deepClone(bot.conditions) : [];
+  const clonedStopLoss: BotStopLossConfigDto | null = bot.stopLoss
+    ? (deepClone(bot.stopLoss) as BotStopLossConfigDto)
+    : null;
 
-  const depositConfig: BacktestDepositConfig = {
+  const depositConfig: BotDepositConfigDto = {
     amount: overrides.depositAmount,
     leverage: overrides.depositLeverage,
     marginType,
@@ -84,32 +92,47 @@ export const buildBotClonePayload = (
     depositConfig.currency = resolvedDepositCurrency;
   }
 
-  const settingsPayload: BacktestSettings = bot.settings
-    ? (deepClone(bot.settings) as unknown as BacktestSettings)
+  const settingsPayload: BotSettingsDto | null = bot.settings
+    ? (deepClone(bot.settings) as unknown as BotSettingsDto)
     : null;
 
+  const profit: BotProfitConfigDto = clonedProfit ?? {
+    type: 'ABSOLUTE',
+    currency: normalizedProfitCurrency ?? '',
+    checkPnl: null,
+    conditions: null,
+  };
+
+  const resolvedSymbols = (() => {
+    if (Array.isArray(overrides.symbols)) {
+      return overrides.symbols
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .map((item) => item.trim());
+    }
+    const descriptorSymbol = descriptor.display;
+    if (descriptorSymbol && descriptorSymbol.trim().length > 0) {
+      return [descriptorSymbol.trim()];
+    }
+    if (bot.symbols && bot.symbols.length > 0) {
+      return deepClone(bot.symbols);
+    }
+    return [];
+  })();
+
   return {
-    id: null,
-    apiKey: overrides.apiKeyId,
-    name: overrides.name,
-    symbol: descriptor.display,
-    symbols: [descriptor.display],
-    exchange: bot.exchange,
     algorithm: bot.algorithm,
-    pullUp: bot.pullUp ?? null,
-    portion: bot.portion ?? null,
-    profit: clonedProfit,
-    deposit: depositConfig,
-    stopLoss: clonedStopLoss,
-    settings: settingsPayload,
+    apiKey: overrides.apiKeyId,
     conditions: clonedConditions,
-    from: null,
-    to: null,
-    status: 'STOPPED',
-    commissions: null,
-    public: null,
-    useWicks: null,
-    cursor: null,
-    includePosition: includePosition ?? true,
+    deposit: depositConfig,
+    exchange: bot.exchange,
+    id: null,
+    name: overrides.name,
+    portion: bot.portion ?? null,
+    profit,
+    pullUp: bot.pullUp ?? null,
+    settings: settingsPayload,
+    stopLoss: clonedStopLoss,
+    symbols: resolvedSymbols,
+    termination: null,
   };
 };
