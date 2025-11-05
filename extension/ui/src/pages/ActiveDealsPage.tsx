@@ -401,6 +401,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         key: 'ordersProgress',
         align: 'right',
         width: 120,
+        sorter: (a, b) => a.executedOrdersCount - b.executedOrdersCount,
         render: (_value, record) => `${record.executedOrdersCount}/${record.totalOrdersCount}`,
       },
       {
