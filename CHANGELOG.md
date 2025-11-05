@@ -1,3 +1,16 @@
+## [1.8.0](https://github.com/de-don/veles-tools/compare/v1.7.0...v1.8.0) (2025-11-05)
+
+### Features
+
+* **active-deals:** add sort by executedOrdersCount ([248dbc1](https://github.com/de-don/veles-tools/commit/248dbc1ab330ad343bb3c76b5c92131275cf8d2b))
+* **support-project:** add free type of support ([686b121](https://github.com/de-don/veles-tools/commit/686b121ea08d0ec6ffc03814ae259bdb13518339))
+* **ui:** add configurable API request delay settings ([1f864bf](https://github.com/de-don/veles-tools/commit/1f864bf39491baf095655dc943f9bbee788f2bf5))
+
+### Bug Fixes
+
+* **backtests:** allow to stop backtests run ([d16c0e8](https://github.com/de-don/veles-tools/commit/d16c0e8a60764a51933fc19ba6503da1e4bf1eac))
+* **backtests:** correct open position risk handling in metrics and aggregation ([daeadba](https://github.com/de-don/veles-tools/commit/daeadba703977a71905fccbdec89468e5c7fd3f3))
+
 ## [1.7.0](https://github.com/de-don/veles-tools/compare/v1.6.0...v1.7.0) (2025-10-31)
 
 ### Features
