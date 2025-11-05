@@ -4,6 +4,7 @@ import AppLayout, { type ConnectionStatus } from './components/AppLayout';
 import { ActiveDealsProvider } from './context/ActiveDealsContext';
 import { BacktestGroupsProvider } from './context/BacktestGroupsContext';
 import { ImportedBotsProvider } from './context/ImportedBotsContext';
+import { RequestDelayProvider } from './context/RequestDelayContext';
 import { isExtensionRuntime, pingConnection, readConnectionStatus, updateRequestDelay } from './lib/extensionMessaging';
 import ActiveDealsPage from './pages/ActiveDealsPage';
 import BacktestGroupDetailsPage from './pages/BacktestGroupDetailsPage';
@@ -13,12 +14,19 @@ import BotsPage from './pages/BotsPage';
 import HomePage from './pages/HomePage';
 import ImportBotsPage from './pages/ImportBotsPage';
 import SettingsPage from './pages/SettingsPage';
-
-const DEFAULT_REQUEST_DELAY = 300;
+import {
+  DEFAULT_REQUEST_DELAY_MS,
+  normalizeRequestDelay,
+  readRequestDelay,
+  writeRequestDelay,
+} from './storage/requestDelayStore';
 
 const App = () => {
   const extensionReady = useMemo(isExtensionRuntime, []);
-  const requestDelay = DEFAULT_REQUEST_DELAY;
+  const [requestDelay, setRequestDelay] = useState<number>(() => {
+    const stored = readRequestDelay();
+    return stored ?? DEFAULT_REQUEST_DELAY_MS;
+  });
 
   useEffect(() => {
     if (!extensionReady) {
@@ -29,6 +37,17 @@ const App = () => {
       console.warn('[Veles Tools] Unable to update request delay in background', error);
     });
   }, [extensionReady, requestDelay]);
+
+  useEffect(() => {
+    writeRequestDelay(requestDelay);
+  }, [requestDelay]);
+
+  const setDelayMs = useCallback((value: number) => {
+    setRequestDelay((prev) => {
+      const normalized = normalizeRequestDelay(value);
+      return normalized === prev ? prev : normalized;
+    });
+  }, []);
 
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     ok: false,
@@ -162,26 +181,30 @@ const App = () => {
       <ImportedBotsProvider>
         <ActiveDealsProvider extensionReady={extensionReady}>
           <BacktestGroupsProvider>
-            <AppLayout
-              extensionReady={extensionReady}
-              connectionStatus={connectionStatus}
-              onPing={triggerPing}
-              onOpenVeles={openVelesTab}
+            <RequestDelayProvider
+              value={{ delayMs: requestDelay, setDelayMs, defaultDelayMs: DEFAULT_REQUEST_DELAY_MS }}
             >
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
-                <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
-                <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
-                <Route path="/backtest-groups" element={<BacktestGroupsPage />} />
-                <Route
-                  path="/backtest-groups/:groupId"
-                  element={<BacktestGroupDetailsPage extensionReady={extensionReady} />}
-                />
-                <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Routes>
-            </AppLayout>
+              <AppLayout
+                extensionReady={extensionReady}
+                connectionStatus={connectionStatus}
+                onPing={triggerPing}
+                onOpenVeles={openVelesTab}
+              >
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
+                  <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
+                  <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
+                  <Route path="/backtest-groups" element={<BacktestGroupsPage />} />
+                  <Route
+                    path="/backtest-groups/:groupId"
+                    element={<BacktestGroupDetailsPage extensionReady={extensionReady} />}
+                  />
+                  <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Routes>
+              </AppLayout>
+            </RequestDelayProvider>
           </BacktestGroupsProvider>
         </ActiveDealsProvider>
       </ImportedBotsProvider>
