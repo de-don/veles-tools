@@ -1,10 +1,10 @@
 import type {
   BacktestConfigDto,
   BacktestCycleDto,
-  BacktestDepositConfigDto,
   BacktestOrderDto,
   BacktestStatisticsDto,
 } from '../api/backtests.dtos';
+import type { BotDepositConfigDto } from '../api/bots.dtos';
 
 export interface BacktestsListParams {
   page: number;
@@ -13,7 +13,7 @@ export interface BacktestsListParams {
 }
 
 export interface BacktestStatistics extends BacktestStatisticsDto {
-  deposit?: BacktestDepositConfigDto | null;
+  deposit?: BotDepositConfigDto | null;
 }
 
 export interface BacktestDetail {

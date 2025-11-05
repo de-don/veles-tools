@@ -7,23 +7,39 @@ interface SupportProjectModalProps {
   onClose: () => void;
 }
 
-type SupportTab = 'bybit' | 'binance' | 'other';
+type SupportTab = 'free' | 'bybit' | 'binance' | 'other';
 
 const BYBIT_UID = '496946534';
 const BINANCE_UID = '64125639';
 const TELEGRAM_URL = 'https://t.me/dontsov';
 
 const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
-  const [activeTab, setActiveTab] = useState<SupportTab>('bybit');
+  const [activeTab, setActiveTab] = useState<SupportTab>('free');
 
   useEffect(() => {
     if (open) {
-      setActiveTab('bybit');
+      setActiveTab('free');
     }
   }, [open]);
 
   const tabItems: TabItem[] = useMemo<TabItem[]>(
     () => [
+      {
+        id: 'free',
+        label: 'Бесплатно',
+        content: (
+          <div className="support-modal__tab">
+            <p>
+              Если вы ещё не чей-то реферал в Veles, просто напишите в поддержку{' '}
+              <a href="https://t.me/VelesSupportBot" target="_blank" rel="noreferrer noopener">
+                t.me/VelesSupportBot
+              </a>{' '}
+              и попросите прикрепить вас к моему аккаунту (ID <strong>388307</strong>). Это бесплатно и помогает
+              проекту.
+            </p>
+          </div>
+        ),
+      },
       {
         id: 'bybit',
         label: 'ByBit перевод',
@@ -68,7 +84,7 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
   );
 
   const handleTabChange = (nextTabId: string) => {
-    if (nextTabId === 'bybit' || nextTabId === 'binance' || nextTabId === 'other') {
+    if (nextTabId === 'free' || nextTabId === 'bybit' || nextTabId === 'binance' || nextTabId === 'other') {
       setActiveTab(nextTabId);
     }
   };
