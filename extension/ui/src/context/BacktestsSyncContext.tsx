@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchBacktests } from '../api/backtests';
 import { type BacktestsSyncSnapshot, performBacktestsSync } from '../lib/backtestsSync';
+import { backtestsService } from '../services/backtests';
 import { readCachedBacktestList, subscribeBacktestList } from '../storage/backtestCache';
 import type { BacktestStatistics } from '../types/backtests';
 
@@ -105,7 +105,7 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
     setRemoteState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
-      const response = await fetchBacktests({ page: 0, size: 1, sort: 'date,desc' });
+      const response = await backtestsService.getBacktestsList({ page: 0, size: 1, sort: 'date,desc' });
       const total = typeof response.totalElements === 'number' ? response.totalElements : response.content.length;
       setRemoteState({
         total,

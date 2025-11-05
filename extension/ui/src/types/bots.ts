@@ -1,4 +1,16 @@
-export type BotIdentifier = number | string;
+import type {
+  BotDepositConfigDto,
+  BotDto,
+  BotIdentifierDto,
+  BotOrderDto,
+  BotProfitConfigDto,
+  BotSettingsDto,
+  BotStopLossConfigDto,
+  BotsListResponseDto,
+  StrategyConditionDto as StrategyConditionDtoDto,
+} from '../api/bots.dtos';
+
+export type BotIdentifier = BotIdentifierDto;
 
 export type BotAlgorithm = 'LONG' | 'SHORT' | string;
 
@@ -24,31 +36,19 @@ export interface BotsListParams {
   filters?: BotsListFilters;
 }
 
-export interface BotsListResponse {
-  totalElements: number;
-  totalPages: number;
-  pageNumber: number;
+export interface BotsListResponse extends Omit<BotsListResponseDto, 'content'> {
   content: TradingBot[];
 }
 
-export interface TradingBot {
-  id: BotIdentifier;
-  name: string;
-  exchange: string;
+export interface TradingBot
+  extends Omit<BotDto, 'algorithm' | 'status' | 'profit' | 'deposit' | 'settings' | 'conditions' | 'stopLoss'> {
   algorithm: BotAlgorithm;
-  pullUp: number | null;
-  portion: number | null;
+  status: BotStatus;
   profit: BotProfitConfig | null;
   deposit: BotDepositConfig | null;
-  stopLoss: BotStopLossConfig | null;
   settings: BotSettings | null;
-  conditions: StrategyCondition[] | null;
-  status: BotStatus;
-  apiKey: number | null;
-  substatus: string | null;
-  symbols: string[];
-  createdAt?: string | null;
-  updatedAt?: string | null;
+  conditions: StrategyConditionDto[] | null;
+  stopLoss: BotStopLossConfig | null;
 }
 
 export interface BotSummary {
@@ -61,50 +61,16 @@ export interface BotSummary {
   origin?: 'account' | 'imported';
 }
 
-export interface BotProfitConfig {
-  type: string;
-  currency: string;
-  checkPnl: number | null;
-  conditions: StrategyCondition[] | null;
-}
+export type BotProfitConfig = BotProfitConfigDto;
 
-export interface BotDepositConfig {
-  amount: number | string | null;
-  leverage: number | string | null;
-  marginType: string | null;
-}
+export type BotDepositConfig = BotDepositConfigDto;
 
-export interface BotStopLossConfig {
-  indent: number | null;
-  termination: boolean | null;
-  conditionalIndent: number | null;
-  conditions: StrategyCondition[] | null;
-  conditionalIndentType: string | null;
-}
+export type BotOrder = BotOrderDto;
 
-export interface BotSettings {
-  type: string;
-  baseOrder: BotOrder | null;
-  orders: BotOrder[] | null;
-  indentType: string | null;
-  includePosition: boolean | null;
-}
+export type BotSettings = BotSettingsDto;
 
-export interface BotOrder {
-  indent: number | null;
-  volume: number | null;
-  conditions: StrategyCondition[] | null;
-}
+export type StrategyConditionDto = StrategyConditionDtoDto;
 
-export interface StrategyCondition {
-  type: string;
-  indicator: string | null;
-  interval: string | null;
-  basic: boolean | null;
-  value: number | null;
-  operation: string | null;
-  closed: boolean | null;
-  reverse: boolean | null;
-}
+export type BotStopLossConfig = BotStopLossConfigDto;
 
 export type BotStatus = (typeof BOT_STATUS_VALUES)[number];

@@ -18,7 +18,7 @@ const VELES_URL_PATTERNS = [
 const pendingRequests = new Map();
 const requestQueue = [];
 
-let requestDelayMs = 300;
+let requestDelayMs = 400;
 let activeRequest = null;
 
 let lastPing = 0;

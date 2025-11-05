@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { BacktestCycle, BacktestOrder, BacktestStatisticsDetail } from '../../types/backtests';
+import type { BacktestConfigDto, BacktestStatisticsDto } from '../../api/backtests.dtos';
+import type { BotSettingsDto } from '../../api/bots.dtos';
+import type { BacktestCycle, BacktestDetail, BacktestOrder, BacktestStatistics } from '../../types/backtests';
 import {
   type AggregationSummary,
   computeBacktestMetrics,
@@ -7,7 +9,7 @@ import {
   summarizeAggregations,
 } from '../backtestAggregation';
 
-const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): BacktestStatisticsDetail => ({
+const baseStatistics: BacktestStatisticsDto = {
   id: 1,
   name: 'Base Backtest',
   date: '2024-01-01T00:00:00Z',
@@ -39,8 +41,8 @@ const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): Backtes
   losses: 0,
   breakevens: 0,
   pullUps: 0,
-  winRateProfits: null,
-  winRateLosses: null,
+  winRateProfits: 0,
+  winRateLosses: 0,
   totalDeals: 0,
   minGrid: 0,
   maxGrid: 0,
@@ -54,22 +56,127 @@ const buildDetail = (overrides: Partial<BacktestStatisticsDetail> = {}): Backtes
   maeAbsolute: 0,
   commissionBase: 0,
   commissionQuote: 0,
-  deposit: null,
-  ...overrides,
-});
+};
 
-const buildCycle = (overrides: Partial<BacktestCycle> = {}, orders: BacktestOrder[] | null = []): BacktestCycle => ({
+const baseConfig: BacktestConfigDto = {
   id: 1,
+  name: 'Base Backtest',
+  symbol: 'AAA/BBB',
+  exchange: 'BINANCE',
+  algorithm: 'demo',
+  pullUp: 0,
+  portion: 0,
+  profit: {
+    type: 'ABSOLUTE',
+    currency: 'BBB',
+    checkPnl: null,
+    conditions: null,
+  },
+  deposit: {
+    amount: 0,
+    leverage: 0,
+    marginType: 'CROSS',
+    currency: 'BBB',
+  },
+  stopLoss: {
+    indent: null,
+    termination: null,
+    conditionalIndent: null,
+    conditions: null,
+    conditionalIndentType: null,
+  },
+  settings: buildDefaultSettings(),
+  conditions: [],
+  from: '2024-01-01T00:00:00Z',
+  to: '2024-01-02T00:00:00Z',
   status: 'FINISHED',
+  commissions: {
+    maker: null,
+    taker: null,
+  },
+  public: false,
+  useWicks: false,
+  cursor: '',
+};
+
+function buildDefaultSettings(): BotSettingsDto {
+  return {
+    type: 'GRID',
+    includePosition: null,
+  } satisfies BotSettingsDto;
+}
+
+const buildDetail = ({
+  stats,
+  config,
+  symbols,
+  includePosition,
+}: {
+  stats?: Partial<BacktestStatisticsDto>;
+  config?: Partial<BacktestConfigDto>;
+  symbols?: string[] | null;
+  includePosition?: boolean | null;
+} = {}): BacktestDetail => {
+  const resolvedConfig: BacktestConfigDto = {
+    ...baseConfig,
+    ...(config ?? {}),
+    settings: config?.settings ? { ...config.settings } : buildDefaultSettings(),
+  };
+
+  const statistics: BacktestStatistics = {
+    ...baseStatistics,
+    ...(stats ?? {}),
+    deposit: resolvedConfig.deposit ?? null,
+  };
+
+  const derivedSymbols = symbols ?? [resolvedConfig.symbol];
+
+  return {
+    statistics,
+    config: resolvedConfig,
+    symbols: derivedSymbols,
+    includePosition: includePosition ?? true,
+  };
+};
+
+const baseCycle: BacktestCycle = {
+  id: 1,
   date: '2024-01-01T00:00:00Z',
-  duration: 0,
-  netQuote: 0,
+  status: 'FINISHED',
+  substatus: 'TAKE_PROFIT',
+  exchange: 'BINANCE',
+  symbol: 'AAA/BBB',
+  base: 'AAA',
+  quote: 'BBB',
   profitQuote: 0,
+  profitBase: 0,
+  netQuote: 0,
+  netBase: 0,
+  pnl: 0,
+  duration: 0,
+  grid: 0,
+  executedGrid: 0,
+  profits: 0,
+  executedProfits: 0,
+  volume: 0,
+  mfePercent: 0,
   mfeAbsolute: 0,
+  maePercent: 0,
   maeAbsolute: 0,
-  orders,
-  ...overrides,
-});
+  commissionBase: 0,
+  commissionQuote: 0,
+  orders: [],
+};
+
+const buildCycle = (overrides: Partial<BacktestCycle> = {}, orders: BacktestOrder[] = []): BacktestCycle => {
+  const { substatus, orders: overrideOrders, ...rest } = overrides;
+  return {
+    ...baseCycle,
+    ...rest,
+    substatus: substatus ?? baseCycle.substatus,
+    orders: overrideOrders ?? orders,
+  };
+};
 
 const buildOrder = (overrides: Partial<BacktestOrder> = {}): BacktestOrder => ({
   category: 'GRID',
@@ -103,12 +210,14 @@ const buildMetricsWithRiskWindow = ({
 
   return computeBacktestMetrics(
     buildDetail({
-      id,
-      from: start,
-      to: end,
-      totalDeals: 1,
-      losses: 1,
-      avgDuration: durationSec,
+      stats: {
+        id,
+        from: start,
+        to: end,
+        totalDeals: 1,
+        losses: 1,
+        avgDuration: durationSec,
+      },
     }),
     [
       buildCycle({
@@ -133,28 +242,32 @@ const expectRiskEfficiencyConsistency = (summary: AggregationSummary): void => {
 
 describe('computeBacktestMetrics', () => {
   it('aggregates statistics and cycles into consistent metrics', () => {
-    const stats = buildDetail({
-      id: 42,
-      name: 'Strategy A',
-      symbol: 'AAA/BBB',
-      base: 'AAA',
-      quote: 'BBB',
-      netQuote: 150,
-      netQuotePerDay: 25,
-      profits: 2,
-      losses: 1,
-      totalDeals: 3,
-      avgDuration: 3600,
-      from: '2024-01-01T00:00:00Z',
-      to: '2024-01-10T00:00:00Z',
-      deposit: {
-        amount: 2500,
-        leverage: 5,
-        marginType: 'CROSS',
-        currency: 'USDT',
+    const detail = buildDetail({
+      stats: {
+        id: 42,
+        name: 'Strategy A',
+        symbol: 'AAA/BBB',
+        base: 'AAA',
+        quote: 'BBB',
+        netQuote: 150,
+        netQuotePerDay: 25,
+        profits: 2,
+        losses: 1,
+        totalDeals: 3,
+        avgDuration: 3600,
+        from: '2024-01-01T00:00:00Z',
+        to: '2024-01-10T00:00:00Z',
+        winRateProfits: 2,
+        winRateLosses: 1,
       },
-      winRateProfits: 2,
-      winRateLosses: 1,
+      config: {
+        deposit: {
+          amount: 2500,
+          leverage: 5,
+          marginType: 'CROSS',
+          currency: 'USDT',
+        },
+      },
     });
 
     const cycles: BacktestCycle[] = [
@@ -199,7 +312,7 @@ describe('computeBacktestMetrics', () => {
       }),
     ];
 
-    const metrics = computeBacktestMetrics(stats, cycles);
+    const metrics = computeBacktestMetrics(detail, cycles);
 
     expect(metrics.id).toBe(42);
     expect(metrics.pnl).toBe(150);
@@ -227,7 +340,9 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.spanStart).toBe(new Date('2024-01-01T00:00:00Z').getTime());
     expect(metrics.spanEnd).toBe(new Date('2024-01-10T00:00:00Z').getTime());
     expect(metrics.activeMpu).toBe(0);
-    expect(metrics.openPosition).toEqual({ cycleId: 4, mpu: 0 });
+    expect(metrics.openPosition).toMatchObject({ cycleId: 4, mpu: 0 });
+    expect(metrics.openPosition?.start).toBeDefined();
+    expect(metrics.openPosition?.lastUpdate).toBeDefined();
 
     const jan2Index = Math.floor(new Date('2024-01-02T00:00:00Z').getTime() / MS_IN_DAY);
     const jan7Index = Math.floor(new Date('2024-01-07T00:00:00Z').getTime() / MS_IN_DAY);
@@ -239,26 +354,30 @@ describe('computeBacktestMetrics', () => {
   });
 
   it('handles incomplete stats ranges and missing cycle durations', () => {
-    const stats = buildDetail({
-      id: 77,
-      name: 'Edge Strategy',
-      netQuote: 90,
-      netQuotePerDay: 18,
-      profits: 3,
-      losses: 1,
-      totalDeals: 4,
-      avgDuration: 1800,
-      from: 'not-a-date',
-      to: 'still-not-a-date',
-      periodStart: '2024-02-01T00:00:00Z',
-      periodEnd: '2024-02-04T00:00:00Z',
+    const detail = buildDetail({
+      stats: {
+        id: 77,
+        name: 'Edge Strategy',
+        netQuote: 90,
+        netQuotePerDay: 18,
+        profits: 3,
+        losses: 1,
+        totalDeals: 4,
+        avgDuration: 1800,
+        from: 'not-a-date',
+        to: 'still-not-a-date',
+      },
+      config: {
+        from: '2024-02-01T00:00:00Z',
+        to: '2024-02-04T00:00:00Z',
+      },
     });
 
     const finishedWithOrders = buildCycle(
       {
         id: 501,
         date: '2024-02-02T12:00:00Z',
-        duration: null,
+        duration: Number.NaN,
         netQuote: 75,
         mfeAbsolute: 50,
         maeAbsolute: -20,
@@ -272,7 +391,7 @@ describe('computeBacktestMetrics', () => {
     const finishedWithoutOrders = buildCycle({
       id: 502,
       date: '2024-02-03T18:00:00Z',
-      duration: null,
+      duration: Number.NaN,
       netQuote: Number.NaN,
       mfeAbsolute: -5,
       maeAbsolute: 0,
@@ -288,7 +407,7 @@ describe('computeBacktestMetrics', () => {
       maeAbsolute: 5,
     });
 
-    const metrics = computeBacktestMetrics(stats, [finishedWithOrders, finishedWithoutOrders, runningCycle]);
+    const metrics = computeBacktestMetrics(detail, [finishedWithOrders, finishedWithoutOrders, runningCycle]);
 
     const expectedSpanStart = new Date('2024-02-01T00:00:00Z').getTime();
     const expectedSpanEnd = new Date('2024-02-04T00:00:00Z').getTime();
@@ -323,27 +442,33 @@ describe('computeBacktestMetrics', () => {
       metrics.activeDayIndices[metrics.activeDayIndices.length - 1],
     );
     expect(metrics.activeMpu).toBe(5);
-    expect(metrics.openPosition).toEqual({ cycleId: 503, mpu: 5 });
+    expect(metrics.openPosition).toMatchObject({ cycleId: 503, mpu: 5 });
+    expect(metrics.openPosition?.start).not.toBeNull();
+    expect(metrics.openPosition?.lastUpdate).not.toBeNull();
     expect(metrics.depositAmount).toBeNull();
     expect(metrics.depositLeverage).toBeNull();
     expect(metrics.winRatePercent).toBeCloseTo((3 / 4) * 100, 6);
   });
 
   it('normalizes textual deposit configuration values', () => {
-    const stats = buildDetail({
-      id: 909,
-      winRateProfits: 5,
-      winRateLosses: 5,
-      deposit: {
-        amount: '1 250,75 USDT' as unknown as number,
-        leverage: '10x' as unknown as number,
-        marginType: 'ISOLATED',
-        currency: null,
+    const detail = buildDetail({
+      stats: {
+        id: 909,
+        winRateProfits: 5,
+        winRateLosses: 5,
+        quote: 'USDT',
       },
-      quote: 'USDT',
+      config: {
+        deposit: {
+          amount: '1 250,75 USDT' as unknown as number,
+          leverage: '10x' as unknown as number,
+          marginType: 'ISOLATED',
+          currency: null,
+        },
+      },
     });
 
-    const metrics = computeBacktestMetrics(stats, []);
+    const metrics = computeBacktestMetrics(detail, []);
 
     expect(metrics.depositAmount).toBeCloseTo(1250.75, 6);
     expect(metrics.depositCurrency).toBe('USDT');
@@ -356,10 +481,12 @@ describe('computeBacktestMetrics', () => {
     const secondOrder = '2024-07-01T09:45:00Z';
     const closingTime = '2024-07-01T12:00:00Z';
 
-    const stats = buildDetail({
-      id: 1001,
-      from: '2024-07-01T00:00:00Z',
-      to: '2024-07-02T00:00:00Z',
+    const detail = buildDetail({
+      stats: {
+        id: 1001,
+        from: '2024-07-01T00:00:00Z',
+        to: '2024-07-02T00:00:00Z',
+      },
     });
 
     const startedCycle = buildCycle(
@@ -375,7 +502,7 @@ describe('computeBacktestMetrics', () => {
       ],
     );
 
-    const metrics = computeBacktestMetrics(stats, [startedCycle]);
+    const metrics = computeBacktestMetrics(detail, [startedCycle]);
 
     const expectedStart = new Date(firstOrder).getTime();
     const expectedEnd = new Date(closingTime).getTime();
@@ -391,11 +518,13 @@ describe('computeBacktestMetrics', () => {
   });
 
   it('returns null openPosition when no cycles are running', () => {
-    const stats = buildDetail({
-      id: 321,
-      totalDeals: 2,
-      profits: 2,
-      losses: 0,
+    const detail = buildDetail({
+      stats: {
+        id: 321,
+        totalDeals: 2,
+        profits: 2,
+        losses: 0,
+      },
     });
 
     const cycles = [
@@ -403,7 +532,7 @@ describe('computeBacktestMetrics', () => {
       buildCycle({ id: 12, date: '2024-03-02T00:00:00Z', netQuote: -10, mfeAbsolute: 8, maeAbsolute: 6 }),
     ];
 
-    const metrics = computeBacktestMetrics(stats, cycles);
+    const metrics = computeBacktestMetrics(detail, cycles);
 
     expect(metrics.activeMpu).toBe(0);
     expect(metrics.openPosition).toBeNull();
@@ -451,16 +580,18 @@ describe('summarizeAggregations', () => {
   it('aggregates multiple backtests into portfolio-level metrics', () => {
     const metricsA = computeBacktestMetrics(
       buildDetail({
-        id: 101,
-        name: 'Strategy Alpha',
-        netQuote: 150,
-        netQuotePerDay: 12.5,
-        profits: 2,
-        losses: 1,
-        totalDeals: 3,
-        avgDuration: 3600,
-        from: '2024-01-01T00:00:00Z',
-        to: '2024-01-10T00:00:00Z',
+        stats: {
+          id: 101,
+          name: 'Strategy Alpha',
+          netQuote: 150,
+          netQuotePerDay: 12.5,
+          profits: 2,
+          losses: 1,
+          totalDeals: 3,
+          avgDuration: 3600,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-10T00:00:00Z',
+        },
       }),
       [
         buildCycle({
@@ -491,16 +622,18 @@ describe('summarizeAggregations', () => {
 
     const metricsB = computeBacktestMetrics(
       buildDetail({
-        id: 202,
-        name: 'Strategy Beta',
-        netQuote: -50,
-        netQuotePerDay: -3,
-        profits: 1,
-        losses: 2,
-        totalDeals: 3,
-        avgDuration: 5400,
-        from: '2024-01-02T00:00:00Z',
-        to: '2024-01-08T00:00:00Z',
+        stats: {
+          id: 202,
+          name: 'Strategy Beta',
+          netQuote: -50,
+          netQuotePerDay: -3,
+          profits: 1,
+          losses: 2,
+          totalDeals: 3,
+          avgDuration: 5400,
+          from: '2024-01-02T00:00:00Z',
+          to: '2024-01-08T00:00:00Z',
+        },
       }),
       [
         buildCycle({
@@ -592,12 +725,14 @@ describe('summarizeAggregations', () => {
   it('includes open positions in aggregate risk metrics', () => {
     const metricsClosedOnly = computeBacktestMetrics(
       buildDetail({
-        id: 601,
-        from: '2024-05-01T00:00:00Z',
-        to: '2024-05-02T00:00:00Z',
-        netQuote: 30,
-        totalDeals: 1,
-        profits: 1,
+        stats: {
+          id: 601,
+          from: '2024-05-01T00:00:00Z',
+          to: '2024-05-02T00:00:00Z',
+          netQuote: 30,
+          totalDeals: 1,
+          profits: 1,
+        },
       }),
       [
         buildCycle({
@@ -613,12 +748,14 @@ describe('summarizeAggregations', () => {
 
     const metricsWithOpen = computeBacktestMetrics(
       buildDetail({
-        id: 602,
-        from: '2024-05-01T00:00:00Z',
-        to: '2024-05-04T00:00:00Z',
-        netQuote: 20,
-        totalDeals: 1,
-        profits: 1,
+        stats: {
+          id: 602,
+          from: '2024-05-01T00:00:00Z',
+          to: '2024-05-04T00:00:00Z',
+          netQuote: 20,
+          totalDeals: 1,
+          profits: 1,
+        },
       }),
       [
         buildCycle({
@@ -643,7 +780,9 @@ describe('summarizeAggregations', () => {
 
     const summary = summarizeAggregations([metricsClosedOnly, metricsWithOpen]);
 
-    expect(metricsWithOpen.openPosition).toEqual({ cycleId: 6022, mpu: 25 });
+    expect(metricsWithOpen.openPosition).toMatchObject({ cycleId: 6022, mpu: 25 });
+    expect(metricsWithOpen.openPosition?.start).toBeDefined();
+    expect(metricsWithOpen.openPosition?.lastUpdate).toBeDefined();
     expect(summary.openDeals).toBe(1);
     expect(summary.activeMpu).toBe(25);
     expect(summary.aggregateMPU).toBeGreaterThanOrEqual(25);
@@ -653,12 +792,14 @@ describe('summarizeAggregations', () => {
   it('preserves open position risk under concurrency limit', () => {
     const metricsWithOpenA = computeBacktestMetrics(
       buildDetail({
-        id: 701,
-        from: '2024-06-01T00:00:00Z',
-        to: '2024-06-04T00:00:00Z',
-        netQuote: 18,
-        totalDeals: 1,
-        profits: 1,
+        stats: {
+          id: 701,
+          from: '2024-06-01T00:00:00Z',
+          to: '2024-06-04T00:00:00Z',
+          netQuote: 18,
+          totalDeals: 1,
+          profits: 1,
+        },
       }),
       [
         buildCycle({
@@ -683,12 +824,14 @@ describe('summarizeAggregations', () => {
 
     const metricsWithOpenB = computeBacktestMetrics(
       buildDetail({
-        id: 702,
-        from: '2024-06-01T00:00:00Z',
-        to: '2024-06-05T00:00:00Z',
-        netQuote: 12,
-        totalDeals: 1,
-        profits: 1,
+        stats: {
+          id: 702,
+          from: '2024-06-01T00:00:00Z',
+          to: '2024-06-05T00:00:00Z',
+          netQuote: 12,
+          totalDeals: 1,
+          profits: 1,
+        },
       }),
       [
         buildCycle({
@@ -794,12 +937,14 @@ describe('summarizeAggregations', () => {
 
     const zeroRiskMetrics = computeBacktestMetrics(
       buildDetail({
-        id: 482,
-        from: '2024-04-11T00:00:00Z',
-        to: '2024-04-11T01:00:00Z',
-        totalDeals: 1,
-        losses: 1,
-        avgDuration: 3600,
+        stats: {
+          id: 482,
+          from: '2024-04-11T00:00:00Z',
+          to: '2024-04-11T01:00:00Z',
+          totalDeals: 1,
+          losses: 1,
+          avgDuration: 3600,
+        },
       }),
       [
         buildCycle({
@@ -821,15 +966,17 @@ describe('summarizeAggregations', () => {
   it('computes aggregate MPU across overlapping risk intervals', () => {
     const metricsA = computeBacktestMetrics(
       buildDetail({
-        id: 301,
-        netQuote: 0,
-        netQuotePerDay: 0,
-        totalDeals: 1,
-        profits: 0,
-        losses: 1,
-        avgDuration: 7200,
-        from: '2024-01-01T00:00:00Z',
-        to: '2024-01-03T00:00:00Z',
+        stats: {
+          id: 301,
+          netQuote: 0,
+          netQuotePerDay: 0,
+          totalDeals: 1,
+          profits: 0,
+          losses: 1,
+          avgDuration: 7200,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-03T00:00:00Z',
+        },
       }),
       [
         buildCycle({
@@ -846,15 +993,17 @@ describe('summarizeAggregations', () => {
 
     const metricsB = computeBacktestMetrics(
       buildDetail({
-        id: 302,
-        netQuote: 0,
-        netQuotePerDay: 0,
-        totalDeals: 1,
-        profits: 0,
-        losses: 1,
-        avgDuration: 7200,
-        from: '2024-01-01T00:00:00Z',
-        to: '2024-01-03T00:00:00Z',
+        stats: {
+          id: 302,
+          netQuote: 0,
+          netQuotePerDay: 0,
+          totalDeals: 1,
+          profits: 0,
+          losses: 1,
+          avgDuration: 7200,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-03T00:00:00Z',
+        },
       }),
       [
         buildCycle({
@@ -879,16 +1028,18 @@ describe('summarizeAggregations', () => {
   it('calculates noTradeDays across sparse activity windows', () => {
     const metrics = computeBacktestMetrics(
       buildDetail({
-        id: 550,
-        name: 'Sparse Player',
-        from: '2024-04-01T00:00:00Z',
-        to: '2024-04-04T00:00:00Z',
-        netQuote: 5,
-        netQuotePerDay: 1.5,
-        profits: 2,
-        losses: 1,
-        totalDeals: 3,
-        avgDuration: 3600,
+        stats: {
+          id: 550,
+          name: 'Sparse Player',
+          from: '2024-04-01T00:00:00Z',
+          to: '2024-04-04T00:00:00Z',
+          netQuote: 5,
+          netQuotePerDay: 1.5,
+          profits: 2,
+          losses: 1,
+          totalDeals: 3,
+          avgDuration: 3600,
+        },
       }),
       [
         buildCycle({
@@ -920,16 +1071,18 @@ describe('summarizeAggregations', () => {
   it('includes idle selections when counting noTradeDays', () => {
     const activeMetrics = computeBacktestMetrics(
       buildDetail({
-        id: 610,
-        name: 'Active Strategy',
-        from: '2024-05-02T00:00:00Z',
-        to: '2024-05-04T00:00:00Z',
-        netQuote: 40,
-        netQuotePerDay: 10,
-        profits: 1,
-        losses: 0,
-        totalDeals: 1,
-        avgDuration: 7200,
+        stats: {
+          id: 610,
+          name: 'Active Strategy',
+          from: '2024-05-02T00:00:00Z',
+          to: '2024-05-04T00:00:00Z',
+          netQuote: 40,
+          netQuotePerDay: 10,
+          profits: 1,
+          losses: 0,
+          totalDeals: 1,
+          avgDuration: 7200,
+        },
       }),
       [
         buildCycle({
@@ -945,16 +1098,18 @@ describe('summarizeAggregations', () => {
 
     const idleMetrics = computeBacktestMetrics(
       buildDetail({
-        id: 620,
-        name: 'Idle Extension',
-        from: '2024-05-01T00:00:00Z',
-        to: '2024-05-06T00:00:00Z',
-        netQuote: 0,
-        netQuotePerDay: 0,
-        profits: 0,
-        losses: 0,
-        totalDeals: 0,
-        avgDuration: 0,
+        stats: {
+          id: 620,
+          name: 'Idle Extension',
+          from: '2024-05-01T00:00:00Z',
+          to: '2024-05-06T00:00:00Z',
+          netQuote: 0,
+          netQuotePerDay: 0,
+          profits: 0,
+          losses: 0,
+          totalDeals: 0,
+          avgDuration: 0,
+        },
       }),
       [],
     );
@@ -967,33 +1122,37 @@ describe('summarizeAggregations', () => {
   });
 
   it('tracks aggregate drawdown and concurrency across overlapping selections', () => {
-    const statsA = buildDetail({
-      id: 303,
-      name: 'Alpha',
-      netQuote: 20,
-      netQuotePerDay: 5,
-      profits: 2,
-      losses: 1,
-      totalDeals: 3,
-      avgDuration: 3600,
-      from: '2024-03-01T00:00:00Z',
-      to: '2024-03-04T00:00:00Z',
+    const detailA = buildDetail({
+      stats: {
+        id: 303,
+        name: 'Alpha',
+        netQuote: 20,
+        netQuotePerDay: 5,
+        profits: 2,
+        losses: 1,
+        totalDeals: 3,
+        avgDuration: 3600,
+        from: '2024-03-01T00:00:00Z',
+        to: '2024-03-04T00:00:00Z',
+      },
     });
 
-    const statsB = buildDetail({
-      id: 404,
-      name: 'Beta',
-      netQuote: 20,
-      netQuotePerDay: 4,
-      profits: 1,
-      losses: 2,
-      totalDeals: 3,
-      avgDuration: 5400,
-      from: '2024-03-01T00:00:00Z',
-      to: '2024-03-05T00:00:00Z',
+    const detailB = buildDetail({
+      stats: {
+        id: 404,
+        name: 'Beta',
+        netQuote: 20,
+        netQuotePerDay: 4,
+        profits: 1,
+        losses: 2,
+        totalDeals: 3,
+        avgDuration: 5400,
+        from: '2024-03-01T00:00:00Z',
+        to: '2024-03-05T00:00:00Z',
+      },
     });
 
-    const metricsA = computeBacktestMetrics(statsA, [
+    const metricsA = computeBacktestMetrics(detailA, [
       buildCycle({
         id: 31,
         date: '2024-03-01T10:00:00Z',
@@ -1021,7 +1180,7 @@ describe('summarizeAggregations', () => {
       }),
     ]);
 
-    const metricsB = computeBacktestMetrics(statsB, [
+    const metricsB = computeBacktestMetrics(detailB, [
       buildCycle({
         id: 41,
         date: '2024-03-01T10:00:00Z',
@@ -1097,16 +1256,18 @@ describe('summarizeAggregations', () => {
   it('respects concurrency limits by skipping overlapping trades', () => {
     const alphaMetrics = computeBacktestMetrics(
       buildDetail({
-        id: 301,
-        name: 'Alpha',
-        netQuote: 180,
-        netQuotePerDay: 18,
-        profits: 3,
-        losses: 0,
-        totalDeals: 3,
-        avgDuration: 7200,
-        from: '2024-01-01T00:00:00Z',
-        to: '2024-01-03T00:00:00Z',
+        stats: {
+          id: 301,
+          name: 'Alpha',
+          netQuote: 180,
+          netQuotePerDay: 18,
+          profits: 3,
+          losses: 0,
+          totalDeals: 3,
+          avgDuration: 7200,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-03T00:00:00Z',
+        },
       }),
       [
         buildCycle({
@@ -1132,16 +1293,18 @@ describe('summarizeAggregations', () => {
 
     const betaMetrics = computeBacktestMetrics(
       buildDetail({
-        id: 302,
-        name: 'Beta',
-        netQuote: 80,
-        netQuotePerDay: 8,
-        profits: 1,
-        losses: 0,
-        totalDeals: 1,
-        avgDuration: 7200,
-        from: '2024-01-01T00:00:00Z',
-        to: '2024-01-02T00:00:00Z',
+        stats: {
+          id: 302,
+          name: 'Beta',
+          netQuote: 80,
+          netQuotePerDay: 8,
+          profits: 1,
+          losses: 0,
+          totalDeals: 1,
+          avgDuration: 7200,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-02T00:00:00Z',
+        },
       }),
       [
         buildCycle({
@@ -1181,5 +1344,131 @@ describe('summarizeAggregations', () => {
     expect(boundedSummary.dailyConcurrency.records.every((record) => record.maxCount <= 1)).toBe(true);
     expect(boundedSummary.noTradeDays).toBeGreaterThanOrEqual(unlimitedSummary.noTradeDays);
     expect(relaxedSummary.noTradeDays).toBe(unlimitedSummary.noTradeDays);
+  });
+
+  it('retains open position risk on the aggregate risk chart under concurrency limits', () => {
+    const alphaMetrics = computeBacktestMetrics(
+      buildDetail({
+        stats: {
+          id: 501,
+          name: 'Alpha',
+          netQuote: 0,
+          netQuotePerDay: 0,
+          totalDeals: 0,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-05T00:00:00Z',
+        },
+      }),
+      [
+        buildCycle(
+          {
+            id: 8001,
+            status: 'FINISHED',
+            date: '2024-01-02T04:00:00Z',
+            duration: 7200,
+            netQuote: 40,
+            maeAbsolute: 5,
+          },
+          [
+            buildOrder({
+              createdAt: '2024-01-02T02:00:00Z',
+              executedAt: '2024-01-02T02:00:01Z',
+            }),
+            buildOrder({
+              createdAt: '2024-01-02T03:59:00Z',
+              executedAt: '2024-01-02T04:00:00Z',
+            }),
+          ],
+        ),
+        buildCycle(
+          {
+            id: 9001,
+            status: 'STARTED',
+            date: '2024-01-04T12:00:00Z',
+            maeAbsolute: 25,
+            netQuote: -5,
+          },
+          [
+            buildOrder({
+              createdAt: '2024-01-04T00:00:00Z',
+              executedAt: '2024-01-04T00:00:01Z',
+            }),
+          ],
+        ),
+      ],
+    );
+
+    const betaMetrics = computeBacktestMetrics(
+      buildDetail({
+        stats: {
+          id: 502,
+          name: 'Beta',
+          netQuote: 0,
+          netQuotePerDay: 0,
+          totalDeals: 0,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-05T00:00:00Z',
+        },
+      }),
+      [
+        buildCycle(
+          {
+            id: 8002,
+            status: 'FINISHED',
+            date: '2024-01-02T05:00:00Z',
+            duration: 7200,
+            netQuote: 30,
+            maeAbsolute: 8,
+          },
+          [
+            buildOrder({
+              createdAt: '2024-01-02T03:00:00Z',
+              executedAt: '2024-01-02T03:00:01Z',
+            }),
+            buildOrder({
+              createdAt: '2024-01-02T04:59:00Z',
+              executedAt: '2024-01-02T05:00:00Z',
+            }),
+          ],
+        ),
+        buildCycle(
+          {
+            id: 9002,
+            status: 'STARTED',
+            date: '2024-01-04T16:00:00Z',
+            maeAbsolute: 10,
+            netQuote: -2,
+          },
+          [
+            buildOrder({
+              createdAt: '2024-01-04T06:00:00Z',
+              executedAt: '2024-01-04T06:00:01Z',
+            }),
+          ],
+        ),
+      ],
+    );
+
+    expect(alphaMetrics.activeMpu).toBe(25);
+    expect(betaMetrics.activeMpu).toBe(10);
+    expect(alphaMetrics.concurrencyIntervals.length).toBeGreaterThan(0);
+    expect(betaMetrics.concurrencyIntervals.length).toBeGreaterThan(0);
+    expect(alphaMetrics.concurrencyIntervals[0].start).toBeLessThan(alphaMetrics.concurrencyIntervals[0].end);
+    expect(betaMetrics.concurrencyIntervals[0].start).toBeLessThan(betaMetrics.concurrencyIntervals[0].end);
+
+    const unlimitedSummary = summarizeAggregations([alphaMetrics, betaMetrics]);
+    expect(unlimitedSummary.activeMpu).toBe(35);
+
+    const limitedSummary = summarizeAggregations([alphaMetrics, betaMetrics], {
+      maxConcurrentBots: 1,
+    });
+
+    expect(limitedSummary.activeMpu).toBe(25);
+    expect(limitedSummary.maxConcurrent).toBeLessThanOrEqual(1);
+    expect(limitedSummary.aggregateRiskSeries.points.length).toBeGreaterThan(0);
+    const hasOpenRiskPoint = limitedSummary.aggregateRiskSeries.points.some((point) => point.value === 25);
+    expect(hasOpenRiskPoint).toBe(true);
+    expect(limitedSummary.aggregateRiskSeries.maxValue).toBe(25);
+    expect(limitedSummary.aggregateMPU).toBe(25);
   });
 });

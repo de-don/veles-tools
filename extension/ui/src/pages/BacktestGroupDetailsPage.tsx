@@ -1,11 +1,10 @@
 import { Alert, Button, Empty, message, Spin } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fetchBacktestDetails } from '../api/backtests';
 import BacktestAggregationPanel from '../components/backtests/BacktestAggregationPanel';
 import RenameBacktestGroupModal from '../components/backtests/RenameBacktestGroupModal';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
-import { readCachedBacktestDetail, readCachedBacktestList, writeCachedBacktestDetail } from '../storage/backtestCache';
+import { backtestsService } from '../services/backtests';
 import type { BacktestGroup } from '../types/backtestGroups';
 import type { BacktestStatistics } from '../types/backtests';
 
@@ -24,43 +23,42 @@ const buildBacktestPlaceholder = (id: number): BacktestStatistics => ({
   symbol: '',
   base: '',
   quote: '',
-  duration: null,
-  profitBase: null,
-  profitQuote: null,
-  netBase: null,
-  netQuote: null,
-  netBasePerDay: null,
-  netQuotePerDay: null,
-  minProfitBase: null,
-  maxProfitBase: null,
-  avgProfitBase: null,
-  minProfitQuote: null,
-  maxProfitQuote: null,
-  avgProfitQuote: null,
-  volume: null,
-  minDuration: null,
-  maxDuration: null,
-  avgDuration: null,
-  profits: null,
-  losses: null,
-  breakevens: null,
-  pullUps: null,
-  winRateProfits: null,
-  winRateLosses: null,
-  totalDeals: null,
-  minGrid: null,
-  maxGrid: null,
-  avgGrid: null,
-  minProfit: null,
-  maxProfit: null,
-  avgProfit: null,
-  mfePercent: null,
-  mfeAbsolute: null,
-  maePercent: null,
-  maeAbsolute: null,
-  commissionBase: null,
-  commissionQuote: null,
-  deposit: null,
+  duration: 0,
+  profitBase: 0,
+  profitQuote: 0,
+  netBase: 0,
+  netQuote: 0,
+  netBasePerDay: 0,
+  netQuotePerDay: 0,
+  minProfitBase: 0,
+  maxProfitBase: 0,
+  avgProfitBase: 0,
+  minProfitQuote: 0,
+  maxProfitQuote: 0,
+  avgProfitQuote: 0,
+  volume: 0,
+  minDuration: 0,
+  maxDuration: 0,
+  avgDuration: 0,
+  profits: 0,
+  losses: 0,
+  breakevens: 0,
+  pullUps: 0,
+  winRateProfits: 0,
+  winRateLosses: 0,
+  totalDeals: 0,
+  minGrid: 0,
+  maxGrid: 0,
+  avgGrid: 0,
+  minProfit: 0,
+  maxProfit: 0,
+  avgProfit: 0,
+  mfePercent: 0,
+  mfeAbsolute: 0,
+  maePercent: 0,
+  maeAbsolute: 0,
+  commissionBase: 0,
+  commissionQuote: 0,
 });
 
 const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPageProps) => {
@@ -94,11 +92,11 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
         const [cachedPairs, cachedList] = await Promise.all([
           Promise.all(
             group.backtestIds.map(async (id) => {
-              const detail = await readCachedBacktestDetail(id);
+              const detail = await backtestsService.readCachedBacktestDetail(id);
               return detail ? ({ id, detail } as const) : null;
             }),
           ),
-          readCachedBacktestList(),
+          backtestsService.readCachedBacktestList(),
         ]);
 
         if (cancelled) {
@@ -108,7 +106,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
         const cachedDetailsMap = new Map<number, BacktestStatistics>();
         cachedPairs.forEach((entry) => {
           if (entry) {
-            cachedDetailsMap.set(entry.id, entry.detail);
+            cachedDetailsMap.set(entry.id, entry.detail.statistics);
           }
         });
 
@@ -139,9 +137,8 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
         await Promise.all(
           missingIds.map(async (id) => {
             try {
-              const detail = await fetchBacktestDetails(id);
-              await writeCachedBacktestDetail(id, detail);
-              cachedDetailsMap.set(id, detail);
+              const detail = await backtestsService.getBacktestDetail(id, { forceRefresh: true });
+              cachedDetailsMap.set(id, detail.statistics);
             } catch (fetchError) {
               console.warn(`[Backtest Groups] Не удалось загрузить бэктест ${id}`, fetchError);
               failed.push(id);

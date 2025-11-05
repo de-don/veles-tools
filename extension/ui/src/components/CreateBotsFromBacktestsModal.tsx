@@ -7,11 +7,11 @@ import { createBot, startBot } from '../api/bots';
 import { type BotCreationOverrides, buildBotCreationPayload } from '../lib/backtestBotPayload';
 import { parseNumericInput } from '../lib/numericInput';
 import type { ApiKey } from '../types/apiKeys';
-import type { BacktestStatisticsDetail } from '../types/backtests';
+import type { BacktestDetail } from '../types/backtests';
 
 export interface BacktestBotTarget {
   id: number;
-  detail: BacktestStatisticsDetail;
+  detail: BacktestDetail;
 }
 
 interface CreateBotsFromBacktestsModalProps {
@@ -86,8 +86,9 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
     }
 
     const firstDetail = targets[0]?.detail;
-    if (firstDetail?.deposit) {
-      const { amount, leverage, marginType: detailMargin } = firstDetail.deposit;
+    const depositConfig = firstDetail?.config?.deposit ?? firstDetail?.statistics.deposit ?? null;
+    if (depositConfig) {
+      const { amount, leverage, marginType: detailMargin } = depositConfig;
       if (amount !== null && amount !== undefined) {
         setDepositAmount(String(amount));
       }
@@ -163,17 +164,23 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
     let succeeded = 0;
     let failed = 0;
 
+    const resolveName = (detail: BacktestDetail) => {
+      const configName = detail.config?.name;
+      if (typeof configName === 'string' && configName.trim().length > 0) {
+        return configName.trim();
+      }
+      const statsName = detail.statistics.name;
+      if (typeof statsName === 'string' && statsName.trim().length > 0) {
+        return statsName.trim();
+      }
+      return `Backtest ${detail.statistics.id}`;
+    };
+
     for (const target of targets) {
       const { detail } = target;
-      if (!detail) {
-        appendLog('error', `Бэктест ${target.id}: отсутствуют детали для создания бота.`);
-        failed += 1;
-        setProcessed((prev) => prev + 1);
-        // eslint-disable-next-line no-continue -- требуется пропустить элемент
-        continue;
-      }
 
-      appendLog('info', `Создаём бота по бэктесту ${detail.name ?? target.id} (ID: ${target.id})...`);
+      const displayName = resolveName(detail);
+      appendLog('info', `Создаём бота по бэктесту ${displayName} (ID: ${target.id})...`);
 
       try {
         const payload = buildBotCreationPayload(detail, overrides);
@@ -193,7 +200,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         }
       } catch (creationError) {
         const message = creationError instanceof Error ? creationError.message : String(creationError);
-        appendLog('error', `Ошибка создания бота для ${detail.name ?? target.id}: ${message}`);
+        appendLog('error', `Ошибка создания бота для ${displayName}: ${message}`);
         failed += 1;
       } finally {
         setProcessed((prev) => prev + 1);

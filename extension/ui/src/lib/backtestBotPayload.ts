@@ -1,11 +1,13 @@
 import type { CreateBotPayload } from '../api/bots';
-import type { BacktestDepositConfig, BacktestStatisticsDetail } from '../types/backtests';
+import type { BotDepositConfigDto, BotProfitConfigDto } from '../api/bots.dtos';
+import type { BacktestDetail } from '../types/backtests';
 
 export interface BotCreationOverrides {
   apiKeyId: number;
   depositAmount: number;
   depositLeverage: number;
   marginType: string;
+  symbols?: string[] | null;
 }
 
 const sanitizeMarginType = (value: string): string | null => {
@@ -17,14 +19,14 @@ const sanitizeMarginType = (value: string): string | null => {
 };
 
 const buildDepositConfig = (
-  detailDeposit: BacktestDepositConfig | undefined | null,
+  detailDeposit: BotDepositConfigDto,
   overrides: BotCreationOverrides,
-): BacktestDepositConfig => {
+): BotDepositConfigDto => {
   const normalizedMarginType =
     sanitizeMarginType(overrides.marginType) ??
-    (typeof detailDeposit?.marginType === 'string' ? detailDeposit.marginType : null);
+    (typeof detailDeposit.marginType === 'string' ? detailDeposit.marginType : null);
   const currency =
-    typeof detailDeposit?.currency === 'string' && detailDeposit.currency.trim().length > 0
+    typeof detailDeposit.currency === 'string' && detailDeposit.currency.trim().length > 0
       ? detailDeposit.currency.trim()
       : null;
 
@@ -36,15 +38,18 @@ const buildDepositConfig = (
   };
 };
 
-const deriveSymbols = (detail: BacktestStatisticsDetail): string[] | null => {
-  if (Array.isArray(detail.symbols) && detail.symbols.length > 0) {
-    return detail.symbols;
+const deriveSymbols = (detail: BacktestDetail): string | null => {
+  const configSymbol = detail.config.symbol;
+  if (typeof configSymbol === 'string' && configSymbol.trim().length > 0) {
+    return configSymbol.trim();
   }
-  if (typeof detail.symbol === 'string' && detail.symbol.trim().length > 0) {
-    return [detail.symbol.trim()];
+  const statsSymbol = detail.statistics.symbol;
+  if (statsSymbol.trim().length > 0) {
+    return statsSymbol.trim();
   }
-  if (detail.base && detail.quote) {
-    return [`${detail.base}/${detail.quote}`];
+  const { base, quote } = detail.statistics;
+  if (base && quote) {
+    return `${base}/${quote}`;
   }
   return null;
 };
@@ -63,44 +68,55 @@ const clonePayloadFragment = <T>(value: T): T => {
   return JSON.parse(JSON.stringify(value)) as T;
 };
 
-export const buildBotCreationPayload = (
-  detail: BacktestStatisticsDetail,
-  overrides: BotCreationOverrides,
-): CreateBotPayload => {
-  const symbols = deriveSymbols(detail);
-  const deposit = buildDepositConfig(detail.deposit ?? null, overrides);
-  const stopLoss = detail.stopLoss ? clonePayloadFragment(detail.stopLoss) : null;
-  const name =
-    typeof detail.name === 'string' && detail.name.trim().length > 0 ? detail.name.trim() : `Backtest ${detail.id}`;
-  const symbol =
-    typeof detail.symbol === 'string' && detail.symbol.trim().length > 0
-      ? detail.symbol.trim()
-      : symbols && symbols.length > 0
-        ? symbols[0]
-        : null;
+export const buildBotCreationPayload = (detail: BacktestDetail, overrides: BotCreationOverrides): CreateBotPayload => {
+  const stats = detail.statistics;
+  const config = detail.config;
+
+  const deposit = buildDepositConfig(config.deposit, overrides);
+
+  const name = config.name;
+  const exchange = config.exchange;
+  const algorithm = config.algorithm;
+  const pullUp = config.pullUp;
+  const portion = config.portion;
+
+  const profit: BotProfitConfigDto = config.profit
+    ? clonePayloadFragment(config.profit)
+    : {
+        type: 'ABSOLUTE',
+        currency: stats.quote,
+        checkPnl: null,
+        conditions: null,
+      };
+
+  const settings = clonePayloadFragment(config.settings);
+  const conditions = clonePayloadFragment(config.conditions);
+  const stopLoss = clonePayloadFragment(config.stopLoss);
+
+  const resolvedSymbols = (() => {
+    if (Array.isArray(overrides.symbols)) {
+      return overrides.symbols
+        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+        .map((item) => item.trim());
+    }
+    const derivedSymbol = deriveSymbols(detail);
+    return derivedSymbol ? [derivedSymbol] : [];
+  })();
 
   return {
+    algorithm,
+    apiKey: overrides.apiKeyId,
+    conditions,
+    deposit,
+    exchange,
     id: null,
     name,
-    symbol,
-    exchange: detail.exchange ?? null,
-    algorithm: detail.algorithm ?? null,
-    pullUp: detail.pullUp ?? null,
-    portion: detail.portion ?? null,
-    profit: detail.profit ?? null,
-    deposit,
+    portion,
+    profit,
+    pullUp,
+    settings,
     stopLoss,
-    settings: detail.settings ?? null,
-    conditions: detail.conditions ?? null,
-    from: detail.from ?? detail.start ?? null,
-    to: detail.to ?? detail.end ?? null,
-    status: detail.status ?? 'FINISHED',
-    commissions: detail.commissions ?? null,
-    public: detail.public ?? null,
-    useWicks: detail.useWicks ?? null,
-    cursor: detail.cursor ?? null,
-    includePosition: detail.includePosition ?? true,
-    symbols,
-    apiKey: overrides.apiKeyId,
+    symbols: resolvedSymbols,
+    termination: null,
   };
 };

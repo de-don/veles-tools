@@ -1,8 +1,8 @@
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
-import type { BacktestConfig } from '../types/backtests';
 import type { BotIdentifier, BotStatus, BotsListFilters, BotsListParams, BotsListResponse } from '../types/bots';
 import { buildApiUrl } from './baseUrl';
+import type { BotConfigCreateDto } from './bots.dtos';
 
 const BOTS_ENDPOINT = buildApiUrl('/api/bots');
 
@@ -41,10 +41,7 @@ const mergeHeaders = (headers?: HeadersInit): Record<string, string> => {
   return { ...base, ...(headers as Record<string, string>) };
 };
 
-export type CreateBotPayload = Omit<BacktestConfig, 'id'> & {
-  id: null;
-  apiKey: number;
-};
+export type CreateBotPayload = BotConfigCreateDto;
 
 export interface CreateBotResponse {
   id: number;
