@@ -865,7 +865,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           {runError && <div className="banner banner--warning">{runError}</div>}
 
           <footer className="modal__footer">
-            <Button onClick={handleCancel} disabled={isRunning}>
+            <Button onClick={handleCancel}>
               {isRunning ? 'Отменить' : isCompleted ? 'Закрыть' : 'Отмена'}
             </Button>
             <Button type="primary" htmlType="submit" loading={isRunning}>
