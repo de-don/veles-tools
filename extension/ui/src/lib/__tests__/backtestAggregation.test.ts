@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BacktestConfigDto, BacktestStatisticsDto } from '../../api/backtests.dtos';
+import type { BotSettingsDto } from '../../api/bots.dtos';
 import type { BacktestCycle, BacktestDetail, BacktestOrder, BacktestStatistics } from '../../types/backtests';
 import {
   type AggregationSummary,
@@ -84,7 +85,7 @@ const baseConfig: BacktestConfigDto = {
     conditions: null,
     conditionalIndentType: null,
   },
-  settings: null,
+  settings: buildDefaultSettings(),
   conditions: [],
   from: '2024-01-01T00:00:00Z',
   to: '2024-01-02T00:00:00Z',
@@ -97,6 +98,13 @@ const baseConfig: BacktestConfigDto = {
   useWicks: false,
   cursor: '',
 };
+
+function buildDefaultSettings(): BotSettingsDto {
+  return {
+    type: 'GRID',
+    includePosition: null,
+  } satisfies BotSettingsDto;
+}
 
 const buildDetail = ({
   stats,
@@ -112,6 +120,7 @@ const buildDetail = ({
   const resolvedConfig: BacktestConfigDto = {
     ...baseConfig,
     ...(config ?? {}),
+    settings: config?.settings ? { ...config.settings } : buildDefaultSettings(),
   };
 
   const statistics: BacktestStatistics = {
@@ -331,7 +340,9 @@ describe('computeBacktestMetrics', () => {
     expect(metrics.spanStart).toBe(new Date('2024-01-01T00:00:00Z').getTime());
     expect(metrics.spanEnd).toBe(new Date('2024-01-10T00:00:00Z').getTime());
     expect(metrics.activeMpu).toBe(0);
-    expect(metrics.openPosition).toEqual({ cycleId: 4, mpu: 0 });
+    expect(metrics.openPosition).toMatchObject({ cycleId: 4, mpu: 0 });
+    expect(metrics.openPosition?.start).toBeDefined();
+    expect(metrics.openPosition?.lastUpdate).toBeDefined();
 
     const jan2Index = Math.floor(new Date('2024-01-02T00:00:00Z').getTime() / MS_IN_DAY);
     const jan7Index = Math.floor(new Date('2024-01-07T00:00:00Z').getTime() / MS_IN_DAY);
@@ -431,7 +442,9 @@ describe('computeBacktestMetrics', () => {
       metrics.activeDayIndices[metrics.activeDayIndices.length - 1],
     );
     expect(metrics.activeMpu).toBe(5);
-    expect(metrics.openPosition).toEqual({ cycleId: 503, mpu: 5 });
+    expect(metrics.openPosition).toMatchObject({ cycleId: 503, mpu: 5 });
+    expect(metrics.openPosition?.start).not.toBeNull();
+    expect(metrics.openPosition?.lastUpdate).not.toBeNull();
     expect(metrics.depositAmount).toBeNull();
     expect(metrics.depositLeverage).toBeNull();
     expect(metrics.winRatePercent).toBeCloseTo((3 / 4) * 100, 6);
@@ -767,7 +780,9 @@ describe('summarizeAggregations', () => {
 
     const summary = summarizeAggregations([metricsClosedOnly, metricsWithOpen]);
 
-    expect(metricsWithOpen.openPosition).toEqual({ cycleId: 6022, mpu: 25 });
+    expect(metricsWithOpen.openPosition).toMatchObject({ cycleId: 6022, mpu: 25 });
+    expect(metricsWithOpen.openPosition?.start).toBeDefined();
+    expect(metricsWithOpen.openPosition?.lastUpdate).toBeDefined();
     expect(summary.openDeals).toBe(1);
     expect(summary.activeMpu).toBe(25);
     expect(summary.aggregateMPU).toBeGreaterThanOrEqual(25);
@@ -1329,5 +1344,131 @@ describe('summarizeAggregations', () => {
     expect(boundedSummary.dailyConcurrency.records.every((record) => record.maxCount <= 1)).toBe(true);
     expect(boundedSummary.noTradeDays).toBeGreaterThanOrEqual(unlimitedSummary.noTradeDays);
     expect(relaxedSummary.noTradeDays).toBe(unlimitedSummary.noTradeDays);
+  });
+
+  it('retains open position risk on the aggregate risk chart under concurrency limits', () => {
+    const alphaMetrics = computeBacktestMetrics(
+      buildDetail({
+        stats: {
+          id: 501,
+          name: 'Alpha',
+          netQuote: 0,
+          netQuotePerDay: 0,
+          totalDeals: 0,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-05T00:00:00Z',
+        },
+      }),
+      [
+        buildCycle(
+          {
+            id: 8001,
+            status: 'FINISHED',
+            date: '2024-01-02T04:00:00Z',
+            duration: 7200,
+            netQuote: 40,
+            maeAbsolute: 5,
+          },
+          [
+            buildOrder({
+              createdAt: '2024-01-02T02:00:00Z',
+              executedAt: '2024-01-02T02:00:01Z',
+            }),
+            buildOrder({
+              createdAt: '2024-01-02T03:59:00Z',
+              executedAt: '2024-01-02T04:00:00Z',
+            }),
+          ],
+        ),
+        buildCycle(
+          {
+            id: 9001,
+            status: 'STARTED',
+            date: '2024-01-04T12:00:00Z',
+            maeAbsolute: 25,
+            netQuote: -5,
+          },
+          [
+            buildOrder({
+              createdAt: '2024-01-04T00:00:00Z',
+              executedAt: '2024-01-04T00:00:01Z',
+            }),
+          ],
+        ),
+      ],
+    );
+
+    const betaMetrics = computeBacktestMetrics(
+      buildDetail({
+        stats: {
+          id: 502,
+          name: 'Beta',
+          netQuote: 0,
+          netQuotePerDay: 0,
+          totalDeals: 0,
+          from: '2024-01-01T00:00:00Z',
+          to: '2024-01-05T00:00:00Z',
+        },
+      }),
+      [
+        buildCycle(
+          {
+            id: 8002,
+            status: 'FINISHED',
+            date: '2024-01-02T05:00:00Z',
+            duration: 7200,
+            netQuote: 30,
+            maeAbsolute: 8,
+          },
+          [
+            buildOrder({
+              createdAt: '2024-01-02T03:00:00Z',
+              executedAt: '2024-01-02T03:00:01Z',
+            }),
+            buildOrder({
+              createdAt: '2024-01-02T04:59:00Z',
+              executedAt: '2024-01-02T05:00:00Z',
+            }),
+          ],
+        ),
+        buildCycle(
+          {
+            id: 9002,
+            status: 'STARTED',
+            date: '2024-01-04T16:00:00Z',
+            maeAbsolute: 10,
+            netQuote: -2,
+          },
+          [
+            buildOrder({
+              createdAt: '2024-01-04T06:00:00Z',
+              executedAt: '2024-01-04T06:00:01Z',
+            }),
+          ],
+        ),
+      ],
+    );
+
+    expect(alphaMetrics.activeMpu).toBe(25);
+    expect(betaMetrics.activeMpu).toBe(10);
+    expect(alphaMetrics.concurrencyIntervals.length).toBeGreaterThan(0);
+    expect(betaMetrics.concurrencyIntervals.length).toBeGreaterThan(0);
+    expect(alphaMetrics.concurrencyIntervals[0].start).toBeLessThan(alphaMetrics.concurrencyIntervals[0].end);
+    expect(betaMetrics.concurrencyIntervals[0].start).toBeLessThan(betaMetrics.concurrencyIntervals[0].end);
+
+    const unlimitedSummary = summarizeAggregations([alphaMetrics, betaMetrics]);
+    expect(unlimitedSummary.activeMpu).toBe(35);
+
+    const limitedSummary = summarizeAggregations([alphaMetrics, betaMetrics], {
+      maxConcurrentBots: 1,
+    });
+
+    expect(limitedSummary.activeMpu).toBe(25);
+    expect(limitedSummary.maxConcurrent).toBeLessThanOrEqual(1);
+    expect(limitedSummary.aggregateRiskSeries.points.length).toBeGreaterThan(0);
+    const hasOpenRiskPoint = limitedSummary.aggregateRiskSeries.points.some((point) => point.value === 25);
+    expect(hasOpenRiskPoint).toBe(true);
+    expect(limitedSummary.aggregateRiskSeries.maxValue).toBe(25);
+    expect(limitedSummary.aggregateMPU).toBe(25);
   });
 });

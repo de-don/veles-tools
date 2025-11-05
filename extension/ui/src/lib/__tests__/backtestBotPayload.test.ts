@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { BacktestConfigDto, BacktestDepositConfigDto, BacktestStatisticsDto } from '../../api/backtests.dtos';
+import type { BacktestConfigDto, BacktestStatisticsDto } from '../../api/backtests.dtos';
+import type { BotDepositConfigDto, BotSettingsDto } from '../../api/bots.dtos';
 import type { BacktestDetail } from '../../types/backtests';
 import { buildBotCreationPayload } from '../backtestBotPayload';
 
@@ -53,11 +54,16 @@ const buildStatistics = (overrides: Partial<BacktestStatisticsDto> = {}): Backte
 });
 
 const buildConfig = (overrides: Partial<BacktestConfigDto> = {}): BacktestConfigDto => {
-  const defaultDeposit: BacktestDepositConfigDto = {
+  const defaultDeposit: BotDepositConfigDto = {
     amount: 500,
     leverage: 5,
     marginType: 'CROSS',
     currency: 'BBB',
+  };
+
+  const defaultSettings: BotSettingsDto = {
+    type: 'GRID',
+    includePosition: null,
   };
 
   return {
@@ -86,7 +92,7 @@ const buildConfig = (overrides: Partial<BacktestConfigDto> = {}): BacktestConfig
         conditions: null,
         conditionalIndentType: null,
       } satisfies BacktestConfigDto['stopLoss']),
-    settings: overrides.settings ?? null,
+    settings: overrides.settings ? { ...overrides.settings } : { ...defaultSettings },
     conditions: overrides.conditions ?? [],
     from: overrides.from ?? '2024-01-01T00:00:00Z',
     to: overrides.to ?? '2024-02-01T00:00:00Z',

@@ -140,6 +140,8 @@ export interface AggregationSummary {
 interface OpenPositionRisk {
   cycleId: number;
   mpu: number;
+  start: number | null;
+  lastUpdate: number | null;
 }
 
 const toNumber = (value: unknown): number => {
@@ -535,7 +537,12 @@ export const computeBacktestMetrics = (detail: BacktestDetail, cycles: BacktestC
     const unrealizedLoss = Number.isFinite(netValue) && netValue < 0 ? Math.abs(netValue) : 0;
     const rawMpu = Math.max(normalizedMae, unrealizedLoss);
     const sanitizedMpu = Number.isFinite(rawMpu) && rawMpu > 0 ? rawMpu : 0;
-    const position: OpenPositionRisk = { cycleId: cycle.id, mpu: sanitizedMpu };
+    const position: OpenPositionRisk = {
+      cycleId: cycle.id,
+      mpu: sanitizedMpu,
+      start: Number.isFinite(interval.start) ? Number(interval.start) : null,
+      lastUpdate: Number.isFinite(interval.end) ? Number(interval.end) : null,
+    } satisfies OpenPositionRisk;
     const intervalEnd = Number(interval.end);
     if (
       !latestOpenPosition ||
@@ -1327,6 +1334,51 @@ const applyConcurrencyLimit = (trades: NormalizedTrade[], limit: number): Normal
   return accepted;
 };
 
+const resolveLatestTimestamp = (
+  metricsList: BacktestAggregationMetrics[],
+  trades: NormalizedTrade[],
+  openPositions: OpenPositionRisk[] = [],
+): number | null => {
+  const candidates: number[] = [];
+
+  metricsList.forEach((metrics) => {
+    if (Number.isFinite(metrics.spanEnd)) {
+      candidates.push(Number(metrics.spanEnd));
+    }
+    metrics.trades.forEach((trade) => {
+      const end = Number(trade.end);
+      if (Number.isFinite(end)) {
+        candidates.push(end);
+      }
+    });
+    metrics.riskIntervals.forEach((interval) => {
+      const end = Number(interval.end);
+      if (Number.isFinite(end)) {
+        candidates.push(end);
+      }
+    });
+  });
+
+  trades.forEach((trade) => {
+    const end = Number(trade.end);
+    if (Number.isFinite(end)) {
+      candidates.push(end);
+    }
+  });
+
+  openPositions.forEach((position) => {
+    if (Number.isFinite(position.lastUpdate)) {
+      candidates.push(Number(position.lastUpdate));
+    }
+  });
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  return Math.max(...candidates);
+};
+
 const groupTradesByBacktest = (metricsList: BacktestAggregationMetrics[]): Map<number, NormalizedTrade[]> => {
   const map = new Map<number, NormalizedTrade[]>();
   metricsList.forEach((metrics) => {
@@ -1428,11 +1480,56 @@ const buildRiskEventsFromTrades = (trades: NormalizedTrade[]): RiskEvent[] => {
 const computeAggregateRiskSeriesFromTrades = (
   trades: NormalizedTrade[],
   metricsList: BacktestAggregationMetrics[],
+  openPositions: OpenPositionRisk[] = [],
 ): AggregateRiskSeries => {
   const events = buildRiskEventsFromTrades(trades);
+
+  if (openPositions.length > 0) {
+    const anchorCandidate = resolveLatestTimestamp(metricsList, trades, openPositions);
+    let anchorTime = Number(anchorCandidate ?? Number.NaN);
+    if (!Number.isFinite(anchorTime)) {
+      const tradeEnds = trades
+        .map((trade) => Number(trade.end))
+        .filter((value): value is number => Number.isFinite(value));
+      const openUpdates = openPositions
+        .map((position) => Number(position.lastUpdate))
+        .filter((value): value is number => Number.isFinite(value));
+      if (tradeEnds.length > 0 || openUpdates.length > 0) {
+        anchorTime = Math.max(...tradeEnds, ...(openUpdates.length > 0 ? openUpdates : [-Infinity]));
+      } else {
+        anchorTime = Date.now();
+      }
+    }
+
+    openPositions.forEach((position) => {
+      const mpu = Number(position.mpu);
+      if (!Number.isFinite(mpu) || mpu <= 0) {
+        return;
+      }
+      let startTime = Number(position.start);
+      if (!Number.isFinite(startTime)) {
+        startTime = anchorTime;
+      }
+      let lastUpdate = Number(position.lastUpdate);
+      if (!Number.isFinite(lastUpdate) || lastUpdate < startTime) {
+        lastUpdate = anchorTime;
+      }
+      const endTime = Math.max(lastUpdate, anchorTime);
+      const safeEnd = endTime > startTime ? endTime : startTime + 1;
+      events.push({ time: startTime, delta: mpu, type: 'start' });
+      events.push({ time: safeEnd, delta: -mpu, type: 'end' });
+    });
+  }
+
   const fallback = metricsList.reduce((acc, metrics) => (metrics.maxMPU > acc ? metrics.maxMPU : acc), 0);
   if (events.length === 0) {
-    const candidates: Array<number | null | undefined> = trades.flatMap((trade) => [trade.start, trade.end]);
+    const candidates: Array<number | null | undefined> = [];
+    trades.forEach((trade) => {
+      candidates.push(trade.start, trade.end);
+    });
+    openPositions.forEach((position) => {
+      candidates.push(position.start, position.lastUpdate);
+    });
     return buildZeroRiskSeries(candidates, fallback);
   }
   return computeRiskSeriesFromEvents(events, fallback);
@@ -1648,13 +1745,22 @@ const summarizeWithConcurrencyLimit = (
   const avgPnlPerBacktest = mean(totalPnl, totalSelected);
   const avgTradeDurationDays = mean(totalTradeDurationSec, totalDeals) / 86400;
   const openPositionRisks = collectOpenPositionRisks(metricsList);
-  const sortedRisks = openPositionRisks
-    .map((position) => (Number.isFinite(position.mpu) ? Math.max(0, position.mpu) : 0))
-    .filter((value) => value > 0)
-    .sort((a, b) => b - a);
-  const limitedCount = Math.min(limit, sortedRisks.length);
-  const totalOpenDeals = Math.min(limit, openPositionRisks.length);
-  const totalActiveMpu = sumBy(sortedRisks.slice(0, limitedCount), (value) => value);
+  const sortedOpenPositions = openPositionRisks
+    .map((position) => {
+      const mpu = Number(position.mpu);
+      if (!Number.isFinite(mpu) || mpu <= 0) {
+        return null;
+      }
+      return {
+        ...position,
+        mpu,
+      } satisfies OpenPositionRisk;
+    })
+    .filter((position): position is OpenPositionRisk => position !== null)
+    .sort((a, b) => b.mpu - a.mpu);
+  const limitedOpenPositions = sortedOpenPositions.slice(0, Math.min(limit, sortedOpenPositions.length));
+  const totalOpenDeals = limitedOpenPositions.length;
+  const totalActiveMpu = sumBy(limitedOpenPositions, (position) => position.mpu);
 
   const perBacktestDrawdowns = metricsList.map((metrics) => {
     const trades = tradesByBacktest.get(metrics.id) ?? [];
@@ -1666,8 +1772,8 @@ const summarizeWithConcurrencyLimit = (
   );
 
   const aggregateDrawdown = computeAggregateDrawdownFromTrades(acceptedTrades);
-  const aggregateRiskSeries = computeAggregateRiskSeriesFromTrades(acceptedTrades, metricsList);
-  const limitedOpenRiskMax = limitedCount > 0 ? (sortedRisks[0] ?? 0) : 0;
+  const aggregateRiskSeries = computeAggregateRiskSeriesFromTrades(acceptedTrades, metricsList, limitedOpenPositions);
+  const limitedOpenRiskMax = limitedOpenPositions.length > 0 ? limitedOpenPositions[0].mpu : 0;
   const aggregateMPU = Math.max(aggregateRiskSeries.maxValue, limitedOpenRiskMax);
   const aggregateWorstRisk = Math.max(0, aggregateDrawdown, aggregateMPU);
   const aggregateRiskEfficiency = aggregateWorstRisk > 0 ? totalPnl / aggregateWorstRisk : null;
