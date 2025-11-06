@@ -1,3 +1,9 @@
+## [1.8.2](https://github.com/de-don/veles-tools/compare/v1.8.1...v1.8.2) (2025-11-06)
+
+### Bug Fixes
+
+* **support-project:** enhance support modal with email copy functionality and referral details ([484c371](https://github.com/de-don/veles-tools/commit/484c371535f8db60035e4912005ff8ea3a6a7ff0))
+
 ## [1.8.1](https://github.com/de-don/veles-tools/compare/v1.8.0...v1.8.1) (2025-11-06)
 
 ### Bug Fixes
