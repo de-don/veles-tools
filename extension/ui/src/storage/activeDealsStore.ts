@@ -44,6 +44,19 @@ const isPortfolioEquitySeries = (value: unknown): value is PortfolioEquitySeries
   });
 };
 
+const isPortfolioEquitySeriesRecord = (value: unknown): value is Record<string, PortfolioEquitySeries> => {
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+  const entries = Object.entries(value as Record<string, unknown>);
+  return entries.every(([key, series]) => {
+    if (typeof key !== 'string') {
+      return false;
+    }
+    return isPortfolioEquitySeries(series);
+  });
+};
+
 const isActiveDeal = (value: unknown): value is ActiveDeal => {
   if (value === null || typeof value !== 'object') {
     return false;
@@ -70,6 +83,7 @@ const isActiveDealsArray = (value: unknown): value is ActiveDeal[] => {
 export interface ActiveDealsSnapshot {
   deals: ActiveDeal[];
   series: PortfolioEquitySeries;
+  groupedSeries?: Record<string, PortfolioEquitySeries>;
   zoomRange?: DataZoomRange;
   zoomPreset?: ActiveDealsZoomPreset;
   lastUpdated: number | null;
@@ -84,6 +98,7 @@ const isActiveDealsSnapshot = (value: unknown): value is ActiveDealsSnapshot => 
   const snapshot = value as {
     deals?: unknown;
     series?: unknown;
+    groupedSeries?: unknown;
     zoomRange?: unknown;
     zoomPreset?: unknown;
     lastUpdated?: unknown;
@@ -95,6 +110,9 @@ const isActiveDealsSnapshot = (value: unknown): value is ActiveDealsSnapshot => 
     return false;
   }
   if (!isPortfolioEquitySeries(snapshot.series)) {
+    return false;
+  }
+  if (snapshot.groupedSeries !== undefined && !isPortfolioEquitySeriesRecord(snapshot.groupedSeries)) {
     return false;
   }
   if (!isNullableNumber(snapshot.lastUpdated)) {
@@ -135,6 +153,7 @@ export const writeActiveDealsSnapshot = (snapshot: ActiveDealsSnapshot): void =>
   const payload: ActiveDealsSnapshot = {
     deals: snapshot.deals,
     series: snapshot.series,
+    groupedSeries: snapshot.groupedSeries,
     zoomRange: snapshot.zoomRange,
     zoomPreset: snapshot.zoomPreset,
     lastUpdated: snapshot.lastUpdated ?? null,

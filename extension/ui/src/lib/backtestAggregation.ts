@@ -85,6 +85,13 @@ export interface PortfolioEquitySeries {
   maxValue: number;
 }
 
+export interface PortfolioEquityGroupedSeriesItem {
+  id: string;
+  label: string;
+  series: PortfolioEquitySeries;
+  apiKeyId?: number;
+}
+
 export interface AggregateRiskPoint {
   time: number;
   value: number;

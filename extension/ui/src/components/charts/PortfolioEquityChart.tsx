@@ -1,6 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
-import type { PortfolioEquitySeries } from '../../lib/backtestAggregation';
+import type { PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../../lib/backtestAggregation';
 import { createPortfolioEquityChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 
 interface PortfolioEquityChartProps {
@@ -8,12 +8,19 @@ interface PortfolioEquityChartProps {
   className?: string;
   dataZoomRange?: DataZoomRange;
   onDataZoom?: (range: DataZoomRange) => void;
+  groupedSeries?: PortfolioEquityGroupedSeriesItem[];
+  legendSelection?: Record<string, boolean>;
+  onLegendSelectionChange?: (selection: Record<string, boolean>) => void;
 }
 
 interface DataZoomEventParams {
   start?: number;
   end?: number;
   batch?: Array<{ start?: number; end?: number }>;
+}
+
+interface LegendSelectionEventParams {
+  selected: Record<string, boolean>;
 }
 
 const clampRangeValue = (value?: number): number | undefined => {
@@ -37,22 +44,44 @@ const extractRangeFromEvent = (event: DataZoomEventParams): DataZoomRange => {
   };
 };
 
-const PortfolioEquityChartComponent = ({ series, className, dataZoomRange, onDataZoom }: PortfolioEquityChartProps) => {
-  const option = useMemo(() => createPortfolioEquityChartOptions(series, dataZoomRange), [series, dataZoomRange]);
+const PortfolioEquityChartComponent = ({
+  series,
+  className,
+  dataZoomRange,
+  onDataZoom,
+  groupedSeries,
+  legendSelection,
+  onLegendSelectionChange,
+}: PortfolioEquityChartProps) => {
+  const option = useMemo(
+    () => createPortfolioEquityChartOptions(series, dataZoomRange, groupedSeries, legendSelection),
+    [series, dataZoomRange, groupedSeries, legendSelection],
+  );
 
   const onEvents = useMemo(() => {
-    if (!onDataZoom) {
+    if (!onDataZoom && !onLegendSelectionChange) {
       return undefined;
     }
-    return {
-      datazoom: (event: DataZoomEventParams) => {
-        const range = extractRangeFromEvent(event);
+    const handlers: Record<string, (event: unknown) => void> = {};
+    if (onDataZoom) {
+      handlers.datazoom = (event: unknown) => {
+        const range = extractRangeFromEvent(event as DataZoomEventParams);
         if (typeof range.start === 'number' || typeof range.end === 'number') {
           onDataZoom(range);
         }
-      },
-    } satisfies Record<string, (event: DataZoomEventParams) => void>;
-  }, [onDataZoom]);
+      };
+    }
+    if (onLegendSelectionChange) {
+      const handleLegend = (event: unknown) => {
+        const payload = event as LegendSelectionEventParams;
+        onLegendSelectionChange(payload.selected);
+      };
+      handlers.legendselectchanged = handleLegend;
+      handlers.legendunselect = handleLegend;
+      handlers.legendselectall = handleLegend;
+    }
+    return handlers;
+  }, [onDataZoom, onLegendSelectionChange]);
 
   return (
     <ReactECharts

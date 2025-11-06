@@ -3,6 +3,7 @@ import type {
   AggregateRiskSeries,
   DailyConcurrencyRecord,
   DailyConcurrencyStats,
+  PortfolioEquityGroupedSeriesItem,
   PortfolioEquitySeries,
 } from './backtestAggregation';
 
@@ -59,6 +60,45 @@ export interface DataZoomRange {
   end?: number;
 }
 
+const buildZeroLineForGroups = (
+  groups: PortfolioEquityGroupedSeriesItem[],
+): LineSeriesOption['markLine'] | undefined => {
+  let hasPositive = false;
+  let hasNegative = false;
+
+  groups.forEach((group) => {
+    group.series.points.forEach((point) => {
+      if (point.value >= 0) {
+        hasPositive = true;
+      }
+      if (point.value <= 0) {
+        hasNegative = true;
+      }
+    });
+  });
+
+  if (!hasPositive || !hasNegative) {
+    return undefined;
+  }
+
+  return {
+    symbol: 'none',
+    lineStyle: {
+      color: '#94a3b8',
+      type: 'dashed',
+      width: 1,
+    },
+    label: {
+      formatter: '0',
+      color: '#475569',
+      backgroundColor: 'rgba(241, 245, 249, 0.8)',
+      padding: [2, 4],
+      borderRadius: 4,
+    },
+    data: [{ yAxis: 0 }],
+  } satisfies LineSeriesOption['markLine'];
+};
+
 const applyRange = (base: DataZoomComponentOption, range?: DataZoomRange): DataZoomComponentOption => {
   if (!range) {
     return base;
@@ -105,7 +145,66 @@ const buildDataZoomComponents = (range?: DataZoomRange): DataZoomComponentOption
 export const createPortfolioEquityChartOptions = (
   series: PortfolioEquitySeries,
   range?: DataZoomRange,
+  groupedSeries?: PortfolioEquityGroupedSeriesItem[],
+  legendSelection?: Record<string, boolean>,
 ): EChartsOption => {
+  if (groupedSeries && groupedSeries.length > 0) {
+    const lineSeries: LineSeriesOption[] = groupedSeries.map((group) => ({
+      id: group.id,
+      name: group.label,
+      type: 'line',
+      showSymbol: false,
+      smooth: false,
+      symbol: 'none',
+      lineStyle: {
+        width: 1.6,
+      },
+      emphasis: { focus: 'series' },
+      data: group.series.points.map((point) => [point.time, point.value]),
+    }));
+
+    const zeroLine = buildZeroLineForGroups(groupedSeries);
+    if (zeroLine && lineSeries.length > 0) {
+      lineSeries[0].markLine = zeroLine;
+    }
+
+    return {
+      animation: false,
+      grid: { left: 60, right: 24, top: 16, bottom: 92 },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        valueFormatter: (value) => formatNumber(Number(value)),
+        order: 'valueDesc',
+      },
+      legend: {
+        bottom: 0,
+        icon: 'roundRect',
+        data: groupedSeries.map((group) => group.label),
+        selected: legendSelection,
+      },
+      xAxis: {
+        type: 'time',
+        axisLabel: {
+          formatter: (value: number) => dateTimeFormatter.format(new Date(value)),
+        },
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: (value: number) => formatNumber(value),
+        },
+        splitLine: {
+          lineStyle: {
+            type: 'dashed',
+          },
+        },
+      },
+      dataZoom: buildDataZoomComponents(range),
+      series: lineSeries,
+    } satisfies EChartsOption;
+  }
+
   const equityData = series.points.map((point) => [point.time, point.value]);
   const positiveAreaData = series.points.map((point) =>
     point.value > 0 ? [point.time, point.value] : [point.time, null],
@@ -117,6 +216,7 @@ export const createPortfolioEquityChartOptions = (
   const markLine = buildZeroLine(series);
 
   const positiveAreaSeries: LineSeriesOption = {
+    id: 'active-deals-positive-area',
     name: 'positive-area',
     type: 'line',
     showSymbol: false,
@@ -138,6 +238,7 @@ export const createPortfolioEquityChartOptions = (
   };
 
   const negativeAreaSeries: LineSeriesOption = {
+    id: 'active-deals-negative-area',
     name: 'negative-area',
     type: 'line',
     showSymbol: false,
@@ -159,6 +260,7 @@ export const createPortfolioEquityChartOptions = (
   };
 
   const equitySeries: LineSeriesOption = {
+    id: 'active-deals-equity-line',
     name: 'Суммарный P&L',
     type: 'line',
     symbol: 'none',
@@ -188,6 +290,7 @@ export const createPortfolioEquityChartOptions = (
       bottom: 0,
       icon: 'roundRect',
       data: ['Суммарный P&L'],
+      selected: legendSelection,
     },
     xAxis: {
       type: 'time',

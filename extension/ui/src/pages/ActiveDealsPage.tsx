@@ -1,4 +1,4 @@
-import { Button, message, Popconfirm, Segmented, Space, Table } from 'antd';
+import { Button, message, Popconfirm, Segmented, Space, Switch, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
@@ -127,6 +127,10 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   const {
     dealsState,
     pnlSeries,
+    groupedPnlSeries,
+    groupByApiKey,
+    setGroupByApiKey,
+    apiKeysById,
     loading,
     error,
     refreshInterval,
@@ -264,6 +268,23 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   }, [dealsState.lastUpdated]);
 
   const positions = dealsState.positions;
+  const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
+  const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
+
+  useEffect(() => {
+    const names = chartGroupedSeries ? chartGroupedSeries.map((item) => item.label) : ['Суммарный P&L'];
+    setLegendSelection((prev) => {
+      const next: Record<string, boolean> = {};
+      names.forEach((name) => {
+        next[name] = Object.hasOwn(prev, name) ? prev[name] : true;
+      });
+      return next;
+    });
+  }, [chartGroupedSeries]);
+
+  const handleLegendSelectionChange = useCallback((selection: Record<string, boolean>) => {
+    setLegendSelection(selection);
+  }, []);
 
   const dealsColumns: ColumnsType<ActiveDealMetrics> = useMemo(
     () => [
@@ -289,6 +310,32 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               </div>
             </div>
           );
+        },
+      },
+      {
+        title: 'API ключ',
+        dataIndex: ['deal', 'apiKeyId'],
+        key: 'apiKey',
+        width: 260,
+        render: (_value, record) => {
+          const apiKey = apiKeysById.get(record.deal.apiKeyId);
+          const name = (apiKey?.name ?? '').trim() || `API ключ ${record.deal.apiKeyId}`;
+          const exchange = apiKey?.exchange ?? record.deal.exchange ?? record.deal.pair?.exchange ?? '—';
+          return (
+            <div className="active-deals__api-key-cell">
+              <span className="active-deals__api-key-name">{name}</span>
+              <div className="active-deals__bot-meta">
+                <span>{exchange}</span>
+                <span>·</span>
+                <span>ID {record.deal.apiKeyId}</span>
+              </div>
+            </div>
+          );
+        },
+        sorter: (a, b) => {
+          const left = (apiKeysById.get(a.deal.apiKeyId)?.name ?? String(a.deal.apiKeyId)).trim();
+          const right = (apiKeysById.get(b.deal.apiKeyId)?.name ?? String(b.deal.apiKeyId)).trim();
+          return left.localeCompare(right, 'ru');
         },
       },
       {
@@ -456,7 +503,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         },
       },
     ],
-    [closingDealId, handleCloseDeal, positionHistory],
+    [apiKeysById, closingDealId, handleCloseDeal, positionHistory],
   );
 
   const {
@@ -575,19 +622,32 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 История накапливается только когда вкладка с расширением открыта.
               </p>
             </div>
+            <div
+              className="panel__actions"
+              style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', width: '100%' }}
+            >
+              <Space className="chart-zoom-presets" align="center" size="middle" wrap>
+                <Segmented
+                  options={ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => ({
+                    label: preset.label,
+                    value: preset.key,
+                  }))}
+                  value={zoomPreset}
+                  size="middle"
+                  onChange={(value) => applyZoomPreset(value as ActiveDealsZoomPresetKey)}
+                />
+                <Button onClick={handleResetHistory}>Сбросить данные</Button>
+              </Space>
+              <Space align="center" size="middle">
+                <Switch
+                  checked={groupByApiKey}
+                  onChange={(checked) => setGroupByApiKey(checked)}
+                  aria-label="Группировка по ключу"
+                />
+                <span>Группировка по ключу</span>
+              </Space>
+            </div>
           </div>
-          <Space className="chart-zoom-presets" align="center" size="middle" wrap>
-            <Segmented
-              options={ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => ({
-                label: preset.label,
-                value: preset.key,
-              }))}
-              value={zoomPreset}
-              size="middle"
-              onChange={(value) => applyZoomPreset(value as ActiveDealsZoomPresetKey)}
-            />
-            <Button onClick={handleResetHistory}>Сбросить данные</Button>
-          </Space>
           <div className="aggregation-equity__chart">
             {pnlSeries.points.length === 0 ? (
               <div className="empty-state">Нет данных для отображения. Подождите первое обновление.</div>
@@ -597,6 +657,9 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 series={pnlSeries}
                 dataZoomRange={zoomRange}
                 onDataZoom={handleZoomChange}
+                groupedSeries={chartGroupedSeries}
+                legendSelection={legendSelection}
+                onLegendSelectionChange={handleLegendSelectionChange}
               />
             )}
           </div>
