@@ -1276,38 +1276,93 @@ const toNormalizedTrades = (trades: AggregationTrade[]): NormalizedTrade[] => {
     .filter((trade): trade is NormalizedTrade => trade !== null);
 };
 
-const pruneFinishedTrades = (active: NormalizedTrade[], currentTime: number) => {
+type ActiveEntry =
+  | ({
+      type: 'trade';
+      trade: NormalizedTrade;
+    } & TimeInterval & { key: string })
+  | ({
+      type: 'position';
+    } & TimeInterval & { key: string });
+
+const makeTradeKey = (trade: NormalizedTrade): string => {
+  return `${trade.backtestId}:${trade.id}:${trade.start}:${trade.end}`;
+};
+
+const pruneFinishedEntries = (active: ActiveEntry[], currentTime: number) => {
   while (active.length > 0 && active[0].end <= currentTime) {
     active.shift();
   }
 };
 
-const insertActiveTrade = (active: NormalizedTrade[], trade: NormalizedTrade) => {
+const insertActiveEntry = (active: ActiveEntry[], entry: ActiveEntry) => {
   let inserted = false;
   for (let index = 0; index < active.length; index += 1) {
     const candidate = active[index];
     if (
-      trade.end < candidate.end ||
-      (trade.end === candidate.end &&
-        (trade.backtestId < candidate.backtestId ||
-          (trade.backtestId === candidate.backtestId && trade.id < candidate.id)))
+      entry.end < candidate.end ||
+      (entry.end === candidate.end &&
+        (entry.type !== candidate.type ? entry.type === 'position' : entry.key.localeCompare(candidate.key) < 0))
     ) {
-      active.splice(index, 0, trade);
+      active.splice(index, 0, entry);
       inserted = true;
       break;
     }
   }
   if (!inserted) {
-    active.push(trade);
+    active.push(entry);
   }
 };
 
-const applyConcurrencyLimit = (trades: NormalizedTrade[], limit: number): NormalizedTrade[] => {
+const removeLatestTradeEntry = (active: ActiveEntry[]): ActiveEntry | null => {
+  for (let index = active.length - 1; index >= 0; index -= 1) {
+    const entry = active[index];
+    if (entry.type === 'trade') {
+      active.splice(index, 1);
+      return entry;
+    }
+  }
+  return null;
+};
+
+const buildOpenPositionIntervals = (positions: OpenPositionRisk[], anchorTime: number): TimeInterval[] => {
+  const safeAnchor = Number.isFinite(anchorTime) ? anchorTime : Date.now();
+
+  return positions
+    .map((position) => {
+      let startTime = Number(position.start);
+      if (!Number.isFinite(startTime)) {
+        startTime = safeAnchor;
+      }
+      let lastUpdate = Number(position.lastUpdate);
+      if (!Number.isFinite(lastUpdate)) {
+        lastUpdate = startTime;
+      }
+      const baseEnd = Math.max(lastUpdate, startTime);
+      const horizon = Math.max(baseEnd, safeAnchor);
+      const endTime = Math.max(horizon, safeAnchor + 1, startTime + 1);
+      return {
+        start: startTime,
+        end: endTime,
+      } satisfies TimeInterval;
+    })
+    .filter(
+      (interval): interval is TimeInterval =>
+        Number.isFinite(interval.start) && Number.isFinite(interval.end) && interval.end > interval.start,
+    )
+    .sort((a, b) => (a.start === b.start ? a.end - b.end : a.start - b.start));
+};
+
+const applyConcurrencyLimit = (
+  trades: NormalizedTrade[],
+  limit: number,
+  occupiedIntervals: TimeInterval[] = [],
+): NormalizedTrade[] => {
   if (limit <= 0 || trades.length === 0) {
     return [];
   }
 
-  const sorted = [...trades].sort((a, b) => {
+  const sortedTrades = [...trades].sort((a, b) => {
     if (a.start === b.start) {
       if (a.end === b.end) {
         if (a.backtestId === b.backtestId) {
@@ -1320,18 +1375,72 @@ const applyConcurrencyLimit = (trades: NormalizedTrade[], limit: number): Normal
     return a.start - b.start;
   });
 
-  const active: NormalizedTrade[] = [];
-  const accepted: NormalizedTrade[] = [];
+  const entries: ActiveEntry[] = occupiedIntervals
+    .map((interval, index) => ({
+      type: 'position' as const,
+      start: interval.start,
+      end: interval.end,
+      key: `position:${index}`,
+    }))
+    .filter((entry) => Number.isFinite(entry.start) && Number.isFinite(entry.end) && entry.end > entry.start);
 
-  sorted.forEach((trade) => {
-    pruneFinishedTrades(active, trade.start);
-    if (active.length < limit) {
-      accepted.push(trade);
-      insertActiveTrade(active, trade);
-    }
+  sortedTrades.forEach((trade) => {
+    entries.push({
+      type: 'trade',
+      trade,
+      start: trade.start,
+      end: trade.end,
+      key: makeTradeKey(trade),
+    });
   });
 
-  return accepted;
+  entries.sort((a, b) => {
+    if (a.start === b.start) {
+      if (a.type === b.type) {
+        if (a.end === b.end) {
+          return a.key.localeCompare(b.key);
+        }
+        return a.end - b.end;
+      }
+      return a.type === 'position' ? -1 : 1;
+    }
+    return a.start - b.start;
+  });
+
+  const active: ActiveEntry[] = [];
+  const accepted: NormalizedTrade[] = [];
+  const droppedTradeKeys = new Set<string>();
+
+  entries.forEach((entry) => {
+    pruneFinishedEntries(active, entry.start);
+
+    if (entry.type === 'position') {
+      while (active.length >= limit) {
+        const removed = removeLatestTradeEntry(active);
+        if (!removed) {
+          break;
+        }
+        if (removed.type === 'trade') {
+          droppedTradeKeys.add(removed.key);
+        }
+      }
+      insertActiveEntry(active, entry);
+      return;
+    }
+
+    if (active.length >= limit) {
+      return;
+    }
+
+    accepted.push(entry.trade);
+    insertActiveEntry(active, entry);
+  });
+
+  if (droppedTradeKeys.size === 0) {
+    return accepted;
+  }
+
+  return accepted.filter((trade) => !droppedTradeKeys.has(makeTradeKey(trade)));
 };
 
 const resolveLatestTimestamp = (
@@ -1725,7 +1834,25 @@ const summarizeWithConcurrencyLimit = (
     return summarizeWithoutLimit(metricsList);
   }
 
-  const acceptedTrades = applyConcurrencyLimit(allTrades, limit);
+  const openPositionRisks = collectOpenPositionRisks(metricsList);
+  const anchorCandidate = resolveLatestTimestamp(metricsList, allTrades, openPositionRisks);
+  let anchorTime = Number(anchorCandidate ?? Number.NaN);
+  if (!Number.isFinite(anchorTime)) {
+    const tradeEnds = allTrades
+      .map((trade) => Number(trade.end))
+      .filter((value): value is number => Number.isFinite(value));
+    const openUpdates = openPositionRisks
+      .map((position) => Number(position.lastUpdate))
+      .filter((value): value is number => Number.isFinite(value));
+    if (tradeEnds.length > 0 || openUpdates.length > 0) {
+      anchorTime = Math.max(...tradeEnds, ...(openUpdates.length > 0 ? openUpdates : [-Infinity]));
+    } else {
+      anchorTime = Date.now();
+    }
+  }
+
+  const occupiedIntervals = buildOpenPositionIntervals(openPositionRisks, anchorTime);
+  const acceptedTrades = applyConcurrencyLimit(allTrades, limit, occupiedIntervals);
   const tradesByBacktest = groupTradesByBacktest(metricsList);
   acceptedTrades.forEach((trade) => {
     const bucket = tradesByBacktest.get(trade.backtestId);
@@ -1744,7 +1871,6 @@ const summarizeWithConcurrencyLimit = (
   const avgPnlPerDeal = mean(totalPnl, totalDeals);
   const avgPnlPerBacktest = mean(totalPnl, totalSelected);
   const avgTradeDurationDays = mean(totalTradeDurationSec, totalDeals) / 86400;
-  const openPositionRisks = collectOpenPositionRisks(metricsList);
   const sortedOpenPositions = openPositionRisks
     .map((position) => {
       const mpu = Number(position.mpu);

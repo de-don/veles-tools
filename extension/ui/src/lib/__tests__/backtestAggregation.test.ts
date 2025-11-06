@@ -862,6 +862,88 @@ describe('summarizeAggregations', () => {
     expect(summary.aggregateWorstRisk).toBe(Math.max(summary.aggregateDrawdown, summary.aggregateMPU));
   });
 
+  it('keeps aggregate MPU within lock when an open deal never closes', () => {
+    const openStart = '2024-07-02T00:00:00Z';
+    const openMetrics = computeBacktestMetrics(
+      buildDetail({
+        stats: {
+          id: 801,
+          from: openStart,
+          to: '2024-07-10T00:00:00Z',
+          netQuote: -20,
+          totalDeals: 0,
+          losses: 0,
+        },
+      }),
+      [
+        buildCycle(
+          {
+            id: 80101,
+            status: 'STARTED',
+            date: openStart,
+            netQuote: -20,
+            mfeAbsolute: 60,
+            maeAbsolute: 50,
+          },
+          [
+            buildOrder({
+              createdAt: openStart,
+              executedAt: openStart,
+            }),
+          ],
+        ),
+      ],
+    );
+
+    const tradeStart = '2024-07-05T10:00:00Z';
+    const tradeEnd = '2024-07-05T12:00:00Z';
+    expect(openMetrics.openPosition?.start).toBe(new Date(openStart).getTime());
+    expect(openMetrics.openPosition?.lastUpdate).toBe(new Date(openStart).getTime());
+
+    const finishedMetrics = computeBacktestMetrics(
+      buildDetail({
+        stats: {
+          id: 802,
+          from: tradeStart,
+          to: tradeEnd,
+          netQuote: 30,
+          totalDeals: 1,
+          profits: 1,
+        },
+      }),
+      [
+        buildCycle(
+          {
+            id: 80201,
+            date: tradeEnd,
+            duration: 7200,
+            netQuote: 30,
+            mfeAbsolute: 65,
+            maeAbsolute: 50,
+          },
+          [
+            buildOrder({
+              createdAt: tradeStart,
+              executedAt: tradeStart,
+            }),
+            buildOrder({
+              createdAt: tradeEnd,
+              executedAt: tradeEnd,
+            }),
+          ],
+        ),
+      ],
+    );
+
+    const summary = summarizeAggregations([openMetrics, finishedMetrics], { maxConcurrentBots: 1 });
+
+    expect(summary.openDeals).toBe(1);
+    expect(summary.activeMpu).toBe(50);
+    expect(summary.aggregateMPU).toBe(50);
+    expect(summary.aggregateRiskSeries.maxValue).toBe(50);
+    expect(summary.aggregateWorstRisk).toBe(50);
+  });
+
   it('returns the highest individual MPU when risk intervals do not overlap', () => {
     const metricsA = buildMetricsWithRiskWindow({
       id: 401,
