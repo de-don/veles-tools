@@ -1,3 +1,9 @@
+## [1.8.1](https://github.com/de-don/veles-tools/compare/v1.8.0...v1.8.1) (2025-11-06)
+
+### Bug Fixes
+
+* **backtests:** correct risks calculation ([1201e99](https://github.com/de-don/veles-tools/commit/1201e99281546676bfc5523f42df6b546f4c5772))
+
 ## [1.8.0](https://github.com/de-don/veles-tools/compare/v1.7.0...v1.8.0) (2025-11-05)
 
 ### Features
