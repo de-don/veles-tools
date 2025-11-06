@@ -229,7 +229,7 @@ body {
 
 .support-button--wave.ant-btn-primary {
   background: transparent;
-  box-shadow: 0 10px 25px rgba(14, 165, 233, 0.25);
+  box-shadow: 0 10px 25px rgba(236, 72, 153, 0.28);
   color: #fff;
 }
 
@@ -238,8 +238,8 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(120deg, #0ea5e9, #22d3ee, #6366f1);
-  background-size: 200% 200%;
+  background: linear-gradient(120deg, #f43f5e, #ec4899, #8b5cf6);
+  background-size: 220% 220%;
   animation: supportWave 6s linear infinite;
   z-index: -1;
   transition: filter 0.35s ease;
@@ -257,9 +257,10 @@ body {
   }
 }
 
+
 .support-button--wave.ant-btn-primary:hover,
 .support-button--wave.ant-btn-primary:focus {
-  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.15);
+  box-shadow: 0 14px 30px rgba(236, 72, 153, 0.2);
 }
 
 .support-button--wave.ant-btn-primary:hover::before,
@@ -268,7 +269,7 @@ body {
 }
 
 .support-button--wave.ant-btn-primary:active {
-  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.3);
+  box-shadow: 0 8px 18px rgba(219, 39, 119, 0.32);
 }
 
 .support-button--wave.ant-btn-primary:active::before {
@@ -1001,6 +1002,23 @@ body {
   font-size: 14px;
   line-height: 1.6;
   color: #475467;
+}
+
+.support-modal__copy-button.ant-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  margin-left: 6px;
+  min-width: 0;
+  height: 22px;
+  color: #ec4899;
+}
+
+.support-modal__copy-button.ant-btn:hover,
+.support-modal__copy-button.ant-btn:focus {
+  color: #db2777;
+  background: transparent;
 }
 
 .support-modal__link {

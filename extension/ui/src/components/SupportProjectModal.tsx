@@ -1,5 +1,6 @@
-import { Modal } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { CopyOutlined } from '@ant-design/icons';
+import { Button, Modal, Tooltip, message } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Tabs, { type TabItem } from './ui/Tabs';
 
 interface SupportProjectModalProps {
@@ -13,14 +14,36 @@ const BYBIT_UID = '496946534';
 const BINANCE_UID = '64125639';
 const TELEGRAM_URL = 'https://t.me/dontsov';
 
+const SUPPORT_EMAIL = 'support@veles.finance';
+const REFERRAL_ACCOUNT_ID = '388397';
+const REFERRAL_CODE = 'reg000';
+const REFERRAL_SAMPLE_MESSAGE = `Здравствуйте, прошу прикрепить меня в качестве реферала к аккаунту ${REFERRAL_ACCOUNT_ID} (реф код ${REFERRAL_CODE}). Мой ID XXXXXX`;
+
 const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
   const [activeTab, setActiveTab] = useState<SupportTab>('free');
+  const [messageApi, messageContextHolder] = message.useMessage();
 
   useEffect(() => {
     if (open) {
       setActiveTab('free');
     }
   }, [open]);
+
+  const handleCopy = useCallback(
+    async (value: string, successMessage: string) => {
+      if (navigator.clipboard?.writeText == null) {
+        messageApi.error('Буфер обмена недоступен');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(value);
+        messageApi.success(successMessage);
+      } catch (error) {
+        messageApi.error('Не удалось скопировать в буфер обмена');
+      }
+    },
+    [messageApi],
+  );
 
   const tabItems: TabItem[] = useMemo<TabItem[]>(
     () => [
@@ -30,12 +53,39 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
         content: (
           <div className="support-modal__tab">
             <p>
-              Если вы ещё не чей-то реферал в Veles, просто напишите в поддержку{' '}
-              <a href="https://t.me/VelesSupportBot" target="_blank" rel="noreferrer noopener">
-                t.me/VelesSupportBot
-              </a>{' '}
-              и попросите прикрепить вас к моему аккаунту (ID <strong>388307</strong>). Это бесплатно и помогает
-              проекту.
+              Напишите на{' '}
+              <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+              <Tooltip title="Скопировать email">
+                <Button
+                  type="text"
+                  size="small"
+                  aria-label={`Скопировать email ${SUPPORT_EMAIL}`}
+                  icon={<CopyOutlined />}
+                  className="support-modal__copy-button"
+                  onClick={() => {
+                    void handleCopy(SUPPORT_EMAIL, 'Email скопирован');
+                  }}
+                />
+              </Tooltip>{' '}
+              с просьбой прикрепить к вашему аккаунту код пригласителя. Укажите свой ID, мой ID{' '}
+              <strong>{REFERRAL_ACCOUNT_ID}</strong> и мой реферальный код <code>{REFERRAL_CODE}</code>. Это полностью
+              бесплатный способ поддержать проект.
+            </p>
+            <p>
+              Пример письма: «{REFERRAL_SAMPLE_MESSAGE}»
+              <Tooltip title="Скопировать пример">
+                <Button
+                  type="text"
+                  size="small"
+                  aria-label="Скопировать пример письма"
+                  icon={<CopyOutlined />}
+                  className="support-modal__copy-button"
+                  onClick={() => {
+                    void handleCopy(REFERRAL_SAMPLE_MESSAGE, 'Текст письма скопирован');
+                  }}
+                />
+              </Tooltip>
+              .
             </p>
           </div>
         ),
@@ -91,6 +141,7 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
 
   return (
     <Modal open={open} onCancel={onClose} footer={null} title="💖 Поддержи проект" centered destroyOnClose width={520}>
+      {messageContextHolder}
       <div className="support-modal">
         <p className="support-modal__intro">
           Этот проект — опенсорс и развивается в моё свободное время. Если расширение делает твою работу проще — ты
