@@ -753,7 +753,7 @@ const BacktestAggregationPanel = ({
         key: 'symbol',
         sorter: buildMetricStringSorter((metrics) => metrics.symbol),
         render: (_metrics, record) => {
-          const fallbackSymbol = record.detail?.symbols?.[0] ?? record.detail?.statistics.symbol;
+          const fallbackSymbol = record.detail?.statistics.symbol;
           const algorithm =
             record.detail?.config?.algorithm ?? record.detail?.statistics.algorithm ?? record.metrics?.name ?? '';
           return (

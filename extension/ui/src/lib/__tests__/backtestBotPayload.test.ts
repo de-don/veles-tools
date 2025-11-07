@@ -125,11 +125,8 @@ const buildDetail = ({
   return {
     statistics: {
       ...statistics,
-      deposit: resolvedConfig.deposit ?? null,
     },
     config: resolvedConfig,
-    symbols: symbols ?? [resolvedConfig.symbol],
-    includePosition: includePosition ?? true,
   };
 };
 

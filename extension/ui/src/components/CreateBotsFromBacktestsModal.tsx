@@ -86,7 +86,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
     }
 
     const firstDetail = targets[0]?.detail;
-    const depositConfig = firstDetail?.config?.deposit ?? firstDetail?.statistics.deposit ?? null;
+    const depositConfig = firstDetail?.config?.deposit ?? null;
     if (depositConfig) {
       const { amount, leverage, marginType: detailMargin } = depositConfig;
       if (amount !== null && amount !== undefined) {

@@ -8,14 +8,11 @@ export const mapStatisticsFromDto = (statistics: BacktestStatisticsDto): Backtes
 export const mapDetailFromDto = (statistics: BacktestStatisticsDto, config: BacktestConfigDto): BacktestDetail => {
   const mappedStatistics: BacktestStatistics = {
     ...mapStatisticsFromDto(statistics),
-    deposit: config.deposit ?? null,
   };
 
   return {
     statistics: mappedStatistics,
     config,
-    symbols: config.symbol ? [config.symbol] : null,
-    includePosition: null,
   };
 };
 

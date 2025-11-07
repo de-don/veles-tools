@@ -126,16 +126,11 @@ const buildDetail = ({
   const statistics: BacktestStatistics = {
     ...baseStatistics,
     ...(stats ?? {}),
-    deposit: resolvedConfig.deposit ?? null,
   };
-
-  const derivedSymbols = symbols ?? [resolvedConfig.symbol];
 
   return {
     statistics,
     config: resolvedConfig,
-    symbols: derivedSymbols,
-    includePosition: includePosition ?? true,
   };
 };
 
