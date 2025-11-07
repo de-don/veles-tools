@@ -17,7 +17,7 @@ export const parseSortDescriptor = (input: string | null | undefined): SortDescr
   const field = rawField?.trim();
   const direction = rawDirection?.trim().toLowerCase();
 
-  if (!field || !direction) {
+  if (!(field && direction)) {
     return null;
   }
 

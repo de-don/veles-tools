@@ -112,13 +112,9 @@ const buildConfig = (overrides: Partial<BacktestConfigDto> = {}): BacktestConfig
 const buildDetail = ({
   stats,
   config,
-  symbols,
-  includePosition,
 }: {
   stats?: Partial<BacktestStatisticsDto>;
   config?: Partial<BacktestConfigDto>;
-  symbols?: string[] | null;
-  includePosition?: boolean | null;
 } = {}): BacktestDetail => {
   const resolvedConfig = buildConfig(config ?? {});
   const statistics = buildStatistics(stats);
@@ -166,7 +162,6 @@ describe('buildBotCreationPayload', () => {
     const detail = buildDetail({
       stats: { symbol: '', base: 'AAA', quote: 'BBB' },
       config: { symbol: '' },
-      symbols: null,
     });
 
     const payload = buildBotCreationPayload(detail, {

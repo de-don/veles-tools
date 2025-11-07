@@ -59,7 +59,7 @@ const PortfolioEquityChartComponent = ({
   );
 
   const onEvents = useMemo(() => {
-    if (!onDataZoom && !onLegendSelectionChange) {
+    if (!(onDataZoom || onLegendSelectionChange)) {
       return undefined;
     }
     const handlers: Record<string, (event: unknown) => void> = {};

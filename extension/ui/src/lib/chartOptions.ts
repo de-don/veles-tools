@@ -34,7 +34,7 @@ const formatNumber = (value: number): string => {
 const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLine'] => {
   const hasPositive = series.points.some((point) => point.value >= 0);
   const hasNegative = series.points.some((point) => point.value <= 0);
-  if (!hasPositive || !hasNegative) {
+  if (!(hasPositive && hasNegative)) {
     return undefined;
   }
   return {
@@ -77,7 +77,7 @@ const buildZeroLineForGroups = (
     });
   });
 
-  if (!hasPositive || !hasNegative) {
+  if (!(hasPositive && hasNegative)) {
     return undefined;
   }
 

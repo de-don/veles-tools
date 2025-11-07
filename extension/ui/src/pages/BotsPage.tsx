@@ -210,7 +210,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   }, [appliedFilters]);
   const hasFilterDraft =
     nameFilter.trim().length > 0 || apiKeyFilter !== '' || Boolean(statusFilter) || Boolean(algorithmFilter);
-  const isResetDisabled = !hasActiveFilters && !hasFilterDraft;
+  const isResetDisabled = !(hasActiveFilters || hasFilterDraft);
 
   const selectedRowKeys = useMemo(() => selection.map((s) => s.id), [selection]);
 

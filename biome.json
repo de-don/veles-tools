@@ -31,6 +31,15 @@
       },
       "correctness": {
         "useUniqueElementIds": "off"
+      },
+      "complexity": {
+        "useOptionalChain": "error",
+        "useSimplifiedLogicExpression": "error",
+        "noUselessTernary": "error"
+      },
+      "suspicious": {
+        "noSelfCompare": "warn",
+        "noConstantBinaryExpressions": "warn"
       }
     }
   },

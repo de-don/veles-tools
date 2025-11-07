@@ -253,8 +253,8 @@ const BacktestAggregationPanel = ({
           continue;
         }
 
-        const from = summary.from ?? detail.statistics.from ?? detail.config?.from ?? null;
-        const to = summary.to ?? detail.statistics.to ?? detail.config?.to ?? null;
+        const from = summary.from ?? detail.statistics.from;
+        const to = summary.to ?? detail.statistics.to;
 
         let cycles = await backtestsService.readCachedBacktestCycles(id, {
           from,
@@ -730,9 +730,9 @@ const BacktestAggregationPanel = ({
         },
         render: (_metrics, record) => (
           <div>
-            <div>{formatDateRu(record.detail?.statistics.from ?? record.detail?.config?.from ?? null)}</div>
+            <div>{formatDateRu(record.detail?.statistics.from ?? record.detail?.config.from ?? null)}</div>
             <div className="panel__description">
-              до {formatDateRu(record.detail?.statistics.to ?? record.detail?.config?.to ?? null)}
+              до {formatDateRu(record.detail?.statistics.to ?? record.detail?.config.to ?? null)}
             </div>
           </div>
         ),
@@ -741,11 +741,11 @@ const BacktestAggregationPanel = ({
         title: 'Биржа',
         key: 'exchange',
         sorter: (a, b) => {
-          const aValue = a.detail?.statistics.exchange ?? a.detail?.config?.exchange ?? '';
-          const bValue = b.detail?.statistics.exchange ?? b.detail?.config?.exchange ?? '';
+          const aValue = a.detail?.statistics.exchange ?? a.detail?.config.exchange ?? '';
+          const bValue = b.detail?.statistics.exchange ?? b.detail?.config.exchange ?? '';
           return aValue.localeCompare(bValue, 'ru', { sensitivity: 'base' });
         },
-        render: (_metrics, record) => record.detail?.statistics.exchange ?? record.detail?.config?.exchange ?? '—',
+        render: (_metrics, record) => record.detail?.statistics.exchange ?? record.detail?.config.exchange ?? '—',
       },
       {
         title: 'Пара',
@@ -754,8 +754,7 @@ const BacktestAggregationPanel = ({
         sorter: buildMetricStringSorter((metrics) => metrics.symbol),
         render: (_metrics, record) => {
           const fallbackSymbol = record.detail?.statistics.symbol;
-          const algorithm =
-            record.detail?.config?.algorithm ?? record.detail?.statistics.algorithm ?? record.metrics?.name ?? '';
+          const algorithm = record.detail?.config.algorithm ?? record.metrics?.name ?? '';
           return (
             <div>
               <div>{record.metrics?.symbol ?? fallbackSymbol ?? '—'}</div>

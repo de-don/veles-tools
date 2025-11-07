@@ -198,10 +198,10 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
     void startSync();
   }, [startSync]);
 
-  const syncReady = !backtestsLoading && !isSyncRunning && !autoSyncPending;
+  const syncReady = !(backtestsLoading || isSyncRunning || autoSyncPending);
   const totalRemote = syncSnapshot?.totalRemote ?? null;
   const syncProgressPercent = useMemo(() => {
-    if (!isSyncRunning && !autoSyncPending) {
+    if (!(isSyncRunning || autoSyncPending)) {
       return null;
     }
     const processed = syncSnapshot?.processed ?? 0;

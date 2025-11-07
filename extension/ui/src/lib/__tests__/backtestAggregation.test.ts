@@ -109,13 +109,9 @@ function buildDefaultSettings(): BotSettingsDto {
 const buildDetail = ({
   stats,
   config,
-  symbols,
-  includePosition,
 }: {
   stats?: Partial<BacktestStatisticsDto>;
   config?: Partial<BacktestConfigDto>;
-  symbols?: string[] | null;
-  includePosition?: boolean | null;
 } = {}): BacktestDetail => {
   const resolvedConfig: BacktestConfigDto = {
     ...baseConfig,

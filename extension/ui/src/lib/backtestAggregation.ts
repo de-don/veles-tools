@@ -425,7 +425,7 @@ const computeCoverage = (
 };
 
 const markActiveRange = (set: Set<number>, startMs: number | null, endMs: number | null) => {
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+  if (!(Number.isFinite(startMs) && Number.isFinite(endMs))) {
     return;
   }
   const start = Number(startMs);
@@ -552,8 +552,7 @@ export const computeBacktestMetrics = (detail: BacktestDetail, cycles: BacktestC
     } satisfies OpenPositionRisk;
     const intervalEnd = Number(interval.end);
     if (
-      !latestOpenPosition ||
-      !Number.isFinite(latestOpenPositionEnd) ||
+      !(latestOpenPosition && Number.isFinite(latestOpenPositionEnd)) ||
       (Number.isFinite(intervalEnd) && intervalEnd >= latestOpenPositionEnd)
     ) {
       latestOpenPosition = position;
@@ -797,7 +796,7 @@ const buildRiskEventsFromMetrics = (metricsList: BacktestAggregationMetrics[]): 
       const start = Number(interval.start);
       const end = Number(interval.end);
       const value = Number(interval.value);
-      if (!Number.isFinite(start) || !Number.isFinite(end) || end < start || !Number.isFinite(value) || value <= 0) {
+      if (!(Number.isFinite(start) && Number.isFinite(end)) || end < start || !Number.isFinite(value) || value <= 0) {
         return;
       }
       events.push({ time: start, delta: value, type: 'start' });
@@ -945,7 +944,7 @@ const computeNoTradeInfo = (metricsList: BacktestAggregationMetrics[]): { totalD
     }
   });
 
-  if (!Number.isFinite(minDay) || !Number.isFinite(maxDay) || maxDay < minDay) {
+  if (!(Number.isFinite(minDay) && Number.isFinite(maxDay)) || maxDay < minDay) {
     return { totalDays: 0, noTradeDays: 0 };
   }
 
@@ -995,7 +994,7 @@ const computeConcurrency = (metricsList: BacktestAggregationMetrics[]): Concurre
     });
   });
 
-  if (!Number.isFinite(minSpanStart) || !Number.isFinite(maxSpanEnd) || maxSpanEnd <= minSpanStart) {
+  if (!(Number.isFinite(minSpanStart) && Number.isFinite(maxSpanEnd)) || maxSpanEnd <= minSpanStart) {
     if (events.length === 0) {
       return { max: 0, average: 0, totalSpanMs: 0, zeroSpanMs: 0 };
     }
@@ -1154,7 +1153,7 @@ const computeDailyConcurrencyFromEvents = (events: ConcurrencyEvent[]): DailyCon
   let previousTime = events[0].time;
 
   const accumulate = (start: number, end: number, count: number) => {
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || count <= 0) {
+    if (!(Number.isFinite(start) && Number.isFinite(end)) || end <= start || count <= 0) {
       return;
     }
     let segmentStart = start;
@@ -1266,7 +1265,7 @@ const toNormalizedTrades = (trades: AggregationTrade[]): NormalizedTrade[] => {
     .map((trade) => {
       const start = Number(trade.start);
       const end = Number(trade.end);
-      if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      if (!(Number.isFinite(start) && Number.isFinite(end))) {
         return null;
       }
       const normalizedEnd = end < start ? start : end;
@@ -1583,7 +1582,7 @@ const buildRiskEventsFromTrades = (trades: NormalizedTrade[]): RiskEvent[] => {
     const start = Number(trade.start);
     const end = Number(trade.end);
     const mae = Math.max(0, Number(trade.mae));
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start || mae <= 0) {
+    if (!(Number.isFinite(start) && Number.isFinite(end)) || end < start || mae <= 0) {
       return;
     }
     events.push({ time: start, delta: mae, type: 'start' });
@@ -1671,7 +1670,7 @@ const computeConcurrencyFromTrades = (trades: NormalizedTrade[]): ConcurrencyRes
     }
   });
 
-  if (!Number.isFinite(minSpanStart) || !Number.isFinite(maxSpanEnd) || maxSpanEnd <= minSpanStart) {
+  if (!(Number.isFinite(minSpanStart) && Number.isFinite(maxSpanEnd)) || maxSpanEnd <= minSpanStart) {
     return { max: 0, average: 0, totalSpanMs: 0, zeroSpanMs: 0 };
   }
 

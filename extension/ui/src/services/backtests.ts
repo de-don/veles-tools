@@ -57,7 +57,7 @@ export const getBacktestDetail = async (
 ): Promise<BacktestDetail> => {
   const { ignoreCache = false, forceRefresh = false } = options;
 
-  if (!ignoreCache && !forceRefresh) {
+  if (!(ignoreCache || forceRefresh)) {
     const cached = await storageReadCachedDetail(id);
     if (cached) {
       return cached;
@@ -96,7 +96,7 @@ export const getBacktestCycles = async (id: number, params: BacktestCyclesReques
   const to = params.to ?? null;
   const pageSize = Math.max(params.pageSize ?? DEFAULT_CYCLES_PAGE_SIZE, 1);
 
-  if (!ignoreCache && !forceRefresh) {
+  if (!(ignoreCache || forceRefresh)) {
     const cached = await storageReadCachedCycles(id, { from, to, pageSize });
     if (cached) {
       return cached;

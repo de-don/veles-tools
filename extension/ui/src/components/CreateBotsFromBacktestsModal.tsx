@@ -86,7 +86,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
     }
 
     const firstDetail = targets[0]?.detail;
-    const depositConfig = firstDetail?.config?.deposit ?? null;
+    const depositConfig = firstDetail?.config.deposit ?? null;
     if (depositConfig) {
       const { amount, leverage, marginType: detailMargin } = depositConfig;
       if (amount !== null && amount !== undefined) {
@@ -165,12 +165,12 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
     let failed = 0;
 
     const resolveName = (detail: BacktestDetail) => {
-      const configName = detail.config?.name;
-      if (typeof configName === 'string' && configName.trim().length > 0) {
+      const configName = detail.config.name;
+      if (configName.trim().length > 0) {
         return configName.trim();
       }
       const statsName = detail.statistics.name;
-      if (typeof statsName === 'string' && statsName.trim().length > 0) {
+      if (statsName.trim().length > 0) {
         return statsName.trim();
       }
       return `Backtest ${detail.statistics.id}`;
@@ -189,7 +189,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         appendLog('success', `✅ Бот создан (ID: ${botId}).`);
         succeeded += 1;
 
-        if (autoStart && typeof botId === 'number') {
+        if (autoStart) {
           try {
             await startBot(botId);
             appendLog('success', `🚀 Бот ${botId} запущен.`);

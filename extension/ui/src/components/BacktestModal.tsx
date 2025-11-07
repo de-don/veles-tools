@@ -102,7 +102,7 @@ const normalizeDateInput = (value: string): { year: number; month: number; day: 
   const year = Number(yearPart);
   const month = Number(monthPart);
   const day = Number(dayPart);
-  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+  if (!(Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day))) {
     throw new Error('Некорректный формат даты.');
   }
   return { year, month, day };
@@ -146,12 +146,12 @@ const periodPresets = [
 ];
 
 const descriptorFromPair = (pair: BotStrategy['pair']): SymbolDescriptor | null => {
-  if (!pair?.from || !pair.to) {
+  if (!(pair?.from && pair.to)) {
     return null;
   }
   const base = pair.from.trim().toUpperCase();
   const quote = pair.to.trim().toUpperCase();
-  if (!base || !quote) {
+  if (!(base && quote)) {
     return null;
   }
   const pairCode = pair.symbol ? pair.symbol.trim().toUpperCase() : `${base}${quote}`;
@@ -172,7 +172,7 @@ const descriptorFromSymbol = (symbol: string | null | undefined): SymbolDescript
     return null;
   }
   const [base, quote] = trimmed.split('/').map((part) => part.trim().toUpperCase());
-  if (!base || !quote) {
+  if (!(base && quote)) {
     return null;
   }
   return {

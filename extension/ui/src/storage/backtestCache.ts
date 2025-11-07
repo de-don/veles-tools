@@ -108,7 +108,7 @@ const readDetailFromMemory = (id: number): CachedBacktestDetailRecord | null => 
 };
 
 const upgradeLegacyRecord = (legacy: LegacyBacktestDetailRecord): CachedBacktestDetailRecord | null => {
-  if (!legacy.statistics || !legacy.config) {
+  if (!(legacy.statistics && legacy.config)) {
     return null;
   }
   const detail = mapDetailFromDto(legacy.statistics, legacy.config);
