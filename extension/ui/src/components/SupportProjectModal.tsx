@@ -1,5 +1,5 @@
 import { CopyOutlined } from '@ant-design/icons';
-import { Button, Modal, Tooltip, message } from 'antd';
+import { Button, Modal, message, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Tabs, { type TabItem } from './ui/Tabs';
 
@@ -53,8 +53,7 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
         content: (
           <div className="support-modal__tab">
             <p>
-              Напишите на{' '}
-              <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+              Напишите на <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               <Tooltip title="Скопировать email">
                 <Button
                   type="text"
