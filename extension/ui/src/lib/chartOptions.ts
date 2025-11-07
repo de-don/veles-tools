@@ -5,7 +5,7 @@ import type {
   DailyConcurrencyStats,
   PortfolioEquityGroupedSeriesItem,
   PortfolioEquitySeries,
-} from './backtestAggregation';
+} from './deprecatedFile';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
@@ -122,11 +122,15 @@ const disableWheelInteraction = <T extends DataZoomComponentOption>(option: T): 
   } as T;
 };
 
-const buildDataZoomComponents = (range?: DataZoomRange): DataZoomComponentOption[] => {
+const buildDataZoomComponents = (
+  range?: DataZoomRange,
+  filterMode: DataZoomComponentOption['filterMode'] = 'none',
+): DataZoomComponentOption[] => {
   const insideZoom = applyRange(
     disableWheelInteraction({
       type: 'inside',
       throttle: 30,
+      filterMode,
     }),
     range,
   );
@@ -135,6 +139,7 @@ const buildDataZoomComponents = (range?: DataZoomRange): DataZoomComponentOption
     disableWheelInteraction({
       type: 'slider',
       bottom: 40,
+      filterMode,
     }),
     range,
   );
@@ -147,6 +152,7 @@ export const createPortfolioEquityChartOptions = (
   range?: DataZoomRange,
   groupedSeries?: PortfolioEquityGroupedSeriesItem[],
   legendSelection?: Record<string, boolean>,
+  filterMode: DataZoomComponentOption['filterMode'] = 'none',
 ): EChartsOption => {
   if (groupedSeries && groupedSeries.length > 0) {
     const lineSeries: LineSeriesOption[] = groupedSeries.map((group) => ({
@@ -200,7 +206,7 @@ export const createPortfolioEquityChartOptions = (
           },
         },
       },
-      dataZoom: buildDataZoomComponents(range),
+      dataZoom: buildDataZoomComponents(range, filterMode),
       series: lineSeries,
     } satisfies EChartsOption;
   }
@@ -309,12 +315,16 @@ export const createPortfolioEquityChartOptions = (
         },
       },
     },
-    dataZoom: buildDataZoomComponents(range),
+    dataZoom: buildDataZoomComponents(range, filterMode),
     series: [positiveAreaSeries, negativeAreaSeries, equitySeries],
   } satisfies EChartsOption;
 };
 
-export const createAggregateRiskChartOptions = (series: AggregateRiskSeries, range?: DataZoomRange): EChartsOption => {
+export const createAggregateRiskChartOptions = (
+  series: AggregateRiskSeries,
+  range?: DataZoomRange,
+  filterMode: DataZoomComponentOption['filterMode'] = 'none',
+): EChartsOption => {
   const riskData = series.points.map((point) => [point.time, point.value]);
 
   const riskSeries: LineSeriesOption = {
@@ -387,7 +397,7 @@ export const createAggregateRiskChartOptions = (series: AggregateRiskSeries, ran
         lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
       },
     },
-    dataZoom: buildDataZoomComponents(range),
+    dataZoom: buildDataZoomComponents(range, filterMode),
     series: [riskSeries],
   } satisfies EChartsOption;
 };
@@ -592,6 +602,8 @@ const buildConcurrencyMarkLine = (stats?: DailyConcurrencyStats): BarSeriesOptio
 export const createDailyConcurrencyChartOptions = (
   records: DailyConcurrencyRecord[],
   stats?: DailyConcurrencyStats,
+  range?: DataZoomRange,
+  filterMode: DataZoomComponentOption['filterMode'] = 'none',
 ): EChartsOption => {
   const chartData = records.map((record) => [record.dayStartMs, record.maxCount]);
 
@@ -644,7 +656,7 @@ export const createDailyConcurrencyChartOptions = (
         },
       },
     },
-    dataZoom: buildDataZoomComponents(),
+    dataZoom: buildDataZoomComponents(range, filterMode),
     series: [barSeries],
   } satisfies EChartsOption;
 };

@@ -1,7 +1,7 @@
 import { type DealHistorySnapshot, isDealHistorySnapshot } from '../lib/activeDealsHistory';
 import { type ActiveDealsZoomPreset, isActiveDealsZoomPreset } from '../lib/activeDealsZoom';
-import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import type { DataZoomRange } from '../lib/chartOptions';
+import type { PortfolioEquitySeries } from '../lib/deprecatedFile';
 import { readStorageValue, removeStorageValue, writeStorageValue } from '../lib/safeStorage';
 import type { ActiveDeal } from '../types/activeDeals';
 

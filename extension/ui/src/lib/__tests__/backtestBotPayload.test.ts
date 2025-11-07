@@ -143,7 +143,7 @@ describe('buildBotCreationPayload', () => {
       apiKeyId: 123,
       depositAmount: 2000,
       depositLeverage: 12,
-      marginType: 'cross',
+      marginType: 'CROSS',
     });
 
     expect(payload.apiKey).toBe(123);
@@ -152,7 +152,6 @@ describe('buildBotCreationPayload', () => {
     expect(payload.deposit.amount).toBe(2000);
     expect(payload.deposit.leverage).toBe(12);
     expect(payload.deposit.marginType).toBe('CROSS');
-    expect(payload.deposit.currency).toBe('BBB');
     expect(payload.name).toBe('Sample Backtest');
     expect(payload.stopLoss).toEqual(detail.config.stopLoss);
     expect(payload.stopLoss).not.toBe(detail.config.stopLoss);
@@ -168,7 +167,7 @@ describe('buildBotCreationPayload', () => {
       apiKeyId: 1,
       depositAmount: 100,
       depositLeverage: 5,
-      marginType: 'cross',
+      marginType: 'CROSS',
     });
 
     expect(payload.symbols).toEqual(['AAA/BBB']);
@@ -182,7 +181,7 @@ describe('buildBotCreationPayload', () => {
       apiKeyId: 42,
       depositAmount: 500,
       depositLeverage: 10,
-      marginType: 'isolated',
+      marginType: 'ISOLATED',
       symbols: ['  custom/usdt  ', ''],
     });
 

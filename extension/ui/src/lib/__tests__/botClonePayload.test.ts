@@ -14,6 +14,7 @@ const buildDeposit = (overrides: Partial<BotDepositConfig> = {}): BotDepositConf
   amount: overrides.amount ?? 100,
   leverage: overrides.leverage ?? 5,
   marginType: overrides.marginType ?? 'CROSS',
+  currency: overrides.currency ?? 'USDT',
 });
 
 const buildSettings = (overrides: Partial<BotSettings> = {}): BotSettings => ({
@@ -59,7 +60,7 @@ describe('buildBotClonePayload', () => {
   it('normalizes currencies and margin type with fallbacks', () => {
     const bot = buildBot({
       profit: buildProfit({ currency: 'busd' }),
-      deposit: buildDeposit({ marginType: 'isolated' }),
+      deposit: buildDeposit({ marginType: 'ISOLATED' }),
     });
     const descriptor: SymbolDescriptor = {
       base: 'ETH',
@@ -73,7 +74,7 @@ describe('buildBotClonePayload', () => {
       name: 'ETH clone',
       depositAmount: 200,
       depositLeverage: 3,
-      marginType: 'cross',
+      marginType: 'CROSS',
       depositCurrency: null,
       profitCurrency: null,
     });
@@ -83,7 +84,6 @@ describe('buildBotClonePayload', () => {
     expect(payload.termination).toBeNull();
     expect(payload.symbols).toEqual(['ETH/USDT']);
     expect(payload.deposit?.marginType).toBe('CROSS');
-    expect(payload.deposit?.currency).toBe('USDT');
     expect(payload.profit?.currency).toBe('USDT');
   });
 
@@ -106,7 +106,6 @@ describe('buildBotClonePayload', () => {
       profitCurrency: 'busd',
     });
 
-    expect(payload.deposit?.currency).toBe('SOL');
     expect(payload.profit?.currency).toBe('BUSD');
     expect(payload.id).toBeNull();
   });

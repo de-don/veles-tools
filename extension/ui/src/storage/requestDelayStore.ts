@@ -2,7 +2,7 @@ import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
 
 const STORAGE_KEY = 'veles-request-delay-ms-v1';
 
-export const DEFAULT_REQUEST_DELAY_MS = 400;
+export const DEFAULT_REQUEST_DELAY_MS = 500;
 
 const sanitizeDelayValue = (value: number): number => {
   if (!Number.isFinite(value)) {

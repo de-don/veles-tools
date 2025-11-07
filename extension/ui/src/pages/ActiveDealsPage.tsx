@@ -1,10 +1,11 @@
-import { Button, message, Popconfirm, Segmented, Space, Switch, Table } from 'antd';
+import { Button, Card, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { Sparkline } from '../components/charts/Sparkline';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
+import PageHeader from '../components/ui/PageHeader';
 import { StatisticCard } from '../components/ui/StatisticCard';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
@@ -16,9 +17,9 @@ import {
   areZoomRangesEqual,
   calculateZoomRangeForPreset,
 } from '../lib/activeDealsZoom';
-import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
 import type { DataZoomRange } from '../lib/chartOptions';
+import type { PortfolioEquitySeries } from '../lib/deprecatedFile';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { ActiveDeal } from '../types/activeDeals';
@@ -145,6 +146,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   } = useActiveDeals();
 
   const [closingDealId, setClosingDealId] = useState<number | null>(null);
+  const [apiKeyFilter, setApiKeyFilter] = useState<number[]>([]);
   const [messageApi, messageContextHolder] = message.useMessage();
 
   const seriesRef = useRef<PortfolioEquitySeries>(pnlSeries);
@@ -268,6 +270,38 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   }, [dealsState.lastUpdated]);
 
   const positions = dealsState.positions;
+
+  const uniqueApiKeyIds = useMemo(() => {
+    const ids = new Set<number>();
+    positions.forEach((position) => {
+      ids.add(position.deal.apiKeyId);
+    });
+    return ids;
+  }, [positions]);
+
+  useEffect(() => {
+    setApiKeyFilter((prev) => prev.filter((id) => uniqueApiKeyIds.has(id)));
+  }, [uniqueApiKeyIds]);
+
+  const apiKeyOptions = useMemo(() => {
+    return Array.from(uniqueApiKeyIds)
+      .sort((a, b) => a - b)
+      .map((id) => {
+        const apiKey = apiKeysById.get(id);
+        const name = (apiKey?.name ?? '').trim();
+        const exchange = apiKey?.exchange ?? '';
+        const label = name || `API ключ ${id}${exchange ? ` · ${exchange}` : ''}`;
+        return { value: id, label };
+      });
+  }, [apiKeysById, uniqueApiKeyIds]);
+
+  const filteredPositions = useMemo(() => {
+    if (apiKeyFilter.length === 0) {
+      return positions;
+    }
+    const allow = new Set(apiKeyFilter);
+    return positions.filter((position) => allow.has(position.deal.apiKeyId));
+  }, [apiKeyFilter, positions]);
   const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
   const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
 
@@ -522,12 +556,25 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     <>
       {messageContextHolder}
       <section className="page">
-        <header className="page__header">
-          <h1 className="page__title">Активные сделки</h1>
-          <p className="page__subtitle">
-            Сводка открытых позиций с автоматическим обновлением и агрегированным P&amp;L.
-          </p>
-        </header>
+        <PageHeader
+          title="Активные сделки"
+          description="Сводка открытых позиций с автоматическим обновлением и агрегированным P&amp;L."
+          extra={
+            <select
+              className="select"
+              value={refreshInterval}
+              onChange={onRefreshIntervalChange}
+              aria-label="Интервал обновления"
+            >
+              {ACTIVE_DEALS_REFRESH_INTERVALS.map((interval) => (
+                <option key={interval} value={interval}>
+                  {interval} сек
+                </option>
+              ))}
+            </select>
+          }
+          className="page__header"
+        ></PageHeader>
 
         {!extensionReady && (
           <div className="banner banner--warning">
@@ -536,28 +583,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           </div>
         )}
 
-        <div className="panel">
-          <div className="panel__header">
-            <div>
-              <h2 className="panel__title">Мониторинг сделок</h2>
-              <p className="panel__description">Текущие агрегированные показатели портфеля.</p>
-            </div>
-            <div className="panel__actions">
-              <select
-                className="select"
-                value={refreshInterval}
-                onChange={onRefreshIntervalChange}
-                aria-label="Интервал обновления"
-              >
-                {ACTIVE_DEALS_REFRESH_INTERVALS.map((interval) => (
-                  <option key={interval} value={interval}>
-                    {interval} сек
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
+        <Card title="Основные показатели" bordered>
           <div className="aggregation-summary">
             <StatisticCard
               title="Суммарный P&L"
@@ -611,17 +637,14 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
             />
             <StatisticCard title="Обновлено" value={lastUpdatedLabel} trend="muted" />
           </div>
-        </div>
+        </Card>
 
-        <div className="panel">
-          <div className="panel__header">
-            <div>
-              <h2 className="panel__title">Динамика агрегированного P&amp;L</h2>
-              <p className="panel__description">
-                На графике отображается история суммарного результата портфеля с выбранным интервалом обновления.
-                История накапливается только когда вкладка с расширением открыта.
-              </p>
-            </div>
+        <Card title="Динамика агрегированного P&amp;L" bordered>
+          <div className="panel__header" style={{ paddingBottom: 12 }}>
+            <p className="panel__description">
+              На графике отображается история суммарного результата портфеля с выбранным интервалом обновления. История
+              накапливается только когда вкладка с расширением открыта.
+            </p>
             <div
               className="panel__actions"
               style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', width: '100%' }}
@@ -660,17 +683,35 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 groupedSeries={chartGroupedSeries}
                 legendSelection={legendSelection}
                 onLegendSelectionChange={handleLegendSelectionChange}
+                filterVisibleRange
               />
             )}
           </div>
-        </div>
+        </Card>
 
-        <div className="panel">
-          <div className="panel__header">
-            <div>
-              <h2 className="panel__title">Список сделок</h2>
-            </div>
-            <div className="panel__actions">
+        <Card title="Список сделок">
+          <div className="panel__header" style={{ paddingBottom: 12 }}>
+            <div
+              className="panel__actions"
+              style={{
+                display: 'flex',
+                gap: 12,
+                width: '100%',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="Все API ключи"
+                style={{ minWidth: 240 }}
+                options={apiKeyOptions}
+                value={apiKeyFilter}
+                onChange={(values) => setApiKeyFilter((values as number[]) ?? [])}
+                maxTagCount="responsive"
+              />
               <TableColumnSettingsButton
                 settings={dealsColumnSettings}
                 moveColumn={moveDealsColumn}
@@ -688,7 +729,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           <div className="table-container">
             <Table<ActiveDealMetrics>
               columns={visibleDealsColumns}
-              dataSource={positions}
+              dataSource={filteredPositions}
               rowKey={(record) => record.deal.id}
               pagination={false}
               loading={loading}
@@ -696,7 +737,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               scroll={{ x: 'max-content' }}
             />
           </div>
-        </div>
+        </Card>
       </section>
     </>
   );

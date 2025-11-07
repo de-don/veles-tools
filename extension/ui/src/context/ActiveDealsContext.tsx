@@ -15,6 +15,7 @@ import { fetchApiKeys } from '../api/apiKeys';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
 import {
+  ACTIVE_DEALS_HISTORY_RETENTION_MS,
   clampDealHistory,
   DEAL_HISTORY_LIMIT,
   DEAL_HISTORY_WINDOW_MS,
@@ -26,8 +27,8 @@ import {
 } from '../lib/activeDealsHistory';
 import { type ActiveDealsRefreshInterval, DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
 import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
-import type { PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../lib/backtestAggregation';
 import type { DataZoomRange } from '../lib/chartOptions';
+import type { PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../lib/deprecatedFile';
 import {
   type ActiveDealsPreferences,
   readActiveDealsPreferences,
@@ -55,6 +56,30 @@ const createEmptySeries = (): PortfolioEquitySeries => ({
   maxValue: 0,
 });
 
+const buildSeriesFromPoints = (points: PortfolioEquitySeries['points']): PortfolioEquitySeries => {
+  if (points.length === 0) {
+    return createEmptySeries();
+  }
+  const values = points.map((point) => point.value);
+  return {
+    points,
+    minValue: Math.min(...values),
+    maxValue: Math.max(...values),
+  };
+};
+
+const trimSeriesHistory = (series: PortfolioEquitySeries, referenceTimestamp: number): PortfolioEquitySeries => {
+  if (!(ACTIVE_DEALS_HISTORY_RETENTION_MS > 0) || series.points.length === 0) {
+    return series;
+  }
+  const threshold = referenceTimestamp - ACTIVE_DEALS_HISTORY_RETENTION_MS;
+  const retainedPoints = series.points.filter((point) => point.time >= threshold);
+  if (retainedPoints.length === series.points.length) {
+    return series;
+  }
+  return buildSeriesFromPoints(retainedPoints);
+};
+
 type GroupedSeriesMap = Map<number, PortfolioEquitySeries>;
 type ApiKeyMap = Map<number, ApiKey>;
 
@@ -76,14 +101,10 @@ const buildSeriesWithPoint = (
   timestamp: number,
 ): PortfolioEquitySeries => {
   const base = current ?? createEmptySeries();
-  const nextPoints = [...base.points, { time: timestamp, value }];
-  if (nextPoints.length === 0) {
-    return createEmptySeries();
-  }
-  const values = nextPoints.map((point) => point.value);
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
-  return { points: nextPoints, minValue, maxValue };
+  const threshold = ACTIVE_DEALS_HISTORY_RETENTION_MS > 0 ? timestamp - ACTIVE_DEALS_HISTORY_RETENTION_MS : null;
+  const retainedPoints = threshold === null ? base.points : base.points.filter((point) => point.time >= threshold);
+  const nextPoints = [...retainedPoints, { time: timestamp, value }];
+  return buildSeriesFromPoints(nextPoints);
 };
 
 const composeGroupedSeries = (
@@ -413,15 +434,17 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     }
 
     const aggregation = aggregateDeals(snapshot.deals);
-    seriesRef.current = snapshot.series;
-    setPnlSeries(snapshot.series);
+    const now = Date.now();
+    const normalizedSeries = trimSeriesHistory(snapshot.series, now);
+    seriesRef.current = normalizedSeries;
+    setPnlSeries(normalizedSeries);
 
     const restoredGrouped: GroupedSeriesMap = new Map();
     if (snapshot.groupedSeries) {
       Object.entries(snapshot.groupedSeries).forEach(([rawKey, value]) => {
         const apiKeyId = Number.parseInt(rawKey, 10);
         if (Number.isFinite(apiKeyId)) {
-          restoredGrouped.set(apiKeyId, value);
+          restoredGrouped.set(apiKeyId, trimSeriesHistory(value, now));
         }
       });
     }
@@ -482,6 +505,15 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
           Array.from(groupedSeriesRef.current.entries()).map(([apiKeyId, series]) => [String(apiKeyId), series]),
         )
       : undefined;
+
+    const activeDealIds = new Set<number>(dealsState.positions.map((position) => position.deal.id));
+    const activeHistory: DealHistoryMap = new Map();
+    positionHistory.forEach((points, dealId) => {
+      if (activeDealIds.has(dealId)) {
+        activeHistory.set(dealId, points);
+      }
+    });
+
     writeActiveDealsSnapshot({
       deals: dealsState.rawDeals,
       series: seriesRef.current,
@@ -490,9 +522,9 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       zoomPreset,
       lastUpdated: dealsState.lastUpdated,
       storedAt: Date.now(),
-      positionHistory: mapHistoryToSnapshot(positionHistory),
+      positionHistory: mapHistoryToSnapshot(activeHistory),
     });
-  }, [dealsState.rawDeals, dealsState.lastUpdated, zoomRange, zoomPreset, positionHistory]);
+  }, [dealsState.positions, dealsState.rawDeals, dealsState.lastUpdated, zoomRange, zoomPreset, positionHistory]);
 
   const updateRefreshInterval = useCallback((interval: ActiveDealsRefreshInterval) => {
     setRefreshIntervalState(interval);

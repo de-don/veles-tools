@@ -7,7 +7,7 @@ import { buildBotClonePayload } from '../../lib/botClonePayload';
 import { applyBotNameTemplate } from '../../lib/nameTemplate';
 import { parseNumericInput } from '../../lib/numericInput';
 import type { ApiKey } from '../../types/apiKeys';
-import type { TradingBot } from '../../types/bots';
+import type { BotDepositConfig, TradingBot } from '../../types/bots';
 
 interface CloneBotsModalProps {
   open: boolean;
@@ -39,15 +39,15 @@ const normalizeNumberValue = (value: number | string | null | undefined): string
   return '';
 };
 
-const normalizeMarginType = (value: string | null | undefined): string | null => {
+const normalizeMarginType = (value: string | null | undefined): BotDepositConfig['marginType'] | null => {
   if (typeof value !== 'string') {
     return null;
   }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
+  const trimmed = value.trim().toUpperCase();
+  if (trimmed === 'ISOLATED' || trimmed === 'CROSS') {
+    return trimmed;
   }
-  return trimmed.toUpperCase();
+  return null;
 };
 
 const resolveQuoteCurrency = (bot: TradingBot | undefined): string | null => {
@@ -84,7 +84,7 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
 
   const defaultDepositCurrency = useMemo(() => resolveQuoteCurrency(bots[0]), [bots]);
 
-  const defaultMarginType = useMemo(() => normalizeMarginType(bots[0]?.deposit?.marginType ?? null), [bots]);
+  const defaultMarginType = useMemo(() => normalizeMarginType(bots[0]?.deposit.marginType ?? null), [bots]);
 
   const percent = useMemo(() => {
     if (!totalBots) {
@@ -103,11 +103,18 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
       return;
     }
 
-    const firstApiKey = apiKeys[0]?.id ?? null;
-    setApiKeyId((prev) => prev ?? firstApiKey);
+    const firstBot = bots.at(0);
+    if (firstBot) {
+      setApiKeyId(firstBot.apiKey);
+      setDepositAmount(normalizeNumberValue(firstBot.deposit.amount ?? null));
+      setDepositLeverage(normalizeNumberValue(firstBot.deposit.leverage ?? null));
+    } else {
+      setApiKeyId(apiKeys.at(0)?.id ?? null);
+      setDepositAmount(normalizeNumberValue(null));
+      setDepositLeverage(normalizeNumberValue(null));
+    }
+
     setNameTemplate(DEFAULT_TEMPLATE);
-    setDepositAmount(normalizeNumberValue(bots[0]?.deposit?.amount ?? null));
-    setDepositLeverage(normalizeNumberValue(bots[0]?.deposit?.leverage ?? null));
     setAssetList('');
     setLogs([]);
     setIsRunning(false);

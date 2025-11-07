@@ -45,8 +45,8 @@ export interface TradingBot
   algorithm: BotAlgorithm;
   status: BotStatus;
   profit: BotProfitConfig | null;
-  deposit: BotDepositConfig | null;
-  settings: BotSettings | null;
+  deposit: BotDepositConfig;
+  settings: BotSettings;
   conditions: StrategyConditionDto[] | null;
   stopLoss: BotStopLossConfig | null;
 }

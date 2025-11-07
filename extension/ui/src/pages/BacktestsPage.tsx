@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Button, Modal, message, Table, Typography } from 'antd';
+import { Button, Card, Modal, message, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { ChangeEvent } from 'react';
@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import AddToBacktestGroupModal from '../components/backtests/AddToBacktestGroupModal';
 import { buildBacktestColumns } from '../components/backtests/backtestTableColumns';
 import SaveBacktestGroupModal from '../components/backtests/SaveBacktestGroupModal';
+import PageHeader from '../components/ui/PageHeader';
 import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
@@ -47,8 +48,7 @@ const getBacktestsNoun = (count: number): string => {
 };
 
 const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
-  const { backtests, backtestsLoading, localCount, syncSnapshot, isSyncRunning, startSync, autoSyncPending } =
-    useBacktestsSync();
+  const { backtests, backtestsLoading, localCount, isSyncRunning, startSync, autoSyncPending } = useBacktestsSync();
 
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
@@ -199,17 +199,6 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
   }, [startSync]);
 
   const syncReady = !(backtestsLoading || isSyncRunning || autoSyncPending);
-  const totalRemote = syncSnapshot?.totalRemote ?? null;
-  const syncProgressPercent = useMemo(() => {
-    if (!(isSyncRunning || autoSyncPending)) {
-      return null;
-    }
-    const processed = syncSnapshot?.processed ?? 0;
-    const numerator = Math.max(processed, localCount);
-    const denominator = totalRemote && totalRemote > 0 ? totalRemote : Math.max(numerator, 1);
-    const percent = Math.round((numerator / denominator) * 100);
-    return Math.min(Math.max(percent, 0), 100);
-  }, [isSyncRunning, autoSyncPending, syncSnapshot?.processed, localCount, totalRemote]);
 
   const handleTableChange = useCallback<NonNullable<TableProps<BacktestStatistics>['onChange']>>(
     (pagination) => {
@@ -260,13 +249,15 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
   return (
     <section className="page">
       {messageContextHolder}
-      <header className="page__header">
-        <h1 className="page__title">Бэктесты</h1>
-        <p className="page__subtitle">
-          Журнал завершённых бэктестов с ключевыми метриками, пагинацией и возможностью выбирать результаты для
-          дальнейшей обработки.
-        </p>
-      </header>
+      <PageHeader
+        title="Бэктесты"
+        description={`Локально сохранено: ${formatCountValue(localCount)}`}
+        extra={
+          <Button type="primary" onClick={handleManualSync} loading={isSyncRunning} disabled={backtestsLoading}>
+            Синхронизировать
+          </Button>
+        }
+      />
 
       {!extensionReady && (
         <div className="banner banner--warning">
@@ -274,55 +265,15 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
         </div>
       )}
 
-      <div className="panel">
-        <div className="panel__header">
-          <div>
-            <h2 className="panel__title">Синхронизация бэктестов</h2>
-            <p className="panel__description">
-              Локальная копия позволяет анализировать результаты без ограничений API.
-            </p>
-          </div>
-          <Button type="primary" onClick={handleManualSync} loading={isSyncRunning} disabled={backtestsLoading}>
-            Синхронизировать
-          </Button>
-        </div>
-        <div className="panel__body" style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <div className="panel__description" style={{ marginBottom: 4 }}>
-              Локально сохранено
-            </div>
-            <div style={{ fontWeight: 600 }}>{formatCountValue(localCount)}</div>
-          </div>
-        </div>
-        {syncSnapshot?.status === 'error' && syncSnapshot.error && (
-          <div className="panel__description" style={{ marginTop: 8, color: '#ef4444' }}>
-            Ошибка синхронизации: {syncSnapshot.error}
-          </div>
-        )}
-        {(isSyncRunning || autoSyncPending) && (
-          <div className="run-log" style={{ marginTop: 12 }}>
-            <div className="run-log__progress">
-              <span>
-                Обработано {formatCountValue(syncSnapshot?.processed ?? 0)}
-                {totalRemote && totalRemote > 0 ? ` из ${formatCountValue(totalRemote)}` : ''}
-              </span>
-              <div className="progress-bar">
-                <div className="progress-bar__fill" style={{ width: `${syncProgressPercent ?? 0}%` }} />
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
       {!syncReady && (
-        <div className="panel">
+        <Card>
           <div className="panel__body">Синхронизируем локальную базу бэктестов…</div>
-        </div>
+        </Card>
       )}
 
       {syncReady && (
         <>
-          <div className="panel">
+          <Card>
             <div className="panel__section">
               <div
                 className="panel__actions"
@@ -397,7 +348,7 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
                 />
               </div>
             </div>
-          </div>
+          </Card>
 
           <SaveBacktestGroupModal
             open={saveGroupModalOpen}
