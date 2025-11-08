@@ -1,3 +1,9 @@
+## [1.8.3](https://github.com/de-don/veles-tools/compare/v1.8.2...v1.8.3) (2025-11-08)
+
+### Bug Fixes
+
+* **support:** referral code ([3618383](https://github.com/de-don/veles-tools/commit/36183830da59f3db17947776ccd1f7ca9ccc0662))
+
 ## [1.8.2](https://github.com/de-don/veles-tools/compare/v1.8.1...v1.8.2) (2025-11-06)
 
 ### Bug Fixes
