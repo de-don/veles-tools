@@ -15,7 +15,7 @@ const BINANCE_UID = '64125639';
 const TELEGRAM_URL = 'https://t.me/dontsov';
 
 const SUPPORT_EMAIL = 'support@veles.finance';
-const REFERRAL_ACCOUNT_ID = '388397';
+const REFERRAL_ACCOUNT_ID = '388307';
 const REFERRAL_CODE = 'reg000';
 const REFERRAL_SAMPLE_MESSAGE = `Здравствуйте, прошу прикрепить меня в качестве реферала к аккаунту ${REFERRAL_ACCOUNT_ID} (реф код ${REFERRAL_CODE}). Мой ID XXXXXX`;
 
