@@ -1,3 +1,14 @@
+## [2.0.0](https://github.com/de-don/veles-tools/compare/v1.8.3...v2.0.0) (2025-11-11)
+
+### ⚠ BREAKING CHANGES
+
+* **backtests:** all calculations is updated
+
+### Features
+
+* **active-deals:** add grouping by API key and enhance chart options ([5e08a07](https://github.com/de-don/veles-tools/commit/5e08a07841555cfc268bae2a5ab062d5931ce047))
+* **backtests:** rewrite backtests logic from scratch ([7328c4d](https://github.com/de-don/veles-tools/commit/7328c4d528b1b9e287e219fcc3607dceb6be62c2))
+
 ## [1.8.3](https://github.com/de-don/veles-tools/compare/v1.8.2...v1.8.3) (2025-11-08)
 
 ### Bug Fixes
