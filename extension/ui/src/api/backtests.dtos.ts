@@ -91,7 +91,7 @@ export interface BacktestStatisticsDto {
   mfePercent: number;
   mfeAbsolute: number;
   maePercent: number;
-  maeAbsolute: number;
+  maeAbsolute: number; // Negative value
   commissionBase: number;
   commissionQuote: number;
 }
@@ -105,12 +105,12 @@ export interface BacktestCycleDto {
   symbol: string;
   base: string;
   quote: string;
-  profitQuote: number;
-  profitBase: number;
-  netQuote: number;
+  profitQuote: number | null; // null for cancelled
+  profitBase: number | null; // null for cancelled
+  netQuote: number | null; // null for cancelled
   netBase: number | null;
-  pnl: number;
-  duration: number;
+  pnl: number | null; // null for cancelled
+  duration: number | null; // null for cancelled
   grid: number;
   executedGrid: number;
   profits: number;
@@ -120,8 +120,8 @@ export interface BacktestCycleDto {
   mfeAbsolute: number;
   maePercent: number;
   maeAbsolute: number;
-  commissionBase: number | null;
-  commissionQuote: number | null;
+  commissionBase: number | null; // null for cancelled
+  commissionQuote: number | null; // null for cancelled
   orders: BacktestOrderDto[];
 }
 

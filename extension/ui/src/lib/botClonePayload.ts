@@ -7,14 +7,14 @@ import type {
   BotStopLossConfigDto,
   StrategyConditionDto,
 } from '../api/bots.dtos';
-import type { TradingBot } from '../types/bots';
+import type { BotDepositConfig, TradingBot } from '../types/bots';
 
 export interface BotCloneOverrides {
   apiKeyId: number;
   name: string;
   depositAmount: number;
   depositLeverage: number;
-  marginType: string | null;
+  marginType: BotDepositConfig['marginType'] | null;
   depositCurrency: string | null;
   profitCurrency: string | null;
   symbols?: string[] | null;
@@ -50,31 +50,20 @@ const normalizeCurrency = (value: string | null | undefined, fallback: string | 
   return null;
 };
 
-const normalizeMarginType = (value: string | null | undefined): string | null => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-  return trimmed.toUpperCase();
-};
-
 export const buildBotClonePayload = (
   bot: TradingBot,
   descriptor: SymbolDescriptor,
   overrides: BotCloneOverrides,
 ): CreateBotPayload => {
-  const depositCurrency = normalizeCurrency(overrides.depositCurrency, descriptor.quote);
   const profitCurrency = normalizeCurrency(overrides.profitCurrency, descriptor.quote);
-  const marginType = normalizeMarginType(overrides.marginType ?? bot.deposit?.marginType ?? null);
+  const marginType = overrides.marginType ?? bot.deposit.marginType;
 
   const clonedProfit = bot.profit ? deepClone(bot.profit) : null;
   const normalizedProfitCurrency = profitCurrency ?? descriptor.quote;
   if (clonedProfit) {
     clonedProfit.currency = normalizedProfitCurrency;
   }
+  const normalizedDepositCurrency = normalizeCurrency(overrides.depositCurrency, bot.deposit.currency ?? null);
 
   const clonedConditions: StrategyConditionDto[] = bot.conditions ? deepClone(bot.conditions) : [];
   const clonedStopLoss: BotStopLossConfigDto | null = bot.stopLoss
@@ -85,16 +74,10 @@ export const buildBotClonePayload = (
     amount: overrides.depositAmount,
     leverage: overrides.depositLeverage,
     marginType,
+    currency: normalizedDepositCurrency,
   };
 
-  const resolvedDepositCurrency = depositCurrency ?? descriptor.quote;
-  if (resolvedDepositCurrency) {
-    depositConfig.currency = resolvedDepositCurrency;
-  }
-
-  const settingsPayload: BotSettingsDto | null = bot.settings
-    ? (deepClone(bot.settings) as unknown as BotSettingsDto)
-    : null;
+  const settingsPayload: BotSettingsDto = deepClone(bot.settings);
 
   const profit: BotProfitConfigDto = clonedProfit ?? {
     type: 'ABSOLUTE',

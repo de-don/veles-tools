@@ -25,10 +25,10 @@ export interface BotProfitConfigDto {
 }
 
 export interface BotDepositConfigDto {
-  amount: number | string;
-  leverage: number | string | null;
-  marginType: string | null;
-  currency?: string | null;
+  amount: number;
+  leverage: number;
+  marginType: 'ISOLATED' | 'CROSS';
+  currency: string | null;
 }
 
 export interface BotStopLossConfigDto {

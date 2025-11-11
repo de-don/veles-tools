@@ -1,16 +1,70 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
-import type { DailyConcurrencyRecord, DailyConcurrencyStats } from '../../lib/backtestAggregation';
-import { createDailyConcurrencyChartOptions } from '../../lib/chartOptions';
+import { createDailyConcurrencyChartOptions, type DataZoomRange } from '../../lib/chartOptions';
+import type { DailyConcurrencyRecord, DailyConcurrencyStats } from '../../lib/deprecatedFile';
 
 interface DailyConcurrencyChartProps {
   records: DailyConcurrencyRecord[];
   stats?: DailyConcurrencyStats;
   className?: string;
+  filterVisibleRange?: boolean;
+  dataZoomRange?: DataZoomRange;
+  onDataZoom?: (range: DataZoomRange) => void;
 }
 
-const DailyConcurrencyChartComponent = ({ records, stats, className }: DailyConcurrencyChartProps) => {
-  const option = useMemo(() => createDailyConcurrencyChartOptions(records, stats), [records, stats]);
+interface DataZoomEventParams {
+  start?: number;
+  end?: number;
+  batch?: Array<{ start?: number; end?: number }>;
+}
+
+const clampRangeValue = (value?: number): number | undefined => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 100) {
+    return 100;
+  }
+  return value;
+};
+
+const extractRangeFromEvent = (event: DataZoomEventParams): DataZoomRange => {
+  const payload = event.batch && event.batch.length > 0 ? event.batch[0] : event;
+  return {
+    start: clampRangeValue(payload.start),
+    end: clampRangeValue(payload.end),
+  };
+};
+
+const DailyConcurrencyChartComponent = ({
+  records,
+  stats,
+  className,
+  filterVisibleRange = false,
+  dataZoomRange,
+  onDataZoom,
+}: DailyConcurrencyChartProps) => {
+  const option = useMemo(
+    () => createDailyConcurrencyChartOptions(records, stats, dataZoomRange, filterVisibleRange ? 'filter' : 'none'),
+    [records, stats, dataZoomRange, filterVisibleRange],
+  );
+
+  const onEvents = useMemo(() => {
+    if (!onDataZoom) {
+      return undefined;
+    }
+    return {
+      datazoom: (event: DataZoomEventParams) => {
+        const range = extractRangeFromEvent(event);
+        if (typeof range.start === 'number' || typeof range.end === 'number') {
+          onDataZoom(range);
+        }
+      },
+    } satisfies Record<string, (event: DataZoomEventParams) => void>;
+  }, [onDataZoom]);
 
   return (
     <ReactECharts
@@ -19,6 +73,7 @@ const DailyConcurrencyChartComponent = ({ records, stats, className }: DailyConc
       opts={{ renderer: 'canvas' }}
       notMerge
       option={option}
+      onEvents={onEvents}
     />
   );
 };

@@ -1,8 +1,9 @@
-import { Button, Empty, message, Popconfirm, Table } from 'antd';
+import { Button, Card, Empty, message, Popconfirm, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import RenameBacktestGroupModal from '../components/backtests/RenameBacktestGroupModal';
+import PageHeader from '../components/ui/PageHeader';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import type { BacktestGroup } from '../types/backtestGroups';
 
@@ -123,20 +124,14 @@ const BacktestGroupsPage = () => {
   return (
     <section className="page">
       {messageContextHolder}
-      <header className="page__header">
-        <h1 className="page__title">Группы бэктестов</h1>
-        <p className="page__subtitle">
-          Сохраняйте наборы бэктестов, чтобы быстро возвращаться к их анализу, делиться подборками и сравнивать
-          агрегированную статистику.
-        </p>
-      </header>
+      <PageHeader
+        title="Группы бэктестов"
+        description="Сохраняйте наборы бэктестов, чтобы быстро возвращаться к их анализу и делиться подборками."
+      />
 
-      <div className="panel">
+      <Card title="Сохранённые группы">
         <div className="panel__header">
-          <div>
-            <h2 className="panel__title">Сохранённые группы</h2>
-            <p className="panel__description">Всего групп: {groups.length}</p>
-          </div>
+          <p className="panel__description">Всего групп: {groups.length}</p>
         </div>
         {groups.length === 0 ? (
           <Empty description="Группы пока не сохранены." style={{ padding: '48px 0' }} />
@@ -149,7 +144,7 @@ const BacktestGroupsPage = () => {
             size="middle"
           />
         )}
-      </div>
+      </Card>
 
       <RenameBacktestGroupModal
         open={Boolean(renameTarget)}

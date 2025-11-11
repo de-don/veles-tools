@@ -156,7 +156,7 @@ const parseBotSummary = (summary: unknown, fallbackId: string): BotSummary | nul
   const exchange = toNullableString(summary.exchange);
   const algorithm = toNullableString(summary.algorithm);
   const status = toNullableString(summary.status) as BotStatus | null;
-  if (!name || !exchange || !algorithm || !status) {
+  if (!(name && exchange && algorithm && status)) {
     return null;
   }
   const substatus = toNullableString(summary.substatus);
@@ -222,13 +222,13 @@ const parseStoredEntries = (raw: string): ImportedBotEntry[] => {
       if (typeof id !== 'string' || typeof alias !== 'string' || typeof sourceUrl !== 'string') {
         continue;
       }
-      if (!isRecord(summary) || !isRecord(strategy) || typeof savedAt !== 'number') {
+      if (!(isRecord(summary) && isRecord(strategy)) || typeof savedAt !== 'number') {
         continue;
       }
 
       const preparedSummary = parseBotSummary(summary, id);
       const preparedStrategy = parseBotStrategy(strategy);
-      if (!preparedSummary || !preparedStrategy) {
+      if (!(preparedSummary && preparedStrategy)) {
         continue;
       }
       preparedSummary.origin = 'imported';

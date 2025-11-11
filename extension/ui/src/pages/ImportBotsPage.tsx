@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Button, Modal, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Modal, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type BotStrategy, fetchBotStrategy } from '../api/backtestRunner';
@@ -467,8 +467,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
         </div>
       )}
 
-      <div className="panel">
-        <h2 className="panel__title">Добавление новых ботов</h2>
+      <Card title="Добавление новых ботов">
         <p className="panel__description">
           Поддерживаются ссылки вида https://veles.finance/share/&lt;код&gt;, разделённые запятой или с новой строки.
           Можно вставлять сами коды.
@@ -476,6 +475,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
         <textarea
           className="input"
           value={inputValue}
+          style={{ width: '100%' }}
           onChange={(event) => setInputValue(event.target.value)}
           placeholder={`https://veles.finance/share/pvXzq
 https://veles.finance/share/q1w2e`}
@@ -503,12 +503,11 @@ https://veles.finance/share/q1w2e`}
             ))}
           </ul>
         )}
-      </div>
+      </Card>
 
-      <div className="panel">
+      <Card title="Импортированные боты">
         <div className="panel__header">
           <div>
-            <h2 className="panel__title">Импортированные боты</h2>
             <p className="panel__description">
               Храним конфигурации локально. Можно выбрать ботов для запуска бэктестов или удалить ненужных.
             </p>
@@ -563,7 +562,7 @@ https://veles.finance/share/q1w2e`}
             }
           />
         ) : null}
-      </div>
+      </Card>
 
       {activeModal && <BacktestModal variant={activeModal} selectedBots={selectedBotsList} onClose={closeModal} />}
 

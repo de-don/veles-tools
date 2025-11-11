@@ -346,7 +346,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.source === UI_MESSAGE_SOURCE) {
     const senderUrl = _sender?.url ?? '';
     const trustedPrefix = chrome.runtime.getURL('ui/dist/');
-    if (!senderUrl || !senderUrl.startsWith(trustedPrefix)) {
+    if (!senderUrl?.startsWith(trustedPrefix)) {
       sendResponse({ ok: false, error: 'Unauthorized sender' });
       return false;
     }

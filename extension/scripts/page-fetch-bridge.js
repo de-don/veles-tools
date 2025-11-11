@@ -109,7 +109,7 @@
     // Базовая защита: разрешаем делать запросы только к veles.finance
     try {
       const parsed = new URL(payload.url);
-      if (!isAllowedProtocol(parsed.protocol) || !isVelesHostname(parsed.hostname)) {
+      if (!(isAllowedProtocol(parsed.protocol) && isVelesHostname(parsed.hostname))) {
         respond(requestId, { ok: false, error: `Запросы разрешены только к ${VELES_BASE_DOMAIN}` });
         return;
       }

@@ -38,7 +38,7 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
       try {
         await navigator.clipboard.writeText(value);
         messageApi.success(successMessage);
-      } catch (error) {
+      } catch {
         messageApi.error('Не удалось скопировать в буфер обмена');
       }
     },
@@ -129,7 +129,7 @@ const SupportProjectModal = ({ open, onClose }: SupportProjectModalProps) => {
         ),
       },
     ],
-    [],
+    [handleCopy],
   );
 
   const handleTabChange = (nextTabId: string) => {

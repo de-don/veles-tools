@@ -6,41 +6,39 @@ export interface BotCreationOverrides {
   apiKeyId: number;
   depositAmount: number;
   depositLeverage: number;
-  marginType: string;
+  marginType: BotDepositConfigDto['marginType'];
   symbols?: string[] | null;
 }
 
-const sanitizeMarginType = (value: string): string | null => {
+const sanitizeMarginType = (value: string): BotDepositConfigDto['marginType'] | null => {
   const normalized = value.trim().toUpperCase();
-  if (!normalized) {
-    return null;
+  if (normalized === 'ISOLATED' || normalized === 'CROSS') {
+    return normalized;
   }
-  return normalized;
+  return null;
 };
 
 const buildDepositConfig = (
   detailDeposit: BotDepositConfigDto,
   overrides: BotCreationOverrides,
 ): BotDepositConfigDto => {
-  const normalizedMarginType =
-    sanitizeMarginType(overrides.marginType) ??
-    (typeof detailDeposit.marginType === 'string' ? detailDeposit.marginType : null);
-  const currency =
+  const normalizedMarginType = sanitizeMarginType(overrides.marginType) ?? detailDeposit.marginType;
+  const resolvedCurrency =
     typeof detailDeposit.currency === 'string' && detailDeposit.currency.trim().length > 0
-      ? detailDeposit.currency.trim()
+      ? detailDeposit.currency.trim().toUpperCase()
       : null;
 
   return {
     amount: overrides.depositAmount,
     leverage: overrides.depositLeverage,
     marginType: normalizedMarginType,
-    currency,
+    currency: resolvedCurrency,
   };
 };
 
 const deriveSymbols = (detail: BacktestDetail): string | null => {
   const configSymbol = detail.config.symbol;
-  if (typeof configSymbol === 'string' && configSymbol.trim().length > 0) {
+  if (configSymbol.trim().length > 0) {
     return configSymbol.trim();
   }
   const statsSymbol = detail.statistics.symbol;
@@ -95,9 +93,7 @@ export const buildBotCreationPayload = (detail: BacktestDetail, overrides: BotCr
 
   const resolvedSymbols = (() => {
     if (Array.isArray(overrides.symbols)) {
-      return overrides.symbols
-        .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-        .map((item) => item.trim());
+      return overrides.symbols.filter((item): item is string => item.trim().length > 0).map((item) => item.trim());
     }
     const derivedSymbol = deriveSymbols(detail);
     return derivedSymbol ? [derivedSymbol] : [];

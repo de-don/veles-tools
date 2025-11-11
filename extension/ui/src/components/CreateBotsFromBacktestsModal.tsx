@@ -29,10 +29,23 @@ interface LogEntry {
   message: string;
 }
 
-const MARGIN_OPTIONS: SelectProps<string>['options'] = [
+const MARGIN_OPTIONS: SelectProps<MarginType>['options'] = [
   { value: 'CROSS', label: 'CROSS' },
   { value: 'ISOLATED', label: 'ISOLATED' },
 ];
+
+type MarginType = BotCreationOverrides['marginType'];
+
+const normalizeMarginType = (value: string | null | undefined): MarginType => {
+  if (typeof value !== 'string') {
+    return 'CROSS';
+  }
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'ISOLATED' || normalized === 'CROSS') {
+    return normalized;
+  }
+  return 'CROSS';
+};
 
 const createLogId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -42,7 +55,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
   const [apiKeyId, setApiKeyId] = useState<number | null>(null);
   const [depositAmount, setDepositAmount] = useState('');
   const [depositLeverage, setDepositLeverage] = useState('');
-  const [marginType, setMarginType] = useState('CROSS');
+  const [marginType, setMarginType] = useState<MarginType>('CROSS');
   const [autoStart, setAutoStart] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -86,18 +99,12 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
     }
 
     const firstDetail = targets[0]?.detail;
-    const depositConfig = firstDetail?.config?.deposit ?? firstDetail?.statistics.deposit ?? null;
+    const depositConfig = firstDetail?.config.deposit ?? null;
     if (depositConfig) {
       const { amount, leverage, marginType: detailMargin } = depositConfig;
-      if (amount !== null && amount !== undefined) {
-        setDepositAmount(String(amount));
-      }
-      if (leverage !== null && leverage !== undefined) {
-        setDepositLeverage(String(leverage));
-      }
-      if (typeof detailMargin === 'string' && detailMargin.trim()) {
-        setMarginType(detailMargin.trim().toUpperCase());
-      }
+      setDepositAmount(String(amount));
+      setDepositLeverage(String(leverage));
+      setMarginType(normalizeMarginType(detailMargin));
     } else {
       setDepositAmount('');
       setDepositLeverage('');
@@ -165,12 +172,12 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
     let failed = 0;
 
     const resolveName = (detail: BacktestDetail) => {
-      const configName = detail.config?.name;
-      if (typeof configName === 'string' && configName.trim().length > 0) {
+      const configName = detail.config.name;
+      if (configName.trim().length > 0) {
         return configName.trim();
       }
       const statsName = detail.statistics.name;
-      if (typeof statsName === 'string' && statsName.trim().length > 0) {
+      if (statsName.trim().length > 0) {
         return statsName.trim();
       }
       return `Backtest ${detail.statistics.id}`;
@@ -189,7 +196,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         appendLog('success', `✅ Бот создан (ID: ${botId}).`);
         succeeded += 1;
 
-        if (autoStart && typeof botId === 'number') {
+        if (autoStart) {
           try {
             await startBot(botId);
             appendLog('success', `🚀 Бот ${botId} запущен.`);
@@ -279,7 +286,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
           <label className="form-label" htmlFor="create-bots-margin">
             Маржа
           </label>
-          <Select<string>
+          <Select<MarginType>
             id="create-bots-margin"
             value={marginType}
             onChange={(value) => setMarginType(value)}

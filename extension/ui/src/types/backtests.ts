@@ -4,7 +4,6 @@ import type {
   BacktestOrderDto,
   BacktestStatisticsDto,
 } from '../api/backtests.dtos';
-import type { BotDepositConfigDto } from '../api/bots.dtos';
 
 export interface BacktestsListParams {
   page: number;
@@ -12,15 +11,11 @@ export interface BacktestsListParams {
   sort?: string;
 }
 
-export interface BacktestStatistics extends BacktestStatisticsDto {
-  deposit?: BotDepositConfigDto | null;
-}
+export interface BacktestStatistics extends BacktestStatisticsDto {}
 
 export interface BacktestDetail {
   statistics: BacktestStatistics;
   config: BacktestConfigDto;
-  symbols?: string[] | null;
-  includePosition?: boolean | null;
 }
 
 export interface BacktestStatisticsListResponse {

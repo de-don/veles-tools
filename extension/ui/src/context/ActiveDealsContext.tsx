@@ -11,9 +11,11 @@ import {
   useState,
 } from 'react';
 import { ACTIVE_DEALS_DEFAULT_SIZE, fetchAllActiveDeals } from '../api/activeDeals';
+import { fetchApiKeys } from '../api/apiKeys';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
 import {
+  ACTIVE_DEALS_HISTORY_RETENTION_MS,
   clampDealHistory,
   DEAL_HISTORY_LIMIT,
   DEAL_HISTORY_WINDOW_MS,
@@ -25,15 +27,20 @@ import {
 } from '../lib/activeDealsHistory';
 import { type ActiveDealsRefreshInterval, DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
 import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
-import type { PortfolioEquitySeries } from '../lib/backtestAggregation';
 import type { DataZoomRange } from '../lib/chartOptions';
-import { readActiveDealsPreferences, writeActiveDealsPreferences } from '../storage/activeDealsPreferencesStore';
+import type { PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../lib/deprecatedFile';
+import {
+  type ActiveDealsPreferences,
+  readActiveDealsPreferences,
+  writeActiveDealsPreferences,
+} from '../storage/activeDealsPreferencesStore';
 import {
   clearActiveDealsSnapshot,
   readActiveDealsSnapshot,
   writeActiveDealsSnapshot,
 } from '../storage/activeDealsStore';
 import type { ActiveDeal } from '../types/activeDeals';
+import type { ApiKey } from '../types/apiKeys';
 
 interface DealsState {
   aggregation: ActiveDealsAggregation | null;
@@ -49,20 +56,73 @@ const createEmptySeries = (): PortfolioEquitySeries => ({
   maxValue: 0,
 });
 
+const buildSeriesFromPoints = (points: PortfolioEquitySeries['points']): PortfolioEquitySeries => {
+  if (points.length === 0) {
+    return createEmptySeries();
+  }
+  const values = points.map((point) => point.value);
+  return {
+    points,
+    minValue: Math.min(...values),
+    maxValue: Math.max(...values),
+  };
+};
+
+const trimSeriesHistory = (series: PortfolioEquitySeries, referenceTimestamp: number): PortfolioEquitySeries => {
+  if (!(ACTIVE_DEALS_HISTORY_RETENTION_MS > 0) || series.points.length === 0) {
+    return series;
+  }
+  const threshold = referenceTimestamp - ACTIVE_DEALS_HISTORY_RETENTION_MS;
+  const retainedPoints = series.points.filter((point) => point.time >= threshold);
+  if (retainedPoints.length === series.points.length) {
+    return series;
+  }
+  return buildSeriesFromPoints(retainedPoints);
+};
+
+type GroupedSeriesMap = Map<number, PortfolioEquitySeries>;
+type ApiKeyMap = Map<number, ApiKey>;
+
+const buildApiKeyLabel = (apiKeyId: number, apiKey: ApiKey | undefined, deal?: ActiveDeal): string => {
+  const keyName = typeof apiKey?.name === 'string' ? apiKey.name.trim() : '';
+  if (keyName) {
+    return keyName;
+  }
+  const exchange = apiKey?.exchange ?? deal?.exchange ?? deal?.pair?.exchange;
+  if (exchange) {
+    return `API ключ ${apiKeyId} · ${exchange}`;
+  }
+  return `API ключ ${apiKeyId}`;
+};
+
 const buildSeriesWithPoint = (
   current: PortfolioEquitySeries | null,
   value: number,
   timestamp: number,
 ): PortfolioEquitySeries => {
   const base = current ?? createEmptySeries();
-  const nextPoints = [...base.points, { time: timestamp, value }];
-  if (nextPoints.length === 0) {
-    return createEmptySeries();
-  }
-  const values = nextPoints.map((point) => point.value);
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
-  return { points: nextPoints, minValue, maxValue };
+  const threshold = ACTIVE_DEALS_HISTORY_RETENTION_MS > 0 ? timestamp - ACTIVE_DEALS_HISTORY_RETENTION_MS : null;
+  const retainedPoints = threshold === null ? base.points : base.points.filter((point) => point.time >= threshold);
+  const nextPoints = [...retainedPoints, { time: timestamp, value }];
+  return buildSeriesFromPoints(nextPoints);
+};
+
+const composeGroupedSeries = (
+  seriesMap: GroupedSeriesMap,
+  samples: Map<number, ActiveDeal>,
+  apiKeys: ApiKeyMap,
+): PortfolioEquityGroupedSeriesItem[] => {
+  return Array.from(seriesMap.entries())
+    .sort(([leftId], [rightId]) => leftId - rightId)
+    .map(([apiKeyId, series]) => {
+      const apiKey = apiKeys.get(apiKeyId);
+      return {
+        id: String(apiKeyId),
+        label: buildApiKeyLabel(apiKeyId, apiKey, samples.get(apiKeyId)),
+        series,
+        apiKeyId,
+      };
+    });
 };
 
 const INITIAL_DEALS_STATE: DealsState = {
@@ -76,6 +136,10 @@ const INITIAL_DEALS_STATE: DealsState = {
 export interface ActiveDealsContextValue {
   dealsState: DealsState;
   pnlSeries: PortfolioEquitySeries;
+  groupedPnlSeries: PortfolioEquityGroupedSeriesItem[];
+  groupByApiKey: boolean;
+  setGroupByApiKey: Dispatch<SetStateAction<boolean>>;
+  apiKeysById: ApiKeyMap;
   loading: boolean;
   error: string | null;
   refreshInterval: ActiveDealsRefreshInterval;
@@ -97,12 +161,20 @@ interface ActiveDealsProviderProps {
 }
 
 export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsProviderProps) => {
-  const [refreshInterval, setRefreshIntervalState] = useState<ActiveDealsRefreshInterval>(() => {
-    const preferences = readActiveDealsPreferences();
-    return preferences?.refreshInterval ?? DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL;
-  });
+  const initialPreferencesRef = useRef<ActiveDealsPreferences | null | undefined>(undefined);
+  if (initialPreferencesRef.current === undefined) {
+    initialPreferencesRef.current = readActiveDealsPreferences();
+  }
+  const initialPreferences = initialPreferencesRef.current ?? null;
+
+  const [refreshInterval, setRefreshIntervalState] = useState<ActiveDealsRefreshInterval>(
+    () => initialPreferences?.refreshInterval ?? DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
+  );
   const [dealsState, setDealsState] = useState<DealsState>(INITIAL_DEALS_STATE);
   const [pnlSeries, setPnlSeries] = useState<PortfolioEquitySeries>(() => createEmptySeries());
+  const [groupedPnlSeries, setGroupedPnlSeries] = useState<PortfolioEquityGroupedSeriesItem[]>([]);
+  const [groupByApiKey, setGroupByApiKeyState] = useState<boolean>(() => initialPreferences?.groupByApiKey ?? false);
+  const [apiKeysById, setApiKeysById] = useState<ApiKeyMap>(() => new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoomRange, setZoomRange] = useState<DataZoomRange | undefined>(undefined);
@@ -112,14 +184,22 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   const timerRef = useRef<number | null>(null);
   const initialLoadRef = useRef(false);
   const seriesRef = useRef<PortfolioEquitySeries>(createEmptySeries());
+  const groupedSeriesRef = useRef<GroupedSeriesMap>(new Map());
+  const groupedSamplesRef = useRef<Map<number, ActiveDeal>>(new Map());
+  const apiKeysRef = useRef<ApiKeyMap>(new Map());
+  const isLoadingApiKeysRef = useRef(false);
+
+  const syncGroupedSeries = useCallback(() => {
+    setGroupedPnlSeries(composeGroupedSeries(groupedSeriesRef.current, groupedSamplesRef.current, apiKeysRef.current));
+  }, []);
 
   useEffect(() => {
     seriesRef.current = pnlSeries;
   }, [pnlSeries]);
 
   useEffect(() => {
-    writeActiveDealsPreferences({ refreshInterval });
-  }, [refreshInterval]);
+    writeActiveDealsPreferences({ refreshInterval, groupByApiKey });
+  }, [refreshInterval, groupByApiKey]);
 
   const resetPolling = useCallback(() => {
     if (timerRef.current) {
@@ -134,9 +214,83 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     setPnlSeries(nextSeries);
   }, []);
 
+  const updateGroupedSeries = useCallback(
+    (totalsByApiKey: Map<number, number>, dealSamples: Map<number, ActiveDeal>, timestamp: number) => {
+      const activeApiKeyIds = new Set<number>();
+      const nextSeriesMap: GroupedSeriesMap = new Map(groupedSeriesRef.current);
+      const nextSamples = new Map(groupedSamplesRef.current);
+
+      totalsByApiKey.forEach((pnl, apiKeyId) => {
+        activeApiKeyIds.add(apiKeyId);
+        const currentSeries = nextSeriesMap.get(apiKeyId) ?? null;
+        const nextSeries = buildSeriesWithPoint(currentSeries, pnl, timestamp);
+        nextSeriesMap.set(apiKeyId, nextSeries);
+        const sampleDeal = dealSamples.get(apiKeyId);
+        if (sampleDeal) {
+          nextSamples.set(apiKeyId, sampleDeal);
+        }
+      });
+
+      nextSeriesMap.forEach((_series, apiKeyId) => {
+        if (!activeApiKeyIds.has(apiKeyId)) {
+          nextSeriesMap.delete(apiKeyId);
+          nextSamples.delete(apiKeyId);
+        }
+      });
+
+      groupedSeriesRef.current = nextSeriesMap;
+      groupedSamplesRef.current = nextSamples;
+      syncGroupedSeries();
+    },
+    [syncGroupedSeries],
+  );
+
+  const loadApiKeys = useCallback(async () => {
+    if (isLoadingApiKeysRef.current) {
+      return;
+    }
+    isLoadingApiKeysRef.current = true;
+    try {
+      const apiKeys = await fetchApiKeys({ size: 200 });
+      const next = new Map<number, ApiKey>();
+      apiKeys.forEach((key) => {
+        next.set(key.id, key);
+      });
+      apiKeysRef.current = next;
+      setApiKeysById(next);
+    } catch (requestError: unknown) {
+      console.warn('[Veles Tools] Не удалось загрузить список API-ключей', requestError);
+    } finally {
+      isLoadingApiKeysRef.current = false;
+    }
+  }, []);
+
   const handleDealsResponse = useCallback(
     (deals: ActiveDeal[], aggregation: ActiveDealsAggregation, timestamp: number) => {
       appendSeriesPoint(aggregation.totalPnl, timestamp);
+
+      const totalsByApiKey = new Map<number, number>();
+      const dealSamples = new Map<number, ActiveDeal>();
+      let shouldReloadApiKeys = false;
+
+      aggregation.positions.forEach((position) => {
+        const apiKeyId = position.deal.apiKeyId;
+        totalsByApiKey.set(apiKeyId, (totalsByApiKey.get(apiKeyId) ?? 0) + position.pnl);
+        if (!dealSamples.has(apiKeyId)) {
+          dealSamples.set(apiKeyId, position.deal);
+        }
+        if (!apiKeysRef.current.has(apiKeyId)) {
+          shouldReloadApiKeys = true;
+        }
+      });
+
+      if (shouldReloadApiKeys) {
+        loadApiKeys().catch(() => {
+          // error logged inside loadApiKeys
+        });
+      }
+
+      updateGroupedSeries(totalsByApiKey, dealSamples, timestamp);
       setDealsState({
         aggregation,
         positions: aggregation.positions,
@@ -170,7 +324,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
         return next;
       });
     },
-    [appendSeriesPoint],
+    [appendSeriesPoint, loadApiKeys, updateGroupedSeries],
   );
 
   const fetchDeals = useCallback(async () => {
@@ -204,8 +358,14 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       resetPolling();
       const emptySeries = createEmptySeries();
       seriesRef.current = emptySeries;
+      groupedSeriesRef.current = new Map();
+      groupedSamplesRef.current = new Map();
+      apiKeysRef.current = new Map();
+      isLoadingApiKeysRef.current = false;
       setDealsState(INITIAL_DEALS_STATE);
       setPnlSeries(emptySeries);
+      setGroupedPnlSeries([]);
+      setApiKeysById(new Map());
       setZoomRange(undefined);
       setZoomPreset('all');
       setPositionHistory(new Map());
@@ -237,11 +397,28 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     };
   }, [resetPolling]);
 
+  useEffect(() => {
+    if (!extensionReady) {
+      return;
+    }
+    loadApiKeys().catch(() => {
+      // error logged inside loadApiKeys
+    });
+  }, [extensionReady, loadApiKeys]);
+
+  useEffect(() => {
+    void apiKeysById;
+    syncGroupedSeries();
+  }, [apiKeysById, syncGroupedSeries]);
+
   const resetHistory = useCallback(() => {
     clearActiveDealsSnapshot();
     const emptySeries = createEmptySeries();
     seriesRef.current = emptySeries;
+    groupedSeriesRef.current = new Map();
+    groupedSamplesRef.current = new Map();
     setPnlSeries(emptySeries);
+    setGroupedPnlSeries([]);
     setDealsState(INITIAL_DEALS_STATE);
     setZoomRange(undefined);
     setZoomPreset('all');
@@ -257,8 +434,30 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     }
 
     const aggregation = aggregateDeals(snapshot.deals);
-    seriesRef.current = snapshot.series;
-    setPnlSeries(snapshot.series);
+    const now = Date.now();
+    const normalizedSeries = trimSeriesHistory(snapshot.series, now);
+    seriesRef.current = normalizedSeries;
+    setPnlSeries(normalizedSeries);
+
+    const restoredGrouped: GroupedSeriesMap = new Map();
+    if (snapshot.groupedSeries) {
+      Object.entries(snapshot.groupedSeries).forEach(([rawKey, value]) => {
+        const apiKeyId = Number.parseInt(rawKey, 10);
+        if (Number.isFinite(apiKeyId)) {
+          restoredGrouped.set(apiKeyId, trimSeriesHistory(value, now));
+        }
+      });
+    }
+    groupedSeriesRef.current = restoredGrouped;
+    const restoredSamples = new Map<number, ActiveDeal>();
+    aggregation.positions.forEach((position) => {
+      const apiKeyId = position.deal.apiKeyId;
+      if (!restoredSamples.has(apiKeyId)) {
+        restoredSamples.set(apiKeyId, position.deal);
+      }
+    });
+    groupedSamplesRef.current = restoredSamples;
+    syncGroupedSeries();
     setDealsState({
       aggregation,
       positions: aggregation.positions,
@@ -295,22 +494,37 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       setPositionHistory(history);
     }
     initialLoadRef.current = snapshot.deals.length > 0;
-  }, []);
+  }, [syncGroupedSeries]);
 
   useEffect(() => {
     if (dealsState.rawDeals.length === 0) {
       return;
     }
+    const groupedPayload = groupedSeriesRef.current.size
+      ? Object.fromEntries(
+          Array.from(groupedSeriesRef.current.entries()).map(([apiKeyId, series]) => [String(apiKeyId), series]),
+        )
+      : undefined;
+
+    const activeDealIds = new Set<number>(dealsState.positions.map((position) => position.deal.id));
+    const activeHistory: DealHistoryMap = new Map();
+    positionHistory.forEach((points, dealId) => {
+      if (activeDealIds.has(dealId)) {
+        activeHistory.set(dealId, points);
+      }
+    });
+
     writeActiveDealsSnapshot({
       deals: dealsState.rawDeals,
       series: seriesRef.current,
+      groupedSeries: groupedPayload,
       zoomRange,
       zoomPreset,
       lastUpdated: dealsState.lastUpdated,
       storedAt: Date.now(),
-      positionHistory: mapHistoryToSnapshot(positionHistory),
+      positionHistory: mapHistoryToSnapshot(activeHistory),
     });
-  }, [dealsState.rawDeals, dealsState.lastUpdated, zoomRange, zoomPreset, positionHistory]);
+  }, [dealsState.positions, dealsState.rawDeals, dealsState.lastUpdated, zoomRange, zoomPreset, positionHistory]);
 
   const updateRefreshInterval = useCallback((interval: ActiveDealsRefreshInterval) => {
     setRefreshIntervalState(interval);
@@ -320,6 +534,10 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     () => ({
       dealsState,
       pnlSeries,
+      groupedPnlSeries,
+      groupByApiKey,
+      setGroupByApiKey: setGroupByApiKeyState,
+      apiKeysById,
       loading,
       error,
       refreshInterval,
@@ -335,9 +553,12 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     [
       dealsState,
       pnlSeries,
+      groupedPnlSeries,
+      apiKeysById,
       loading,
       error,
       refreshInterval,
+      groupByApiKey,
       updateRefreshInterval,
       fetchDeals,
       resetHistory,

@@ -3,8 +3,9 @@ import type {
   AggregateRiskSeries,
   DailyConcurrencyRecord,
   DailyConcurrencyStats,
+  PortfolioEquityGroupedSeriesItem,
   PortfolioEquitySeries,
-} from './backtestAggregation';
+} from './deprecatedFile';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
@@ -33,7 +34,7 @@ const formatNumber = (value: number): string => {
 const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLine'] => {
   const hasPositive = series.points.some((point) => point.value >= 0);
   const hasNegative = series.points.some((point) => point.value <= 0);
-  if (!hasPositive || !hasNegative) {
+  if (!(hasPositive && hasNegative)) {
     return undefined;
   }
   return {
@@ -59,6 +60,45 @@ export interface DataZoomRange {
   end?: number;
 }
 
+const buildZeroLineForGroups = (
+  groups: PortfolioEquityGroupedSeriesItem[],
+): LineSeriesOption['markLine'] | undefined => {
+  let hasPositive = false;
+  let hasNegative = false;
+
+  groups.forEach((group) => {
+    group.series.points.forEach((point) => {
+      if (point.value >= 0) {
+        hasPositive = true;
+      }
+      if (point.value <= 0) {
+        hasNegative = true;
+      }
+    });
+  });
+
+  if (!(hasPositive && hasNegative)) {
+    return undefined;
+  }
+
+  return {
+    symbol: 'none',
+    lineStyle: {
+      color: '#94a3b8',
+      type: 'dashed',
+      width: 1,
+    },
+    label: {
+      formatter: '0',
+      color: '#475569',
+      backgroundColor: 'rgba(241, 245, 249, 0.8)',
+      padding: [2, 4],
+      borderRadius: 4,
+    },
+    data: [{ yAxis: 0 }],
+  } satisfies LineSeriesOption['markLine'];
+};
+
 const applyRange = (base: DataZoomComponentOption, range?: DataZoomRange): DataZoomComponentOption => {
   if (!range) {
     return base;
@@ -82,11 +122,15 @@ const disableWheelInteraction = <T extends DataZoomComponentOption>(option: T): 
   } as T;
 };
 
-const buildDataZoomComponents = (range?: DataZoomRange): DataZoomComponentOption[] => {
+const buildDataZoomComponents = (
+  range?: DataZoomRange,
+  filterMode: DataZoomComponentOption['filterMode'] = 'none',
+): DataZoomComponentOption[] => {
   const insideZoom = applyRange(
     disableWheelInteraction({
       type: 'inside',
       throttle: 30,
+      filterMode,
     }),
     range,
   );
@@ -95,6 +139,7 @@ const buildDataZoomComponents = (range?: DataZoomRange): DataZoomComponentOption
     disableWheelInteraction({
       type: 'slider',
       bottom: 40,
+      filterMode,
     }),
     range,
   );
@@ -105,7 +150,67 @@ const buildDataZoomComponents = (range?: DataZoomRange): DataZoomComponentOption
 export const createPortfolioEquityChartOptions = (
   series: PortfolioEquitySeries,
   range?: DataZoomRange,
+  groupedSeries?: PortfolioEquityGroupedSeriesItem[],
+  legendSelection?: Record<string, boolean>,
+  filterMode: DataZoomComponentOption['filterMode'] = 'none',
 ): EChartsOption => {
+  if (groupedSeries && groupedSeries.length > 0) {
+    const lineSeries: LineSeriesOption[] = groupedSeries.map((group) => ({
+      id: group.id,
+      name: group.label,
+      type: 'line',
+      showSymbol: false,
+      smooth: false,
+      symbol: 'none',
+      lineStyle: {
+        width: 1.6,
+      },
+      emphasis: { focus: 'series' },
+      data: group.series.points.map((point) => [point.time, point.value]),
+    }));
+
+    const zeroLine = buildZeroLineForGroups(groupedSeries);
+    if (zeroLine && lineSeries.length > 0) {
+      lineSeries[0].markLine = zeroLine;
+    }
+
+    return {
+      animation: false,
+      grid: { left: 60, right: 24, top: 16, bottom: 92 },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' },
+        valueFormatter: (value) => formatNumber(Number(value)),
+        order: 'valueDesc',
+      },
+      legend: {
+        bottom: 0,
+        icon: 'roundRect',
+        data: groupedSeries.map((group) => group.label),
+        selected: legendSelection,
+      },
+      xAxis: {
+        type: 'time',
+        axisLabel: {
+          formatter: (value: number) => dateTimeFormatter.format(new Date(value)),
+        },
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: (value: number) => formatNumber(value),
+        },
+        splitLine: {
+          lineStyle: {
+            type: 'dashed',
+          },
+        },
+      },
+      dataZoom: buildDataZoomComponents(range, filterMode),
+      series: lineSeries,
+    } satisfies EChartsOption;
+  }
+
   const equityData = series.points.map((point) => [point.time, point.value]);
   const positiveAreaData = series.points.map((point) =>
     point.value > 0 ? [point.time, point.value] : [point.time, null],
@@ -117,6 +222,7 @@ export const createPortfolioEquityChartOptions = (
   const markLine = buildZeroLine(series);
 
   const positiveAreaSeries: LineSeriesOption = {
+    id: 'active-deals-positive-area',
     name: 'positive-area',
     type: 'line',
     showSymbol: false,
@@ -138,6 +244,7 @@ export const createPortfolioEquityChartOptions = (
   };
 
   const negativeAreaSeries: LineSeriesOption = {
+    id: 'active-deals-negative-area',
     name: 'negative-area',
     type: 'line',
     showSymbol: false,
@@ -159,6 +266,7 @@ export const createPortfolioEquityChartOptions = (
   };
 
   const equitySeries: LineSeriesOption = {
+    id: 'active-deals-equity-line',
     name: 'Суммарный P&L',
     type: 'line',
     symbol: 'none',
@@ -188,6 +296,7 @@ export const createPortfolioEquityChartOptions = (
       bottom: 0,
       icon: 'roundRect',
       data: ['Суммарный P&L'],
+      selected: legendSelection,
     },
     xAxis: {
       type: 'time',
@@ -206,12 +315,16 @@ export const createPortfolioEquityChartOptions = (
         },
       },
     },
-    dataZoom: buildDataZoomComponents(range),
+    dataZoom: buildDataZoomComponents(range, filterMode),
     series: [positiveAreaSeries, negativeAreaSeries, equitySeries],
   } satisfies EChartsOption;
 };
 
-export const createAggregateRiskChartOptions = (series: AggregateRiskSeries, range?: DataZoomRange): EChartsOption => {
+export const createAggregateRiskChartOptions = (
+  series: AggregateRiskSeries,
+  range?: DataZoomRange,
+  filterMode: DataZoomComponentOption['filterMode'] = 'none',
+): EChartsOption => {
   const riskData = series.points.map((point) => [point.time, point.value]);
 
   const riskSeries: LineSeriesOption = {
@@ -284,7 +397,7 @@ export const createAggregateRiskChartOptions = (series: AggregateRiskSeries, ran
         lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
       },
     },
-    dataZoom: buildDataZoomComponents(range),
+    dataZoom: buildDataZoomComponents(range, filterMode),
     series: [riskSeries],
   } satisfies EChartsOption;
 };
@@ -489,6 +602,8 @@ const buildConcurrencyMarkLine = (stats?: DailyConcurrencyStats): BarSeriesOptio
 export const createDailyConcurrencyChartOptions = (
   records: DailyConcurrencyRecord[],
   stats?: DailyConcurrencyStats,
+  range?: DataZoomRange,
+  filterMode: DataZoomComponentOption['filterMode'] = 'none',
 ): EChartsOption => {
   const chartData = records.map((record) => [record.dayStartMs, record.maxCount]);
 
@@ -541,7 +656,7 @@ export const createDailyConcurrencyChartOptions = (
         },
       },
     },
-    dataZoom: buildDataZoomComponents(),
+    dataZoom: buildDataZoomComponents(range, filterMode),
     series: [barSeries],
   } satisfies EChartsOption;
 };

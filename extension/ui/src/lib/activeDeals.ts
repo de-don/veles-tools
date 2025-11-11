@@ -31,7 +31,7 @@ const accumulateOrderContribution = (order: ActiveDealOrder): OrderContribution 
 };
 
 const computePnlPercent = (pnl: number, exposure: number): number => {
-  if (!Number.isFinite(pnl) || !Number.isFinite(exposure) || exposure === 0) {
+  if (!(Number.isFinite(pnl) && Number.isFinite(exposure)) || exposure === 0) {
     return 0;
   }
   return (pnl / exposure) * 100;

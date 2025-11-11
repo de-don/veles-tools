@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Button, Modal, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Modal, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -210,7 +210,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   }, [appliedFilters]);
   const hasFilterDraft =
     nameFilter.trim().length > 0 || apiKeyFilter !== '' || Boolean(statusFilter) || Boolean(algorithmFilter);
-  const isResetDisabled = !hasActiveFilters && !hasFilterDraft;
+  const isResetDisabled = !(hasActiveFilters || hasFilterDraft);
 
   const selectedRowKeys = useMemo(() => selection.map((s) => s.id), [selection]);
 
@@ -435,7 +435,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         </div>
       )}
 
-      <div className="panel">
+      <Card>
         {hasActiveFilters && (
           <div className="panel__filters-state">
             <span className="badge">Фильтры: активны</span>
@@ -588,7 +588,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         </div>
 
         {error && <div className="banner banner--warning">Ошибка загрузки: {error}</div>}
-      </div>
+      </Card>
 
       {activeModal && <BacktestModal variant={activeModal} selectedBots={selectedBotsList} onClose={closeModal} />}
 
