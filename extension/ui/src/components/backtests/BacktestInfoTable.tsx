@@ -274,12 +274,11 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
   }, [selectedIds, onSelectionChange]);
 
   return (
-    <div className="backtest-info-table">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          marginBottom: 12,
           flexWrap: 'wrap',
           gap: 8,
         }}
