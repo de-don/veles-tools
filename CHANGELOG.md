@@ -1,3 +1,13 @@
+## [2.0.1](https://github.com/de-don/veles-tools/compare/v2.0.0...v2.0.1) (2025-11-12)
+
+### Bug Fixes
+
+* **backtests:** add missing pnl/mae ratio ([1fd862f](https://github.com/de-don/veles-tools/commit/1fd862f736f21fa7c4e0e2c9b22dd50695c60188))
+* **backtests:** correct active deals count calculation ([4bf2cd0](https://github.com/de-don/veles-tools/commit/4bf2cd0c8e1c9e6fe72cd7cf23e3ad38321ca0a0))
+* **backtests:** correct backtests transferring between groups ([d31274b](https://github.com/de-don/veles-tools/commit/d31274bdec9f1b2e1c28fe2d7582c7fbd4bd38ef))
+* **backtests:** net/day calculation ([9092015](https://github.com/de-don/veles-tools/commit/90920152ccd820aab483361bb47e1d0c2ca2470e))
+* **ui:** some ui fixes ([de0dd0f](https://github.com/de-don/veles-tools/commit/de0dd0f571588ba089e656f40a0ce7fe0a881afb))
+
 ## [2.0.0](https://github.com/de-don/veles-tools/compare/v1.8.3...v2.0.0) (2025-11-11)
 
 ### ⚠ BREAKING CHANGES
