@@ -68,9 +68,6 @@ const sortCyclesByDate = (cycles: BacktestCycle[]): BacktestCycle[] => {
   return [...cycles].sort((left, right) => {
     const leftTime = toTimestamp(left.date) ?? Number.MAX_SAFE_INTEGER;
     const rightTime = toTimestamp(right.date) ?? Number.MAX_SAFE_INTEGER;
-    if (leftTime === rightTime) {
-      return left.id - right.id;
-    }
     return leftTime - rightTime;
   });
 };
@@ -105,7 +102,7 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
     const isCompleted = cycle.status !== 'STARTED';
 
     return {
-      id: cycle.id,
+      id: crypto.randomUUID(),
       start: startTime,
       end: endTime,
       startDay,

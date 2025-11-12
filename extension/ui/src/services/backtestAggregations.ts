@@ -50,7 +50,8 @@ export const aggregateBacktestsMetrics = (
   const allSortedDeals = backtests.flatMap((info) => info.deals).sort((a, b) => a.start - b.start);
 
   // TODO: Add start & end of backtest periods from all backtests
-  const timePoints = allSortedDeals.flatMap((deal) => [deal.start, deal.end]).sort((a, b) => a - b);
+  const timePointsAll = allSortedDeals.flatMap((deal) => [deal.start, deal.end]);
+  const timePoints = [...new Set(timePointsAll)].sort((a, b) => a - b);
 
   const aggregatedStats = {
     totalNet: 0,

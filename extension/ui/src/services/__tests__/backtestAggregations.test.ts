@@ -32,7 +32,9 @@ const baseInfo: Omit<BacktestInfo, 'deals'> = {
   pnlMaeRatio: null,
 };
 
-const buildDeal = (overrides: Partial<BacktestInfoDeal> = {}): BacktestInfoDeal => {
+const buildDeal = (
+  overrides: Partial<Omit<BacktestInfoDeal, 'id'>> & { id?: string | number } = {},
+): BacktestInfoDeal => {
   const start = overrides.start ?? Date.parse('2024-01-01T00:00:00Z');
   const end = overrides.end ?? start + 60 * 60 * 1000;
   const startDay = new Date(start);
@@ -40,8 +42,9 @@ const buildDeal = (overrides: Partial<BacktestInfoDeal> = {}): BacktestInfoDeal 
   const endDay = new Date(end);
   endDay.setHours(0, 0, 0, 0);
   const durationInDays = overrides.durationInDays ?? Math.max(0, (end - start) / MS_IN_DAY);
+  const resolvedId = overrides.id ?? Math.floor(Math.random() * 100000).toString();
   return {
-    id: overrides.id ?? Math.floor(Math.random() * 100000),
+    id: typeof resolvedId === 'string' ? resolvedId : String(resolvedId),
     start,
     end,
     startDay,
@@ -289,5 +292,22 @@ describe('aggregateBacktestsMetrics', () => {
       { date: startedDealStart, value: 1 },
       { date: startedDealEnd, value: 1 },
     ]);
+  });
+
+  it('does not duplicate active deal counts when multiple deals share identical time points', () => {
+    const start = toTimestamp('2024-06-01T00:00:00Z');
+    const end = toTimestamp('2024-06-01T12:00:00Z');
+    const deals = [
+      buildDeal({ id: 901, start, end, maeAbsolute: 10 }),
+      buildDeal({ id: 902, start, end, maeAbsolute: 20 }),
+    ];
+
+    const metrics = aggregateBacktestsMetrics([buildInfo({ id: 12 }, deals)], { maxConcurrentPositions: 3 });
+
+    const uniqueDates = new Set(metrics.activeDealCountSeries.map((point) => point.date));
+    expect(metrics.activeDealCountSeries).toHaveLength(uniqueDates.size);
+    expect(metrics.activeDealCountSeries[0]).toEqual({ date: start, value: 2 });
+    expect(metrics.activeDealCountSeries.at(-1)).toEqual({ date: end, value: 0 });
+    expect(metrics.maxConcurrentPositions).toBe(2);
   });
 });

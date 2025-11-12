@@ -97,7 +97,6 @@ export interface BacktestStatisticsDto {
 }
 
 export interface BacktestCycleDto {
-  id: number;
   date: string;
   status: 'CANCELLED' | 'FINISHED' | 'STARTED';
   substatus: 'PULL_UP' | 'TAKE_PROFIT' | string;
