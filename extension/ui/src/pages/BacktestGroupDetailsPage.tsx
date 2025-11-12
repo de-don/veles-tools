@@ -45,7 +45,7 @@ const DEFAULT_LIMIT_IMPACT_VALUE = 5;
 const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPageProps) => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { groups, deleteGroup, updateGroupName, removeBacktests, appendToGroup } = useBacktestGroups();
+  const { groups, deleteGroup, updateGroupName, removeBacktests, transferBacktests } = useBacktestGroups();
   const [messageApi, messageContextHolder] = message.useMessage();
   const group: BacktestGroup | null = useMemo(() => {
     return groups.find((item) => item.id === groupId) ?? null;
@@ -500,20 +500,15 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     if (selectedIds.length === 0) {
       return;
     }
-    const appendedGroup = appendToGroup(transferTargetGroupId, selectedIds);
-    if (!appendedGroup) {
-      messageApi.error('Не удалось добавить бэктесты в выбранную группу.');
+    const transferResult = transferBacktests(group.id, transferTargetGroupId, selectedIds);
+    if (!transferResult) {
+      messageApi.error('Не удалось перенести бэктесты.');
       return;
     }
-    const updatedGroup = removeBacktests(group.id, selectedIds);
-    if (!updatedGroup) {
-      messageApi.error('Не удалось удалить бэктесты из текущей группы.');
-      return;
-    }
-    syncStateWithGroupIds(updatedGroup.backtestIds);
+    syncStateWithGroupIds(transferResult.source.backtestIds);
     messageApi.success(`Перенесено ${selectedIds.length} бэктестов.`);
     setTransferModalOpen(false);
-  }, [appendToGroup, group, messageApi, removeBacktests, selectedIds, syncStateWithGroupIds, transferTargetGroupId]);
+  }, [group, messageApi, selectedIds, syncStateWithGroupIds, transferBacktests, transferTargetGroupId]);
 
   const handleOpenCreateBots = useCallback(() => {
     if (!hasSelection) {
