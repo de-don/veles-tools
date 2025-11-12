@@ -211,6 +211,7 @@ describe('buildBacktestInfo', () => {
     expect(info.avgMaeAbsolute).toBeCloseTo((10 + 40 + 5 + 25) / 4, 5);
     expect(info.maxMfeAbsolute).toBe(60);
     expect(info.avgMfeAbsolute).toBeCloseTo((30 + 15 + 60 + 5) / 4, 5);
+    expect(info.pnlMaeRatio).toBeCloseTo(detail.statistics.netQuote / 40, 5);
 
     nowSpy.mockRestore();
   });
@@ -233,6 +234,7 @@ describe('buildBacktestInfo', () => {
     expect(info.maxMfeAbsolute).toBe(0);
     expect(info.maxDrawdownQuote).toBe(0);
     expect(info.winRatePercent).toBeNull();
+    expect(info.pnlMaeRatio).toBeNull();
   });
 
   it('counts trading days across overlapping deals', () => {
