@@ -40,5 +40,7 @@ export interface BacktestInfo {
   avgMfeAbsolute: number;
   /** Maximum drawdown in quote currency */
   maxDrawdownQuote: number;
+  /** Ratio of net profit to maximum MAE */
+  pnlMaeRatio: number | null;
   deals: BacktestInfoDeal[];
 }

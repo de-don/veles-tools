@@ -121,6 +121,14 @@ const buildColumns = (): ColumnsType<BacktestInfo> =>
       render: (_value, item) => formatAmount(item.profitNet, item.quote),
     },
     {
+      title: 'P&L / МПУ',
+      dataIndex: 'pnlMaeRatio',
+      key: 'pnlMaeRatio',
+      width: 200,
+      sorter: buildNumberSorter((item) => item.pnlMaeRatio),
+      render: (_value, item) => formatAmount(item.pnlMaeRatio),
+    },
+    {
       title: 'Net / день',
       dataIndex: 'netQuotePerDay',
       key: 'netPerDay',

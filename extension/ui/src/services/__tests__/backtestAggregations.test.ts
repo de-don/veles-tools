@@ -29,6 +29,7 @@ const baseInfo: Omit<BacktestInfo, 'deals'> = {
   avgMaeAbsolute: 0,
   avgMfeAbsolute: 0,
   maxDrawdownQuote: 0,
+  pnlMaeRatio: null,
 };
 
 const buildDeal = (overrides: Partial<BacktestInfoDeal> = {}): BacktestInfoDeal => {

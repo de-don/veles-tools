@@ -125,6 +125,8 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
   const mfeStats = calculateExtremes(cycles.map((cycle) => Math.abs(cycle.mfeAbsolute)));
   const equitySeries = buildEquitySeries(cycles);
   const maxDrawdownQuote = calculateMaxDrawdown(equitySeries);
+  const pnlMaeRatio =
+    maeStats.max > 0 && Number.isFinite(statistics.netQuote) ? statistics.netQuote / maeStats.max : null;
 
   return {
     id: statistics.id,
@@ -152,6 +154,7 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
     avgMaeAbsolute: maeStats.avg,
     avgMfeAbsolute: mfeStats.avg,
     maxDrawdownQuote,
+    pnlMaeRatio,
     deals,
   };
 };
