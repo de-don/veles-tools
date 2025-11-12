@@ -9,6 +9,11 @@ interface BacktestGroupsContextValue {
   updateGroupName: (groupId: string, name: string) => BacktestGroup | null;
   deleteGroup: (groupId: string) => void;
   removeBacktests: (groupId: string, backtestIds: number[]) => BacktestGroup | null;
+  transferBacktests: (
+    sourceGroupId: string,
+    targetGroupId: string,
+    backtestIds: number[],
+  ) => { source: BacktestGroup; target: BacktestGroup } | null;
   refresh: () => void;
 }
 
@@ -176,6 +181,70 @@ export const BacktestGroupsProvider = ({ children }: PropsWithChildren) => {
     [groups, persist],
   );
 
+  const transferBacktests = useCallback(
+    (
+      sourceGroupId: string,
+      targetGroupId: string,
+      backtestIds: number[],
+    ): { source: BacktestGroup; target: BacktestGroup } | null => {
+      if (!(sourceGroupId && targetGroupId) || sourceGroupId === targetGroupId) {
+        return null;
+      }
+
+      const normalizedIds = normalizeBacktestIds(backtestIds);
+      if (normalizedIds.length === 0) {
+        return null;
+      }
+
+      const idsToMove = new Set(normalizedIds);
+      let sourceSnapshot: BacktestGroup | null = null;
+      let targetSnapshot: BacktestGroup | null = null;
+      let changed = false;
+      const nextGroups = groups.map((group) => {
+        if (group.id === sourceGroupId) {
+          const filteredIds = group.backtestIds.filter((id) => !idsToMove.has(id));
+          if (filteredIds.length === group.backtestIds.length) {
+            sourceSnapshot = group;
+            return group;
+          }
+          sourceSnapshot = {
+            ...group,
+            backtestIds: filteredIds,
+            updatedAt: Date.now(),
+          };
+          changed = true;
+          return sourceSnapshot;
+        }
+        if (group.id === targetGroupId) {
+          const mergedIds = normalizeBacktestIds([...group.backtestIds, ...normalizedIds]);
+          if (mergedIds.length === group.backtestIds.length) {
+            targetSnapshot = group;
+            return group;
+          }
+          targetSnapshot = {
+            ...group,
+            backtestIds: mergedIds,
+            updatedAt: Date.now(),
+          };
+          changed = true;
+          return targetSnapshot;
+        }
+        return group;
+      });
+
+      if (!(sourceSnapshot && targetSnapshot)) {
+        return null;
+      }
+
+      if (changed) {
+        persist(nextGroups);
+      }
+
+      return { source: sourceSnapshot, target: targetSnapshot };
+    },
+    [groups, persist],
+  );
+
   const refresh = useCallback(() => {
     setGroups(readBacktestGroups());
   }, []);
@@ -188,9 +257,10 @@ export const BacktestGroupsProvider = ({ children }: PropsWithChildren) => {
       updateGroupName,
       deleteGroup,
       removeBacktests,
+      transferBacktests,
       refresh,
     }),
-    [groups, createGroup, appendToGroup, updateGroupName, deleteGroup, removeBacktests, refresh],
+    [groups, createGroup, appendToGroup, updateGroupName, deleteGroup, removeBacktests, transferBacktests, refresh],
   );
 
   return <BacktestGroupsContext.Provider value={value}>{children}</BacktestGroupsContext.Provider>;

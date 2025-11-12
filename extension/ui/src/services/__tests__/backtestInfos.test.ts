@@ -101,7 +101,6 @@ const createOrder = (overrides: Partial<BacktestOrder> = {}): BacktestOrder => (
 });
 
 const createCycle = (overrides: Partial<BacktestCycle> = {}): BacktestCycle => ({
-  id: overrides.id ?? 1,
   date: overrides.date ?? '2024-01-02T00:30:00Z',
   status: overrides.status ?? 'FINISHED',
   substatus: overrides.substatus ?? 'TAKE_PROFIT',
@@ -140,7 +139,6 @@ describe('buildBacktestInfo', () => {
 
     const cycles: BacktestCycle[] = [
       createCycle({
-        id: 1,
         date: '2024-01-02T00:30:00Z',
         pnl: 100,
         maeAbsolute: 10,
@@ -154,7 +152,6 @@ describe('buildBacktestInfo', () => {
         ],
       }),
       createCycle({
-        id: 2,
         date: '2024-01-03T02:00:00Z',
         pnl: -150,
         maeAbsolute: 40,
@@ -168,7 +165,6 @@ describe('buildBacktestInfo', () => {
         ],
       }),
       createCycle({
-        id: 3,
         date: '2024-01-04T06:00:00Z',
         pnl: 200,
         maeAbsolute: 5,
@@ -182,7 +178,6 @@ describe('buildBacktestInfo', () => {
         ],
       }),
       createCycle({
-        id: 4,
         date: '2024-01-05T01:00:00Z',
         status: 'STARTED',
         pnl: -20,
@@ -216,6 +211,7 @@ describe('buildBacktestInfo', () => {
     expect(info.avgMaeAbsolute).toBeCloseTo((10 + 40 + 5 + 25) / 4, 5);
     expect(info.maxMfeAbsolute).toBe(60);
     expect(info.avgMfeAbsolute).toBeCloseTo((30 + 15 + 60 + 5) / 4, 5);
+    expect(info.pnlMaeRatio).toBeCloseTo(detail.statistics.netQuote / 40, 5);
 
     nowSpy.mockRestore();
   });
@@ -238,13 +234,13 @@ describe('buildBacktestInfo', () => {
     expect(info.maxMfeAbsolute).toBe(0);
     expect(info.maxDrawdownQuote).toBe(0);
     expect(info.winRatePercent).toBeNull();
+    expect(info.pnlMaeRatio).toBeNull();
   });
 
   it('counts trading days across overlapping deals', () => {
     const detail = createDetail();
     const cycles: BacktestCycle[] = [
       createCycle({
-        id: 1,
         date: '2024-02-01T12:00:00Z',
         orders: [
           createOrder({
@@ -254,7 +250,6 @@ describe('buildBacktestInfo', () => {
         ],
       }),
       createCycle({
-        id: 2,
         date: '2024-02-02T03:00:00Z',
         orders: [
           createOrder({
@@ -264,7 +259,6 @@ describe('buildBacktestInfo', () => {
         ],
       }),
       createCycle({
-        id: 3,
         date: '2024-02-03T02:00:00Z',
         orders: [
           createOrder({

@@ -29,9 +29,12 @@ const baseInfo: Omit<BacktestInfo, 'deals'> = {
   avgMaeAbsolute: 0,
   avgMfeAbsolute: 0,
   maxDrawdownQuote: 0,
+  pnlMaeRatio: null,
 };
 
-const buildDeal = (overrides: Partial<BacktestInfoDeal> = {}): BacktestInfoDeal => {
+const buildDeal = (
+  overrides: Partial<Omit<BacktestInfoDeal, 'id'>> & { id?: string | number } = {},
+): BacktestInfoDeal => {
   const start = overrides.start ?? Date.parse('2024-01-01T00:00:00Z');
   const end = overrides.end ?? start + 60 * 60 * 1000;
   const startDay = new Date(start);
@@ -39,8 +42,9 @@ const buildDeal = (overrides: Partial<BacktestInfoDeal> = {}): BacktestInfoDeal 
   const endDay = new Date(end);
   endDay.setHours(0, 0, 0, 0);
   const durationInDays = overrides.durationInDays ?? Math.max(0, (end - start) / MS_IN_DAY);
+  const resolvedId = overrides.id ?? Math.floor(Math.random() * 100000).toString();
   return {
-    id: overrides.id ?? Math.floor(Math.random() * 100000),
+    id: typeof resolvedId === 'string' ? resolvedId : String(resolvedId),
     start,
     end,
     startDay,
@@ -101,14 +105,14 @@ describe('aggregateBacktestsMetrics', () => {
     expect(metrics.totalLosingDeals).toBe(0);
     expect(metrics.openDeals).toBe(0);
     expect(metrics.averageProfitPerDeal).toBe(150);
-    expect(metrics.averageNetPerDay).toBe(15);
+    expect(metrics.averageNetPerDay).toBe(75);
     expect(metrics.averageWinRatePercent).toBe(100);
     expect(metrics.maxConcurrentPositions).toBe(2);
     expect(metrics.maxConcurrentMae).toBe(120);
     expect(metrics.maxAggregatedDrawdown).toBe(0);
     expect(metrics.pnlToRisk).toBeCloseTo(2.5);
     expect(metrics.averageDealDurationDays).toBeCloseTo((6 / 24 + 7 / 24) / 2, 5);
-    expect(metrics.totalIdleDays).toBe(3);
+    expect(metrics.totalIdleDays).toBe(0.1);
 
     expect(metrics.pnlSeries).toEqual([
       { date: Date.parse('2024-01-01T06:00:00Z'), value: 100 },
@@ -209,7 +213,7 @@ describe('aggregateBacktestsMetrics', () => {
     const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 3 });
 
     expect(metrics.totalProfitQuote).toBe(220);
-    expect(metrics.averageNetPerDay).toBe(2.5);
+    expect(metrics.averageNetPerDay).toBe(3.4375);
     expect(metrics.maxAggregatedDrawdown).toBe(80);
     expect(metrics.maxConcurrentMae).toBe(100);
     expect(metrics.pnlToRisk).toBeCloseTo(2.2, 5);
@@ -250,7 +254,7 @@ describe('aggregateBacktestsMetrics', () => {
     expect(metrics.totalProfitableDeals).toBe(1);
     expect(metrics.openDeals).toBe(1);
     expect(metrics.aggregatedActiveMae).toBe(25);
-    expect(metrics.totalIdleDays).toBe(3);
+    expect(metrics.totalIdleDays).toBe(4.2);
     expect(metrics.pnlSeries).toEqual([{ date: toTimestamp('2024-04-01T05:00:00Z'), value: 40 }]);
   });
 
@@ -288,5 +292,22 @@ describe('aggregateBacktestsMetrics', () => {
       { date: startedDealStart, value: 1 },
       { date: startedDealEnd, value: 1 },
     ]);
+  });
+
+  it('does not duplicate active deal counts when multiple deals share identical time points', () => {
+    const start = toTimestamp('2024-06-01T00:00:00Z');
+    const end = toTimestamp('2024-06-01T12:00:00Z');
+    const deals = [
+      buildDeal({ id: 901, start, end, maeAbsolute: 10 }),
+      buildDeal({ id: 902, start, end, maeAbsolute: 20 }),
+    ];
+
+    const metrics = aggregateBacktestsMetrics([buildInfo({ id: 12 }, deals)], { maxConcurrentPositions: 3 });
+
+    const uniqueDates = new Set(metrics.activeDealCountSeries.map((point) => point.date));
+    expect(metrics.activeDealCountSeries).toHaveLength(uniqueDates.size);
+    expect(metrics.activeDealCountSeries[0]).toEqual({ date: start, value: 2 });
+    expect(metrics.activeDealCountSeries.at(-1)).toEqual({ date: end, value: 0 });
+    expect(metrics.maxConcurrentPositions).toBe(2);
   });
 });

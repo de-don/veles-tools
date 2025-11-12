@@ -68,9 +68,6 @@ const sortCyclesByDate = (cycles: BacktestCycle[]): BacktestCycle[] => {
   return [...cycles].sort((left, right) => {
     const leftTime = toTimestamp(left.date) ?? Number.MAX_SAFE_INTEGER;
     const rightTime = toTimestamp(right.date) ?? Number.MAX_SAFE_INTEGER;
-    if (leftTime === rightTime) {
-      return left.id - right.id;
-    }
     return leftTime - rightTime;
   });
 };
@@ -105,7 +102,7 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
     const isCompleted = cycle.status !== 'STARTED';
 
     return {
-      id: cycle.id,
+      id: crypto.randomUUID(),
       start: startTime,
       end: endTime,
       startDay,
@@ -125,6 +122,8 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
   const mfeStats = calculateExtremes(cycles.map((cycle) => Math.abs(cycle.mfeAbsolute)));
   const equitySeries = buildEquitySeries(cycles);
   const maxDrawdownQuote = calculateMaxDrawdown(equitySeries);
+  const pnlMaeRatio =
+    maeStats.max > 0 && Number.isFinite(statistics.netQuote) ? statistics.netQuote / maeStats.max : null;
 
   return {
     id: statistics.id,
@@ -152,6 +151,7 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
     avgMaeAbsolute: maeStats.avg,
     avgMfeAbsolute: mfeStats.avg,
     maxDrawdownQuote,
+    pnlMaeRatio,
     deals,
   };
 };

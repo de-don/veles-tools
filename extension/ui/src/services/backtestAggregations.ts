@@ -18,6 +18,11 @@ const average = (values: number[]): number => {
   return sum(values) / values.length;
 };
 
+const round = (value: number, decimals: number): number => {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+};
+
 export const aggregateBacktestsMetrics = (
   backtests: BacktestInfo[],
   config: AggregationConfig,
@@ -50,7 +55,8 @@ export const aggregateBacktestsMetrics = (
   const allSortedDeals = backtests.flatMap((info) => info.deals).sort((a, b) => a.start - b.start);
 
   // TODO: Add start & end of backtest periods from all backtests
-  const timePoints = allSortedDeals.flatMap((deal) => [deal.start, deal.end]).sort((a, b) => a - b);
+  const timePointsAll = allSortedDeals.flatMap((deal) => [deal.start, deal.end]);
+  const timePoints = [...new Set(timePointsAll)].sort((a, b) => a - b);
 
   const aggregatedStats = {
     totalNet: 0,
@@ -60,6 +66,7 @@ export const aggregateBacktestsMetrics = (
       loss: 0,
       active: 0,
     },
+    idleTime: 0,
     activeMae: 0,
     maeSeries: [] as ChartPoint[],
     pnlSeries: [] as ChartPoint[],
@@ -124,6 +131,11 @@ export const aggregateBacktestsMetrics = (
     }
 
     aggregatedStats.activeDealCountSeries.push({ date: timePoint, value: activeDeals.length });
+
+    // Net Per day calculation
+    if (!activeDeals.length && nextTimePoint) {
+      aggregatedStats.idleTime += nextTimePoint - timePoint;
+    }
   }
 
   const usedDeals = dealsResults.filter((result) => result.used).map((result) => result.deal);
@@ -138,14 +150,11 @@ export const aggregateBacktestsMetrics = (
   const maxAggregatedDrawdown = calculateMaxDrawdown(aggregatedStats.pnlSeries.map((point) => point.value));
   const averageDealDurationDays = average(usedDeals.map((result) => result.durationInDays));
 
-  const backtestPeriodInDays = Math.floor(
-    (new Date(backtests[0].to).getTime() - new Date(backtests[0].from).getTime()) / MS_IN_DAY,
-  ); // TODO: calculate across all backtests
-  const totalTradingDays = new Set(
-    usedDeals.flatMap((d) => getDaysRange(d.startDay, d.endDay).map((day) => day.toDateString())),
-  ).size;
+  const startTime = Math.min(...backtests.map((b) => new Date(b.from).getTime()));
+  const endTime = Math.max(...backtests.map((b) => new Date(b.to).getTime()));
+  const totalDays = (endTime - startTime) / MS_IN_DAY;
 
-  const averageNetPerDay = average(backtests.map((b) => b.netQuotePerDay));
+  const averageNetPerDay = totalProfitQuote / Math.max(1, totalDays);
   const pnlToRisk = totalProfitQuote / Math.max(1, Math.max(maxConcurrentMae, maxAggregatedDrawdown));
 
   return {
@@ -161,7 +170,7 @@ export const aggregateBacktestsMetrics = (
     openDeals,
     aggregatedActiveMae: aggregatedStats.activeMae,
     averageDealDurationDays,
-    totalIdleDays: Math.max(0, backtestPeriodInDays - totalTradingDays),
+    totalIdleDays: round(aggregatedStats.idleTime / MS_IN_DAY, 1),
     maxAggregatedDrawdown: maxAggregatedDrawdown,
     maxConcurrentMae,
 
@@ -170,16 +179,4 @@ export const aggregateBacktestsMetrics = (
     pnlSeries: aggregatedStats.pnlSeries,
     activeDealCountSeries: aggregatedStats.activeDealCountSeries,
   };
-};
-
-const getDaysRange = (startDay: Date, endDay: Date): Date[] => {
-  const days = [];
-
-  const day = new Date(startDay);
-  while (day <= endDay) {
-    days.push(new Date(day));
-    day.setDate(day.getDate() + 1);
-  }
-
-  return days;
 };

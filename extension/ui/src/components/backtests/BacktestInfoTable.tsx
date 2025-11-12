@@ -121,6 +121,14 @@ const buildColumns = (): ColumnsType<BacktestInfo> =>
       render: (_value, item) => formatAmount(item.profitNet, item.quote),
     },
     {
+      title: 'P&L / МПУ',
+      dataIndex: 'pnlMaeRatio',
+      key: 'pnlMaeRatio',
+      width: 200,
+      sorter: buildNumberSorter((item) => item.pnlMaeRatio),
+      render: (_value, item) => formatAmount(item.pnlMaeRatio),
+    },
+    {
       title: 'Net / день',
       dataIndex: 'netQuotePerDay',
       key: 'netPerDay',
@@ -266,12 +274,11 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
   }, [selectedIds, onSelectionChange]);
 
   return (
-    <div className="backtest-info-table">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
       <div
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          marginBottom: 12,
           flexWrap: 'wrap',
           gap: 8,
         }}

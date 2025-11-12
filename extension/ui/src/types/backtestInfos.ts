@@ -1,7 +1,7 @@
 import type { BacktestCycle } from './backtests';
 
 export interface BacktestInfoDeal {
-  id: number;
+  id: string;
   start: number;
   end: number;
   startDay: Date; // day of start (00:00:00)
@@ -40,5 +40,7 @@ export interface BacktestInfo {
   avgMfeAbsolute: number;
   /** Maximum drawdown in quote currency */
   maxDrawdownQuote: number;
+  /** Ratio of net profit to maximum MAE */
+  pnlMaeRatio: number | null;
   deals: BacktestInfoDeal[];
 }
