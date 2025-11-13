@@ -120,6 +120,59 @@ const getDateParts = (value: string | null | undefined): { time: string; date: s
   return { time: timeLabel, date: dateLabel };
 };
 
+const MS_IN_SECOND = 1000;
+const MS_IN_MINUTE = 60 * MS_IN_SECOND;
+const MS_IN_HOUR = 60 * MS_IN_MINUTE;
+const MS_IN_DAY = 24 * MS_IN_HOUR;
+
+const parseTimestamp = (value: string | null | undefined): number | null => {
+  if (!value) {
+    return null;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
+
+const getDealLifetimeMs = (deal: ActiveDeal, referenceTimestamp?: number): number | null => {
+  const createdAtTimestamp = parseTimestamp(deal.createdAt);
+  if (createdAtTimestamp === null) {
+    return null;
+  }
+  const now = typeof referenceTimestamp === 'number' ? referenceTimestamp : Date.now();
+  if (!Number.isFinite(now)) {
+    return null;
+  }
+  return Math.max(0, now - createdAtTimestamp);
+};
+
+const formatDealLifetime = (deal: ActiveDeal, referenceTimestamp?: number): string => {
+  const lifetimeMs = getDealLifetimeMs(deal, referenceTimestamp);
+  if (lifetimeMs === null) {
+    return '—';
+  }
+  if (lifetimeMs < MS_IN_MINUTE) {
+    const seconds = Math.max(1, Math.floor(lifetimeMs / MS_IN_SECOND));
+    return `${seconds} с`;
+  }
+  const days = Math.floor(lifetimeMs / MS_IN_DAY);
+  const hours = Math.floor((lifetimeMs % MS_IN_DAY) / MS_IN_HOUR);
+  const minutes = Math.floor((lifetimeMs % MS_IN_HOUR) / MS_IN_MINUTE);
+  const parts: string[] = [];
+  if (days > 0) {
+    parts.push(`${days}д`);
+  }
+  if (hours > 0) {
+    parts.push(`${hours}ч`);
+  }
+  if (parts.length < 2 && minutes > 0) {
+    parts.push(`${minutes} мин`);
+  }
+  if (parts.length === 0) {
+    parts.push('1 мин');
+  }
+  return parts.slice(0, 2).join(' ');
+};
+
 interface ActiveDealsPageProps {
   extensionReady: boolean;
 }
@@ -406,6 +459,15 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         ),
       },
       {
+        title: 'Экспозиция',
+        dataIndex: 'exposure',
+        key: 'exposure',
+        align: 'right',
+        width: 140,
+        sorter: (a, b) => a.exposure - b.exposure,
+        render: (_value, record) => formatCurrency(record.exposure),
+      },
+      {
         title: 'Динамика',
         key: 'pnlTrend',
         width: 140,
@@ -468,6 +530,18 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
             </div>
           );
         },
+      },
+      {
+        title: 'Время в сделке',
+        key: 'lifetime',
+        width: 160,
+        sorter: (a, b) => {
+          const reference = Date.now();
+          const left = getDealLifetimeMs(a.deal, reference) ?? 0;
+          const right = getDealLifetimeMs(b.deal, reference) ?? 0;
+          return left - right;
+        },
+        render: (_value, record) => formatDealLifetime(record.deal),
       },
       {
         title: 'Кол-во',
