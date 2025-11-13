@@ -24,11 +24,57 @@ const numberFormatter = new Intl.NumberFormat('ru-RU', {
   minimumFractionDigits: 0,
 });
 
+const GROUPED_SERIES_COLOR_PALETTE = [
+  '#2563eb',
+  '#f97316',
+  '#14b8a6',
+  '#a855f7',
+  '#ef4444',
+  '#0ea5e9',
+  '#84cc16',
+  '#fb7185',
+  '#facc15',
+  '#22d3ee',
+  '#d946ef',
+  '#f59e0b',
+  '#10b981',
+  '#3b82f6',
+  '#e11d48',
+  '#6366f1',
+  '#059669',
+  '#f472b6',
+  '#65a30d',
+  '#0284c7',
+] as const;
+
 const formatNumber = (value: number): string => {
   if (!Number.isFinite(value)) {
     return '—';
   }
   return numberFormatter.format(value);
+};
+
+const hashString = (value: string): number => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash);
+};
+
+const resolveGroupColorIndex = (group: PortfolioEquityGroupedSeriesItem, fallbackIndex: number): number => {
+  if (typeof group.apiKeyId === 'number') {
+    return Math.abs(group.apiKeyId) % GROUPED_SERIES_COLOR_PALETTE.length;
+  }
+  if (group.id) {
+    return hashString(group.id) % GROUPED_SERIES_COLOR_PALETTE.length;
+  }
+  return fallbackIndex % GROUPED_SERIES_COLOR_PALETTE.length;
+};
+
+const resolveGroupColor = (group: PortfolioEquityGroupedSeriesItem, fallbackIndex: number): string => {
+  const paletteIndex = resolveGroupColorIndex(group, fallbackIndex);
+  return GROUPED_SERIES_COLOR_PALETTE[paletteIndex];
 };
 
 const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLine'] => {
@@ -155,19 +201,27 @@ export const createPortfolioEquityChartOptions = (
   filterMode: DataZoomComponentOption['filterMode'] = 'none',
 ): EChartsOption => {
   if (groupedSeries && groupedSeries.length > 0) {
-    const lineSeries: LineSeriesOption[] = groupedSeries.map((group) => ({
-      id: group.id,
-      name: group.label,
-      type: 'line',
-      showSymbol: false,
-      smooth: false,
-      symbol: 'none',
-      lineStyle: {
-        width: 1.6,
-      },
-      emphasis: { focus: 'series' },
-      data: group.series.points.map((point) => [point.time, point.value]),
-    }));
+    const lineSeries: LineSeriesOption[] = groupedSeries.map((group, index) => {
+      const color = resolveGroupColor(group, index);
+      return {
+        id: group.id,
+        name: group.label,
+        type: 'line',
+        showSymbol: false,
+        smooth: false,
+        symbol: 'none',
+        color,
+        lineStyle: {
+          width: 1.6,
+          color,
+        },
+        itemStyle: {
+          color,
+        },
+        emphasis: { focus: 'series' },
+        data: group.series.points.map((point) => [point.time, point.value]),
+      };
+    });
 
     const zeroLine = buildZeroLineForGroups(groupedSeries);
     if (zeroLine && lineSeries.length > 0) {
