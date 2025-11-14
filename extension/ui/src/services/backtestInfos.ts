@@ -112,6 +112,9 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
       maeAbsolute: Math.abs(cycle.maeAbsolute),
       mfeAbsolute: Math.abs(cycle.mfeAbsolute),
       durationInDays: (endTime - startTime) / MS_IN_DAY,
+      backtestId: statistics.id,
+      backtestName: statistics.name,
+      quoteCurrency: statistics.quote,
     } satisfies BacktestInfoDeal;
   });
 

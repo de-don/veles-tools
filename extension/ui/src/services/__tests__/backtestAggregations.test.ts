@@ -54,6 +54,9 @@ const buildDeal = (
     maeAbsolute: overrides.maeAbsolute ?? 0,
     mfeAbsolute: overrides.mfeAbsolute ?? 0,
     durationInDays,
+    backtestId: overrides.backtestId ?? 0,
+    backtestName: overrides.backtestName ?? 'Backtest',
+    quoteCurrency: overrides.quoteCurrency ?? 'USDT',
   } satisfies BacktestInfoDeal;
 };
 
@@ -132,6 +135,27 @@ describe('aggregateBacktestsMetrics', () => {
       { date: Date.parse('2024-01-01T10:00:00Z'), value: 0 },
     ]);
     expect(metrics.activeDealCountSeries.map((point) => point.value)).toEqual([1, 2, 2, 1, 0, 0]);
+    expect(metrics.dealTimelineRows.map((row) => row.backtestId)).toEqual([1, 2, 3]);
+    expect(metrics.dealTimelineRows[0]?.items[0]).toMatchObject({ id: '101', limitedByConcurrency: false });
+  });
+
+  it('marks deals excluded by the concurrency limit in timeline rows', () => {
+    const backtests: BacktestInfo[] = [
+      buildInfo({ id: 1, name: 'Primary' }, [
+        buildDeal({ id: 'p1', start: toTimestamp('2024-01-01T00:00:00Z'), end: toTimestamp('2024-01-01T06:00:00Z') }),
+      ]),
+      buildInfo({ id: 2, name: 'Overflow' }, [
+        buildDeal({ id: 'o1', start: toTimestamp('2024-01-01T01:00:00Z'), end: toTimestamp('2024-01-01T03:00:00Z'), net: 500 }),
+      ]),
+    ];
+
+    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 1 });
+
+    const overflowRow = metrics.dealTimelineRows.find((row) => row.backtestId === 2);
+    expect(overflowRow).toBeDefined();
+    expect(overflowRow?.items).toHaveLength(1);
+    expect(overflowRow?.items[0]).toMatchObject({ id: 'o1', limitedByConcurrency: true });
+    expect(metrics.totalProfitQuote).toBe(0);
   });
 
   it('counts started deals as active without affecting closed profit', () => {
@@ -179,6 +203,7 @@ describe('aggregateBacktestsMetrics', () => {
     expect(metrics.maeSeries).toEqual([]);
     expect(metrics.pnlSeries).toEqual([]);
     expect(metrics.activeDealCountSeries).toEqual([]);
+    expect(metrics.dealTimelineRows).toEqual([]);
   });
 
   it('calculates drawdown, risk ratio, and concurrency stats for overlapping deals', () => {

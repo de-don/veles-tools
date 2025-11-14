@@ -1,6 +1,11 @@
 import { calculateMaxDrawdown } from '../lib/backtestAnalytics';
 import { MS_IN_DAY } from '../lib/dateTime';
-import type { AggregatedBacktestsMetrics, AggregationConfig, ChartPoint } from '../types/backtestAggregations';
+import type {
+  AggregatedBacktestsMetrics,
+  AggregationConfig,
+  ChartPoint,
+  DealTimelineRow,
+} from '../types/backtestAggregations';
 import type { BacktestInfo, BacktestInfoDeal } from '../types/backtestInfos';
 
 export const DEFAULT_AGGREGATION_CONFIG: AggregationConfig = {
@@ -47,12 +52,22 @@ export const aggregateBacktestsMetrics = (
       maeSeries: [],
       pnlSeries: [],
       activeDealCountSeries: [],
+      dealTimelineRows: [],
     };
   }
 
   const limit = Math.max(1, config.maxConcurrentPositions);
 
-  const allSortedDeals = backtests.flatMap((info) => info.deals).sort((a, b) => a.start - b.start);
+  const allSortedDeals: BacktestInfoDeal[] = backtests
+    .flatMap((info) =>
+      info.deals.map((deal) => ({
+        ...deal,
+        backtestId: info.id,
+        backtestName: info.name,
+        quoteCurrency: info.quote,
+      })),
+    )
+    .sort((a, b) => a.start - b.start);
 
   // TODO: Add start & end of backtest periods from all backtests
   const timePointsAll = allSortedDeals.flatMap((deal) => [deal.start, deal.end]);
@@ -124,7 +139,7 @@ export const aggregateBacktestsMetrics = (
     // Update max concurrent positions
     aggregatedStats.maxConcurrentPositions = Math.max(aggregatedStats.maxConcurrentPositions, activeDeals.length);
 
-    const sumMae = sum(activeDeals.map((d) => d.maeAbsolute));
+    const sumMae = sum(activeDeals.map((entry) => entry.maeAbsolute));
     aggregatedStats.maeSeries.push({ date: timePoint, value: sumMae });
     if (nextTimePoint) {
       aggregatedStats.maeSeries.push({ date: nextTimePoint, value: sumMae });
@@ -139,6 +154,28 @@ export const aggregateBacktestsMetrics = (
   }
 
   const usedDeals = dealsResults.filter((result) => result.used).map((result) => result.deal);
+
+  const dealTimelineRows: DealTimelineRow[] = backtests.map((info) => ({
+    backtestId: info.id,
+    backtestName: info.name,
+    quoteCurrency: info.quote,
+    items: [],
+  }));
+  const timelineRowsById = new Map(dealTimelineRows.map((row) => [row.backtestId, row] as const));
+  dealsResults.forEach(({ deal, used }) => {
+    const row = timelineRowsById.get(deal.backtestId);
+    if (!row) {
+      return;
+    }
+    row.items.push({
+      id: deal.id,
+      start: deal.start,
+      end: deal.end,
+      net: deal.net,
+      status: deal.status,
+      limitedByConcurrency: !used,
+    });
+  });
 
   const totalProfitQuote = aggregatedStats.totalNet;
   const totalProfitableDeals = aggregatedStats.deals.profit;
@@ -178,5 +215,6 @@ export const aggregateBacktestsMetrics = (
     maeSeries: aggregatedStats.maeSeries,
     pnlSeries: aggregatedStats.pnlSeries,
     activeDealCountSeries: aggregatedStats.activeDealCountSeries,
+    dealTimelineRows,
   };
 };

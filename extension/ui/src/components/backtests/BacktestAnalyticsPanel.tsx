@@ -9,6 +9,7 @@ import type { AggregateRiskSeries, DailyConcurrencyRecord, PortfolioEquitySeries
 import { formatDurationDays } from '../../lib/tableHelpers';
 import type { AggregatedBacktestsMetrics, ChartPoint } from '../../types/backtestAggregations';
 import { AggregateRiskChart } from '../charts/AggregateRiskChart';
+import { BacktestDealsTimelineChart } from '../charts/BacktestDealsTimelineChart';
 import { DailyConcurrencyChart } from '../charts/DailyConcurrencyChart';
 import { LimitImpactChart, LimitRiskEfficiencyChart } from '../charts/LimitImpactChart';
 import { PortfolioEquityChart } from '../charts/PortfolioEquityChart';
@@ -294,6 +295,16 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
     ),
   );
 
+  const hasTimelineData = metrics.dealTimelineRows.some((row) => row.items.length > 0);
+  const dealsTimelineContent = renderChartTab(
+    'Сделки',
+    hasTimelineData ? (
+      <BacktestDealsTimelineChart rows={metrics.dealTimelineRows} />
+    ) : (
+      <Empty description="Нет сделок для отображения." style={{ padding: '24px 0' }} />
+    ),
+  );
+
   const limitTab =
     limitAnalysis === undefined
       ? null
@@ -351,6 +362,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
     { key: 'portfolio', label: 'P&L портфеля', children: portfolioContent },
     { key: 'risk', label: 'Риски', children: riskContent },
     ...(limitTab ? [limitTab] : []),
+    { key: 'timeline', label: 'Сделки', children: dealsTimelineContent },
     { key: 'concurrency', label: 'Одновременность', children: concurrencyContent },
   ];
 

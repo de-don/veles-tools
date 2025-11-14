@@ -1,5 +1,5 @@
 import type { LimitImpactPoint } from '../lib/chartOptions';
-import type { BacktestInfo } from './backtestInfos';
+import type { BacktestInfo, BacktestInfoDeal } from './backtestInfos';
 
 export interface AggregationConfig {
   maxConcurrentPositions: number;
@@ -29,7 +29,24 @@ export interface AggregatedBacktestsMetrics {
   maeSeries: ChartPoint[];
   pnlSeries: ChartPoint[];
   activeDealCountSeries: ChartPoint[];
+  dealTimelineRows: DealTimelineRow[];
   limitImpactPoints?: LimitImpactPoint[];
+}
+
+export interface DealTimelineItem {
+  id: string;
+  start: number;
+  end: number;
+  net: number;
+  status: BacktestInfoDeal['status'];
+  limitedByConcurrency: boolean;
+}
+
+export interface DealTimelineRow {
+  backtestId: number;
+  backtestName: string;
+  quoteCurrency: string;
+  items: DealTimelineItem[];
 }
 
 export interface AggregationInput {

@@ -11,6 +11,9 @@ export interface BacktestInfoDeal {
   maeAbsolute: number; // maximum adverse excursion in absolute quote currency
   mfeAbsolute: number; // maximum favorable excursion in absolute quote currency
   durationInDays: number; // calculated duration in days (decimal)
+  backtestId: number;
+  backtestName: string;
+  quoteCurrency: string;
 }
 
 export interface BacktestInfo {
