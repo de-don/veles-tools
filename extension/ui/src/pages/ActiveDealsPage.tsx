@@ -10,6 +10,7 @@ import { StatisticCard } from '../components/ui/StatisticCard';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
 import type { ActiveDealMetrics } from '../lib/activeDeals';
+import type { DealHistoryPoint } from '../lib/activeDealsHistory';
 import { ACTIVE_DEALS_REFRESH_INTERVALS, isActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import {
   ACTIVE_DEALS_ZOOM_PRESET_OPTIONS,
@@ -100,6 +101,65 @@ const formatPriceWithDigits = (value: number, fractionDigits: number): string =>
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+};
+
+interface ZoomTimeWindow {
+  start: number;
+  end: number;
+}
+
+const clampZoomPercent = (value?: number): number | undefined => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 100) {
+    return 100;
+  }
+  return value;
+};
+
+const calculateZoomTimeWindow = (
+  series: PortfolioEquitySeries,
+  range?: DataZoomRange,
+): ZoomTimeWindow | null => {
+  if (!series.points.length) {
+    return null;
+  }
+  const firstPoint = series.points[0];
+  const lastPoint = series.points[series.points.length - 1];
+  if (!firstPoint || !lastPoint) {
+    return null;
+  }
+  const totalSpan = Math.max(1, lastPoint.time - firstPoint.time);
+  const startPercent = clampZoomPercent(range?.start);
+  const endPercent = clampZoomPercent(range?.end);
+
+  let start = firstPoint.time;
+  let end = lastPoint.time;
+
+  if (typeof startPercent === 'number') {
+    start = firstPoint.time + (totalSpan * startPercent) / 100;
+  }
+  if (typeof endPercent === 'number') {
+    end = firstPoint.time + (totalSpan * endPercent) / 100;
+  }
+  if (end <= start) {
+    end = start + 1;
+  }
+  return { start, end } satisfies ZoomTimeWindow;
+};
+
+const filterHistoryByWindow = (
+  history: readonly DealHistoryPoint[],
+  window: ZoomTimeWindow | null,
+): DealHistoryPoint[] => {
+  if (!window) {
+    return [...history];
+  }
+  return history.filter((point) => point.time >= window.start && point.time <= window.end);
 };
 
 const getDateParts = (value: string | null | undefined): { time: string; date: string } => {
@@ -197,6 +257,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     setZoomPreset,
     positionHistory,
   } = useActiveDeals();
+
+  const zoomTimeWindow = useMemo(() => calculateZoomTimeWindow(pnlSeries, zoomRange), [pnlSeries, zoomRange]);
 
   const [closingDealId, setClosingDealId] = useState<number | null>(null);
   const [apiKeyFilter, setApiKeyFilter] = useState<number[]>([]);
@@ -473,14 +535,15 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         width: 140,
         render: (_value, record) => {
           const history = positionHistory.get(record.deal.id) ?? [];
-          if (history.length < 2) {
+          const windowedHistory = filterHistoryByWindow(history, zoomTimeWindow);
+          if (windowedHistory.length === 0) {
             return (
               <div className="deal-sparkline-cell">
                 <span className="deal-sparkline-cell__empty">—</span>
               </div>
             );
           }
-          const points = history.map((item) => ({ time: item.time, value: item.pnl }));
+          const points = windowedHistory.map((item) => ({ time: item.time, value: item.pnl }));
           return (
             <div className="deal-sparkline-cell">
               <Sparkline points={points} ariaLabel={`Динамика P&L сделки ${record.deal.id}`} />
@@ -611,7 +674,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         },
       },
     ],
-    [apiKeysById, closingDealId, handleCloseDeal, positionHistory],
+    [apiKeysById, closingDealId, handleCloseDeal, positionHistory, zoomTimeWindow],
   );
 
   const {
