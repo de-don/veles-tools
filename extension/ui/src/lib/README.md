@@ -21,3 +21,7 @@ This directory contains shared utilities used across the UI. Every exported help
 - `clampDealHistory(points, limit?)` – trims history to the most recent `limit` entries to cap memory usage.
 - `mapHistoryToSnapshot(history, limit?)` / `snapshotHistoryToMap(snapshot)` – convert history maps to storage-friendly records and back with validation.
 - `isDealHistorySnapshot(value)` – runtime guard that ensures a parsed snapshot matches the expected schema.
+
+## `activeDeals.ts`
+- `computeDealMetrics(deal)` – derives exposure, P&L, average/mark prices, executed order counts, and the nearest open averaging order price (BUY for long, SELL for short) for a deal snapshot.
+- `aggregateDeals(deals)` – wraps `computeDealMetrics` for a whole collection, returning sorted positions plus aggregate exposure/P&L stats.

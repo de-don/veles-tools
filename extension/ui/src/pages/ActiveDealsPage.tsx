@@ -560,7 +560,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         render: (_value, record) => {
           const entryDigits = countFractionDigits(record.averageEntryPrice);
           const markDigits = countFractionDigits(record.markPrice);
-          const alignedDigits = Math.max(entryDigits, markDigits);
+          const nearestOrderDigits = countFractionDigits(record.nearestOpenOrderPrice ?? Number.NaN);
+          const alignedDigits = Math.max(entryDigits, markDigits, nearestOrderDigits);
           return (
             <div className="active-deals__price-cell">
               <div className="active-deals__price-row">
@@ -575,6 +576,14 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                   {formatPriceWithDigits(record.markPrice, alignedDigits)}
                 </span>
               </div>
+              {record.nearestOpenOrderPrice !== null && (
+                <div className="active-deals__price-row">
+                  <span className="active-deals__price-label">Ближ. ордер</span>
+                  <span className="active-deals__price-value">
+                    {formatPriceWithDigits(record.nearestOpenOrderPrice, alignedDigits)}
+                  </span>
+                </div>
+              )}
             </div>
           );
         },

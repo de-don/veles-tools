@@ -1,13 +1,33 @@
-import type { ActiveDeal, ActiveDealOrder } from '../types/activeDeals';
+import type {
+  ActiveDeal,
+  ActiveDealAlgorithm,
+  ActiveDealOrder,
+  ActiveDealOrderSide,
+} from '../types/activeDeals';
 
 const EXECUTED_ORDER_STATUSES = new Set(['EXECUTED', 'FILLED']);
+const OPEN_ORDER_STATUSES = new Set(['CREATED', 'PENDING']);
 
 const isExecutedOrder = (order: ActiveDealOrder): boolean => {
   return EXECUTED_ORDER_STATUSES.has(order.status);
 };
 
+const isOpenOrder = (order: ActiveDealOrder): boolean => {
+  return OPEN_ORDER_STATUSES.has(order.status);
+};
+
 const toFiniteNumber = (value: number | null | undefined): number | null => {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+};
+
+const isAddPositionOrder = (algorithm: ActiveDealAlgorithm, side: ActiveDealOrderSide): boolean => {
+  if (algorithm === 'LONG') {
+    return side === 'BUY';
+  }
+  if (algorithm === 'SHORT') {
+    return side === 'SELL';
+  }
+  return false;
 };
 
 interface OrderContribution {
@@ -37,12 +57,36 @@ const computePnlPercent = (pnl: number, exposure: number): number => {
   return (pnl / exposure) * 100;
 };
 
+const findNearestOpenOrderPrice = (deal: ActiveDeal, referencePrice: number): number | null => {
+  if (!Number.isFinite(referencePrice)) {
+    return null;
+  }
+  let nearestPrice: number | null = null;
+  let minDistance = Infinity;
+  deal.orders.forEach((order) => {
+    if (!isOpenOrder(order) || !isAddPositionOrder(deal.algorithm, order.side)) {
+      return;
+    }
+    const price = toFiniteNumber(order.price);
+    if (price === null || price <= 0) {
+      return;
+    }
+    const distance = Math.abs(price - referencePrice);
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestPrice = price;
+    }
+  });
+  return nearestPrice;
+};
+
 export interface ActiveDealMetrics {
   deal: ActiveDeal;
   netQuantity: number;
   absQuantity: number;
   averageEntryPrice: number;
   markPrice: number;
+  nearestOpenOrderPrice: number | null;
   exposure: number;
   pnl: number;
   pnlPercent: number;
@@ -83,6 +127,7 @@ export const computeDealMetrics = (deal: ActiveDeal): ActiveDealMetrics => {
   const absQuantity = Math.abs(netQuantity);
   const averageEntryPrice = absQuantity > 0 ? Math.abs(totals.cost) / absQuantity : fallbackEntry;
   const markPrice = toFiniteNumber(deal.price) ?? averageEntryPrice;
+  const nearestOpenOrderPrice = findNearestOpenOrderPrice(deal, markPrice);
   const exposure = absQuantity * averageEntryPrice;
   const pnl = absQuantity > 0 ? markPrice * netQuantity - totals.cost : 0;
   const pnlPercent = computePnlPercent(pnl, exposure);
@@ -96,6 +141,7 @@ export const computeDealMetrics = (deal: ActiveDeal): ActiveDealMetrics => {
     absQuantity,
     averageEntryPrice,
     markPrice,
+    nearestOpenOrderPrice,
     exposure,
     pnl,
     pnlPercent,
