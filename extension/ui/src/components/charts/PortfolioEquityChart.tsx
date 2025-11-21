@@ -1,7 +1,7 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
 import { createPortfolioEquityChartOptions, type DataZoomRange } from '../../lib/chartOptions';
-import type { PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../../lib/deprecatedFile';
+import type { ExecutedOrderPoint, PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../../lib/deprecatedFile';
 
 interface PortfolioEquityChartProps {
   series: PortfolioEquitySeries;
@@ -12,6 +12,7 @@ interface PortfolioEquityChartProps {
   legendSelection?: Record<string, boolean>;
   onLegendSelectionChange?: (selection: Record<string, boolean>) => void;
   filterVisibleRange?: boolean;
+  executedOrders?: ExecutedOrderPoint[];
 }
 
 interface DataZoomEventParams {
@@ -54,6 +55,7 @@ const PortfolioEquityChartComponent = ({
   legendSelection,
   onLegendSelectionChange,
   filterVisibleRange = false,
+  executedOrders,
 }: PortfolioEquityChartProps) => {
   const option = useMemo(
     () =>
@@ -61,10 +63,11 @@ const PortfolioEquityChartComponent = ({
         series,
         dataZoomRange,
         groupedSeries,
+        executedOrders,
         legendSelection,
         filterVisibleRange ? 'filter' : 'none',
       ),
-    [series, dataZoomRange, groupedSeries, legendSelection, filterVisibleRange],
+    [series, dataZoomRange, groupedSeries, executedOrders, legendSelection, filterVisibleRange],
   );
 
   const onEvents = useMemo(() => {

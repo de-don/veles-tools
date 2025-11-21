@@ -20,7 +20,7 @@ import {
 } from '../lib/activeDealsZoom';
 import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
 import type { DataZoomRange } from '../lib/chartOptions';
-import type { PortfolioEquitySeries } from '../lib/deprecatedFile';
+import type { ExecutedOrderPoint, PortfolioEquitySeries } from '../lib/deprecatedFile';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { ActiveDeal } from '../types/activeDeals';
@@ -417,6 +417,53 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     const allow = new Set(apiKeyFilter);
     return positions.filter((position) => allow.has(position.deal.apiKeyId));
   }, [apiKeyFilter, positions]);
+
+  const executedOrders = useMemo(() => {
+    const points: ExecutedOrderPoint[] = [];
+    positions.forEach((pos) => {
+      const deal = pos.deal;
+      if (deal.orders && deal.orders.length > 0) {
+        // Filter for executed orders that increase position (Entry/DCA)
+        // LONG: BUY, SHORT: SELL
+        const relevantSide = deal.algorithm === 'LONG' ? 'BUY' : 'SELL';
+
+        const filledOrders = deal.orders
+          .filter(
+            (o) =>
+              (o.status === 'FILLED' || o.status === 'EXECUTED') &&
+              o.executedAt &&
+              o.side === relevantSide
+          )
+          .sort((a, b) => {
+            if (!a.executedAt || !b.executedAt) return 0;
+            return new Date(a.executedAt).getTime() - new Date(b.executedAt).getTime();
+          });
+
+        filledOrders.forEach((order, index) => {
+          if (!order.executedAt) return;
+
+          const type: 'ENTRY' | 'DCA' = index === 0 ? 'ENTRY' : 'DCA';
+
+          points.push({
+            time: new Date(order.executedAt).getTime(),
+            price: order.price,
+            quantity: order.filled,
+            side: order.side,
+            dealId: deal.id,
+            pair: `${getDealBaseAsset(deal)}/${deal.pair.to}`,
+            apiKeyId: deal.apiKeyId,
+            botName: deal.botName,
+            botId: deal.botId,
+            algorithm: deal.algorithm,
+            positionVolume: order.position,
+            type,
+          });
+        });
+      }
+    });
+    return points.sort((a, b) => a.time - b.time);
+  }, [positions]);
+
   const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
   const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
 
@@ -827,6 +874,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 dataZoomRange={zoomRange}
                 onDataZoom={handleZoomChange}
                 groupedSeries={chartGroupedSeries}
+                executedOrders={executedOrders}
                 legendSelection={legendSelection}
                 onLegendSelectionChange={handleLegendSelectionChange}
                 filterVisibleRange
