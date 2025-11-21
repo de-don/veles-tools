@@ -78,7 +78,7 @@ const buildEquitySeries = (cycles: BacktestCycle[]): number[] => {
   let cumulative = 0;
 
   sorted.forEach((cycle) => {
-    const pnl = cycle.pnl;
+    const pnl = cycle.netQuote;
     cumulative += pnl ?? 0;
     series.push(cumulative);
   });

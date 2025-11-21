@@ -141,6 +141,7 @@ describe('buildBacktestInfo', () => {
       createCycle({
         date: '2024-01-02T00:30:00Z',
         pnl: 100,
+        netQuote: 100,
         maeAbsolute: 10,
         mfeAbsolute: 30,
         duration: 1800,
@@ -154,6 +155,7 @@ describe('buildBacktestInfo', () => {
       createCycle({
         date: '2024-01-03T02:00:00Z',
         pnl: -150,
+        netQuote: -150,
         maeAbsolute: 40,
         mfeAbsolute: 15,
         duration: 7200,
@@ -167,6 +169,7 @@ describe('buildBacktestInfo', () => {
       createCycle({
         date: '2024-01-04T06:00:00Z',
         pnl: 200,
+        netQuote: 200,
         maeAbsolute: 5,
         mfeAbsolute: 60,
         duration: 3600,
@@ -181,6 +184,7 @@ describe('buildBacktestInfo', () => {
         date: '2024-01-05T01:00:00Z',
         status: 'STARTED',
         pnl: -20,
+        netQuote: -20,
         maeAbsolute: 25,
         mfeAbsolute: 5,
         duration: 900,
