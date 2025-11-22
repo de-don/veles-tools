@@ -221,7 +221,7 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
 
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
-    pageSize: PAGE_SIZE_OPTIONS.at(-1),
+    pageSize: 100,
     showSizeChanger: true,
     hideOnSinglePage: false,
     pageSizeOptions: PAGE_SIZE_OPTIONS.map((option) => String(option)),

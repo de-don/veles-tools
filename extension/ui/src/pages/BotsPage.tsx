@@ -82,7 +82,7 @@ const _createSummary = (bot: TradingBot): BotSummary => ({
 
 const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[3]);
   const [sort, setSort] = useState(DEFAULT_SORT);
   const [data, setData] = useState<BotsListResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -203,9 +203,9 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const hasActiveFilters = useMemo(() => {
     return Boolean(
       appliedFilters.name ||
-        appliedFilters.apiKey ||
-        (appliedFilters.statuses && appliedFilters.statuses.length > 0) ||
-        (appliedFilters.algorithms && appliedFilters.algorithms.length > 0),
+      appliedFilters.apiKey ||
+      (appliedFilters.statuses && appliedFilters.statuses.length > 0) ||
+      (appliedFilters.algorithms && appliedFilters.algorithms.length > 0),
     );
   }, [appliedFilters]);
   const hasFilterDraft =
