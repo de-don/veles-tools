@@ -281,17 +281,37 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
   );
 
   const concurrencyRecords = buildDailyConcurrencyRecords(metrics.activeDealCountSeries);
+  const averageConcurrency =
+    concurrencyRecords.length > 0
+      ? concurrencyRecords.reduce((sum, record) => sum + record.maxCount, 0) / concurrencyRecords.length
+      : 0;
+
   const concurrencyContent = renderChartTab(
     'Одновременность',
     concurrencyRecords.length === 0 ? (
       <Empty description="Нет данных о позициях." style={{ padding: '24px 0' }} />
     ) : (
-      <DailyConcurrencyChart
-        records={concurrencyRecords}
-        filterVisibleRange
-        dataZoomRange={concurrencyZoomRange}
-        onDataZoom={setConcurrencyZoomRange}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '12px',
+          }}
+        >
+          <StatisticCard
+            title="Среднее значение"
+            tooltip={<InfoTooltip text="Среднее значение максимального количества одновременных сделок в день." />}
+            value={formatAmount(averageConcurrency)}
+          />
+        </div>
+        <DailyConcurrencyChart
+          records={concurrencyRecords}
+          filterVisibleRange
+          dataZoomRange={concurrencyZoomRange}
+          onDataZoom={setConcurrencyZoomRange}
+        />
+      </div>
     ),
   );
 
@@ -309,53 +329,53 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
     limitAnalysis === undefined
       ? null
       : {
-          key: 'limit',
-          label: 'Лимит по ботам',
-          children: (
-            <div style={{ display: 'grid', gap: 16 }}>
-              <ChartCard title="Параметры расчёта" minHeight={0}>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontWeight: 500, marginBottom: 8 }}>Максимальный лимит</div>
-                  <Slider
-                    min={1}
-                    max={Math.max(1, limitAnalysis.maxCap)}
-                    marks={
-                      limitAnalysis.maxCap > 1
-                        ? {
-                            1: '1',
-                            [limitAnalysis.maxCap]: String(limitAnalysis.maxCap),
-                          }
-                        : undefined
-                    }
-                    value={Math.min(limitAnalysis.value, Math.max(1, limitAnalysis.maxCap))}
-                    onChange={(value) => limitAnalysis.onValueChange(Number(value))}
-                    disabled={limitAnalysis.loading || limitAnalysis.maxCap <= 1}
-                  />
-                </div>
-                <p className="panel__description" style={{ marginBottom: 12 }}>
-                  Чем больше лимит, тем дольше выполняется расчёт. При значениях выше сотни вкладка может подвиснуть.
-                </p>
-                <Button type="primary" onClick={limitAnalysis.onCompute} loading={limitAnalysis.loading}>
-                  Посчитать
-                </Button>
-              </ChartCard>
-              <ChartCard title="Влияние лимита на P&L">
-                {limitAnalysis.points?.length ? (
-                  <LimitImpactChart points={limitAnalysis.points} />
-                ) : (
-                  <Empty description="Нет подготовленных данных. Запустите расчёт." style={{ padding: '24px 0' }} />
-                )}
-              </ChartCard>
-              <ChartCard title="Эффективность лимита">
-                {limitAnalysis.points?.length ? (
-                  <LimitRiskEfficiencyChart points={limitAnalysis.points} />
-                ) : (
-                  <Empty description="Нет подготовленных данных. Запустите расчёт." style={{ padding: '24px 0' }} />
-                )}
-              </ChartCard>
-            </div>
-          ),
-        };
+        key: 'limit',
+        label: 'Лимит по ботам',
+        children: (
+          <div style={{ display: 'grid', gap: 16 }}>
+            <ChartCard title="Параметры расчёта" minHeight={0}>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 500, marginBottom: 8 }}>Максимальный лимит</div>
+                <Slider
+                  min={1}
+                  max={Math.max(1, limitAnalysis.maxCap)}
+                  marks={
+                    limitAnalysis.maxCap > 1
+                      ? {
+                        1: '1',
+                        [limitAnalysis.maxCap]: String(limitAnalysis.maxCap),
+                      }
+                      : undefined
+                  }
+                  value={Math.min(limitAnalysis.value, Math.max(1, limitAnalysis.maxCap))}
+                  onChange={(value) => limitAnalysis.onValueChange(Number(value))}
+                  disabled={limitAnalysis.loading || limitAnalysis.maxCap <= 1}
+                />
+              </div>
+              <p className="panel__description" style={{ marginBottom: 12 }}>
+                Чем больше лимит, тем дольше выполняется расчёт. При значениях выше сотни вкладка может подвиснуть.
+              </p>
+              <Button type="primary" onClick={limitAnalysis.onCompute} loading={limitAnalysis.loading}>
+                Посчитать
+              </Button>
+            </ChartCard>
+            <ChartCard title="Влияние лимита на P&L">
+              {limitAnalysis.points?.length ? (
+                <LimitImpactChart points={limitAnalysis.points} />
+              ) : (
+                <Empty description="Нет подготовленных данных. Запустите расчёт." style={{ padding: '24px 0' }} />
+              )}
+            </ChartCard>
+            <ChartCard title="Эффективность лимита">
+              {limitAnalysis.points?.length ? (
+                <LimitRiskEfficiencyChart points={limitAnalysis.points} />
+              ) : (
+                <Empty description="Нет подготовленных данных. Запустите расчёт." style={{ padding: '24px 0' }} />
+              )}
+            </ChartCard>
+          </div>
+        ),
+      };
 
   const tabs: TabsProps['items'] = [
     { key: 'summary', label: 'Показатели', children: summaryTab },
