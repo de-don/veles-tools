@@ -494,6 +494,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           const botName = record.deal.botName ?? '—';
           const baseAsset = getDealBaseAsset(record.deal);
           const botUrl = buildBotDetailsUrl(record.deal.botId);
+          const dealUrl = buildDealStatisticsUrl(record.deal.id);
           return (
             <div className="active-deals__bot-cell">
               <a className="active-deals__bot-link" href={botUrl} target="_blank" rel="noreferrer">
@@ -503,6 +504,10 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 <span>{baseAsset}</span>
                 <span>·</span>
                 <span>{record.deal.algorithm}</span>
+                <span>·</span>
+                <a href={dealUrl} target="_blank" rel="noreferrer" className="active-deals__id-link-meta">
+                  ID {record.deal.id}
+                </a>
               </div>
             </div>
           );
@@ -677,22 +682,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         width: 120,
         sorter: (a, b) => a.executedOrdersCount - b.executedOrdersCount,
         render: (_value, record) => `${record.executedOrdersCount}/${record.totalOrdersCount}`,
-      },
-      {
-        title: 'ID сделки',
-        dataIndex: ['deal', 'id'],
-        key: 'id',
-        width: 140,
-        align: 'right',
-        sorter: (a, b) => a.deal.id - b.deal.id,
-        render: (_value, record) => {
-          const target = buildDealStatisticsUrl(record.deal.id);
-          return (
-            <a className="active-deals__id-link" href={target} target="_blank" rel="noreferrer">
-              {record.deal.id}
-            </a>
-          );
-        },
       },
       {
         title: 'Действия',
