@@ -15,6 +15,8 @@ export interface SparklineProps {
   strokeWidth?: number;
   className?: string;
   ariaLabel?: string;
+  minTime?: number;
+  maxTime?: number;
 }
 
 const DEFAULT_WIDTH = 120;
@@ -54,6 +56,8 @@ export const Sparkline = ({
   strokeWidth = DEFAULT_STROKE_WIDTH,
   className,
   ariaLabel,
+  minTime,
+  maxTime,
 }: SparklineProps) => {
   const { pathData, zeroLine } = useMemo(() => {
     if (!points || points.length === 0) {
@@ -64,49 +68,64 @@ export const Sparkline = ({
     const minValue = Math.min(...values, 0);
     const maxValue = Math.max(...values, 0);
 
-    if (points.length === 1) {
-      const chartHeight = height - MARGIN_Y * 2;
-      const verticalSpan = maxValue - minValue || 1;
-      const normalized = (points[0].value - minValue) / verticalSpan;
-      const y = height - MARGIN_Y - normalized * chartHeight;
-      const clampedY = Number.isFinite(y) ? Math.min(height - MARGIN_Y, Math.max(MARGIN_Y, y)) : height / 2;
-      const zeroNormalized = (0 - minValue) / verticalSpan;
-      const zeroY = height - MARGIN_Y - zeroNormalized * chartHeight;
-      const clampedZeroY = Math.min(height - MARGIN_Y, Math.max(MARGIN_Y, zeroY));
-      const zeroLineSegment = {
-        x1: MARGIN_X,
-        x2: width - MARGIN_X,
-        y: clampedZeroY,
-      };
-      return { pathData: `M ${MARGIN_X} ${clampedY} L ${width - MARGIN_X} ${clampedY}`, zeroLine: zeroLineSegment };
-    }
-
-    const verticalSpan = maxValue - minValue || 1;
-    const horizontalSpan = points.length - 1 || 1;
-
     const chartWidth = width - MARGIN_X * 2;
     const chartHeight = height - MARGIN_Y * 2;
+    const verticalSpan = maxValue - minValue || 1;
 
-    const commands = points.map((point, index) => {
-      const x = MARGIN_X + (chartWidth * index) / horizontalSpan;
-      const normalized = (point.value - minValue) / verticalSpan;
+    // Helper to calculate Y coordinate
+    const getY = (val: number) => {
+      const normalized = (val - minValue) / verticalSpan;
       const y = height - MARGIN_Y - normalized * chartHeight;
-      const clampedY = Number.isFinite(y) ? Math.min(height - MARGIN_Y, Math.max(MARGIN_Y, y)) : height / 2;
-      const command = index === 0 ? 'M' : 'L';
-      return `${command} ${x} ${clampedY}`;
-    });
+      return Number.isFinite(y) ? Math.min(height - MARGIN_Y, Math.max(MARGIN_Y, y)) : height / 2;
+    };
 
-    const zeroNormalized = (0 - minValue) / verticalSpan;
-    const zeroY = height - MARGIN_Y - zeroNormalized * chartHeight;
-    const clampedZeroY = Math.min(height - MARGIN_Y, Math.max(MARGIN_Y, zeroY));
+    let commands: string[];
+
+    // Time-based rendering if minTime/maxTime are provided
+    if (typeof minTime === 'number' && typeof maxTime === 'number' && maxTime > minTime) {
+      const timeSpan = maxTime - minTime;
+
+      commands = points.map((point, index) => {
+        // Calculate X based on time relative to the window
+        const timeOffset = point.time - minTime;
+        const normalizedTime = Math.max(0, Math.min(1, timeOffset / timeSpan));
+        const x = MARGIN_X + normalizedTime * chartWidth;
+
+        const y = getY(point.value);
+        const command = index === 0 ? 'M' : 'L';
+        return `${command} ${x} ${y}`;
+      });
+    } else {
+      // Fallback to index-based rendering
+      if (points.length === 1) {
+        const y = getY(points[0].value);
+        const zeroY = getY(0);
+        const zeroLineSegment = {
+          x1: MARGIN_X,
+          x2: width - MARGIN_X,
+          y: zeroY,
+        };
+        return { pathData: `M ${MARGIN_X} ${y} L ${width - MARGIN_X} ${y}`, zeroLine: zeroLineSegment };
+      }
+
+      const horizontalSpan = points.length - 1 || 1;
+      commands = points.map((point, index) => {
+        const x = MARGIN_X + (chartWidth * index) / horizontalSpan;
+        const y = getY(point.value);
+        const command = index === 0 ? 'M' : 'L';
+        return `${command} ${x} ${y}`;
+      });
+    }
+
+    const zeroY = getY(0);
     const zeroLineSegment = {
       x1: MARGIN_X,
       x2: width - MARGIN_X,
-      y: clampedZeroY,
+      y: zeroY,
     };
 
     return { pathData: commands.join(' '), zeroLine: zeroLineSegment };
-  }, [points, height, width]);
+  }, [points, height, width, minTime, maxTime]);
 
   const strokeColor = useMemo(
     () => resolveStrokeColor(points, { positive: strokePositive, negative: strokeNegative, neutral: strokeNeutral }),

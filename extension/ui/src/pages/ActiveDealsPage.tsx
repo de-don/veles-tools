@@ -159,7 +159,21 @@ const filterHistoryByWindow = (
   if (!window) {
     return [...history];
   }
-  return history.filter((point) => point.time >= window.start && point.time <= window.end);
+  // Find the first point inside or after the window
+  const startIndex = history.findIndex((point) => point.time >= window.start);
+
+  if (startIndex === -1) {
+    // All points are before the window. Return the last one if exists (to draw a flat line from it)
+    // or empty if history is empty.
+    const last = history[history.length - 1];
+    return last ? [last] : [];
+  }
+
+  // Include the point immediately before the window start, if it exists
+  const effectiveStartIndex = Math.max(0, startIndex - 1);
+
+  // Filter points up to window.end
+  return history.slice(effectiveStartIndex).filter((point) => point.time <= window.end || point === history[effectiveStartIndex]);
 };
 
 const getDateParts = (value: string | null | undefined): { time: string; date: string } => {
@@ -596,9 +610,25 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
             );
           }
           const points = windowedHistory.map((item) => ({ time: item.time, value: item.pnl }));
+
+          if (dealsState.lastUpdated) {
+            const lastUpdatedTime = new Date(dealsState.lastUpdated).getTime();
+            const lastTime = points.length > 0 ? points[points.length - 1].time : 0;
+            // Only append if the update time is newer than the last history point
+            // and within or after the window (though sparkline handles clipping)
+            if (lastUpdatedTime > lastTime) {
+              points.push({ time: lastUpdatedTime, value: record.pnl });
+            }
+          }
+
           return (
             <div className="deal-sparkline-cell">
-              <Sparkline points={points} ariaLabel={`Динамика P&L сделки ${record.deal.id}`} />
+              <Sparkline
+                points={points}
+                ariaLabel={`Динамика P&L сделки ${record.deal.id}`}
+                minTime={zoomTimeWindow?.start}
+                maxTime={zoomTimeWindow?.end}
+              />
             </div>
           );
         },

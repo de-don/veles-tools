@@ -7,8 +7,8 @@ export interface DealHistoryPoint {
 export type DealHistorySnapshot = Record<string, DealHistoryPoint[]>;
 export type DealHistoryMap = Map<number, DealHistoryPoint[]>;
 
-export const DEAL_HISTORY_LIMIT = 180;
-export const DEAL_HISTORY_WINDOW_MS = 60 * 60 * 1000;
+export const DEAL_HISTORY_LIMIT = 5000;
+export const DEAL_HISTORY_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 export const ACTIVE_DEALS_HISTORY_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
 
 export const filterDealHistoryByTimeWindow = (
