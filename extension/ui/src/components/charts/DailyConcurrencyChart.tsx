@@ -15,7 +15,9 @@ interface DailyConcurrencyChartProps {
 interface DataZoomEventParams {
   start?: number;
   end?: number;
-  batch?: Array<{ start?: number; end?: number }>;
+  startValue?: number;
+  endValue?: number;
+  batch?: Array<{ start?: number; end?: number; startValue?: number; endValue?: number }>;
 }
 
 const clampRangeValue = (value?: number): number | undefined => {
@@ -36,6 +38,8 @@ const extractRangeFromEvent = (event: DataZoomEventParams): DataZoomRange => {
   return {
     start: clampRangeValue(payload.start),
     end: clampRangeValue(payload.end),
+    startValue: typeof payload.startValue === 'number' ? payload.startValue : undefined,
+    endValue: typeof payload.endValue === 'number' ? payload.endValue : undefined,
   };
 };
 
@@ -59,7 +63,12 @@ const DailyConcurrencyChartComponent = ({
     return {
       datazoom: (event: DataZoomEventParams) => {
         const range = extractRangeFromEvent(event);
-        if (typeof range.start === 'number' || typeof range.end === 'number') {
+        if (
+          typeof range.start === 'number' ||
+          typeof range.end === 'number' ||
+          typeof range.startValue === 'number' ||
+          typeof range.endValue === 'number'
+        ) {
           onDataZoom(range);
         }
       },

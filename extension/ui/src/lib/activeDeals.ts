@@ -1,9 +1,6 @@
-import type {
-  ActiveDeal,
-  ActiveDealAlgorithm,
-  ActiveDealOrder,
-  ActiveDealOrderSide,
-} from '../types/activeDeals';
+import type { ActiveDeal, ActiveDealAlgorithm, ActiveDealOrder, ActiveDealOrderSide } from '../types/activeDeals';
+import { toTimestamp } from './dateTime';
+import type { ExecutedOrderPoint } from './deprecatedFile';
 
 const EXECUTED_ORDER_STATUSES = new Set(['EXECUTED', 'FILLED']);
 const OPEN_ORDER_STATUSES = new Set(['CREATED', 'PENDING']);
@@ -64,7 +61,7 @@ const findNearestOpenOrderPrice = (deal: ActiveDeal, referencePrice: number): nu
   let nearestPrice: number | null = null;
   let minDistance = Infinity;
   deal.orders.forEach((order) => {
-    if (!isOpenOrder(order) || !isAddPositionOrder(deal.algorithm, order.side)) {
+    if (!(isOpenOrder(order) && isAddPositionOrder(deal.algorithm, order.side))) {
       return;
     }
     const price = toFiniteNumber(order.price);
@@ -181,4 +178,90 @@ export const aggregateDeals = (deals: ActiveDeal[]): ActiveDealsAggregation => {
     losingCount,
     flatCount,
   };
+};
+
+export const getDealBaseAsset = (deal: ActiveDeal): string => {
+  if (deal.pair?.from) {
+    return deal.pair.from;
+  }
+  if (deal.symbol) {
+    const [base] = deal.symbol.split(/[/-]/);
+    return base?.replace(/USD(T)?$/i, '') ?? deal.symbol;
+  }
+  return '—';
+};
+
+const getDealQuoteAsset = (deal: ActiveDeal): string => {
+  if (deal.pair?.to) {
+    return deal.pair.to;
+  }
+  if (deal.symbol) {
+    const [, quote] = deal.symbol.split(/[/-]/);
+    return quote ?? 'USDT';
+  }
+  return 'USDT';
+};
+
+export interface ExecutedOrdersIndex {
+  byDeal: Map<number, ExecutedOrderPoint[]>;
+  all: ExecutedOrderPoint[];
+}
+
+export const buildExecutedOrdersIndex = (deals: readonly ActiveDeal[]): ExecutedOrdersIndex => {
+  const byDeal = new Map<number, ExecutedOrderPoint[]>();
+  const all: ExecutedOrderPoint[] = [];
+
+  deals.forEach((deal) => {
+    const baseAsset = getDealBaseAsset(deal);
+    const quoteAsset = getDealQuoteAsset(deal);
+    const pairLabel = quoteAsset ? `${baseAsset}/${quoteAsset}` : baseAsset;
+
+    const executedOrders = deal.orders.filter(
+      (order) => isExecutedOrder(order) && isAddPositionOrder(deal.algorithm, order.side),
+    );
+    executedOrders.sort((left, right) => {
+      const leftTimestamp = toTimestamp(left.executedAt);
+      const rightTimestamp = toTimestamp(right.executedAt);
+      if (leftTimestamp === null || rightTimestamp === null) {
+        return 0;
+      }
+      return leftTimestamp - rightTimestamp;
+    });
+
+    executedOrders.forEach((order, index) => {
+      const executedAt = toTimestamp(order.executedAt);
+      if (executedAt === null) {
+        return;
+      }
+      if (!(Number.isFinite(order.price) && Number.isFinite(order.filled))) {
+        return;
+      }
+      const point: ExecutedOrderPoint = {
+        time: executedAt,
+        price: order.price,
+        quantity: order.filled,
+        side: order.side,
+        dealId: deal.id,
+        pair: pairLabel,
+        apiKeyId: deal.apiKeyId,
+        botName: deal.botName,
+        botId: deal.botId,
+        algorithm: deal.algorithm,
+        positionVolume: order.position,
+        type: index === 0 ? 'ENTRY' : 'DCA',
+      };
+      const existing = byDeal.get(deal.id) ?? [];
+      existing.push(point);
+      byDeal.set(deal.id, existing);
+      all.push(point);
+    });
+  });
+
+  byDeal.forEach((orders) => {
+    orders.sort((left, right) => left.time - right.time);
+  });
+
+  all.sort((left, right) => left.time - right.time);
+
+  return { byDeal, all };
 };

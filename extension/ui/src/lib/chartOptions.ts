@@ -111,6 +111,8 @@ const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLin
 export interface DataZoomRange {
   start?: number;
   end?: number;
+  startValue?: number;
+  endValue?: number;
 }
 
 const buildZeroLineForGroups = (
@@ -157,10 +159,16 @@ const applyRange = (base: DataZoomComponentOption, range?: DataZoomRange): DataZ
     return base;
   }
   const next: DataZoomComponentOption = { ...base };
-  if (typeof range.start === 'number') {
+  if (typeof range.startValue === 'number') {
+    delete next.start;
+    next.startValue = range.startValue;
+  } else if (typeof range.start === 'number') {
     next.start = range.start;
   }
-  if (typeof range.end === 'number') {
+  if (typeof range.endValue === 'number') {
+    delete next.end;
+    next.endValue = range.endValue;
+  } else if (typeof range.end === 'number') {
     next.end = range.end;
   }
   return next;

@@ -41,27 +41,11 @@ export const ACTIVE_DEALS_ZOOM_PRESET_OPTIONS: ActiveDealsZoomPresetDefinition[]
   PRESETS.all,
 ];
 
-const clampToPercent = (value: number): number => {
-  if (Number.isNaN(value) || !Number.isFinite(value)) {
-    return 0;
+const sortPointsByTime = (points: PortfolioEquitySeries['points']): PortfolioEquitySeries['points'] => {
+  if (points.length <= 1) {
+    return points;
   }
-  if (value < 0) {
-    return 0;
-  }
-  if (value > 100) {
-    return 100;
-  }
-  return value;
-};
-
-const findStartIndex = (series: PortfolioEquitySeries, durationMs: number, latestTimestamp: number): number => {
-  const threshold = latestTimestamp - durationMs;
-  for (let index = 0; index < series.points.length; index += 1) {
-    if (series.points[index]?.time >= threshold) {
-      return index;
-    }
-  }
-  return 0;
+  return [...points].sort((left, right) => left.time - right.time);
 };
 
 export const calculateZoomRangeForPreset = (
@@ -77,35 +61,34 @@ export const calculateZoomRangeForPreset = (
     return undefined;
   }
 
-  const latestPoint = series.points[series.points.length - 1];
+  const sortedPoints = sortPointsByTime(series.points);
+  const latestPoint = sortedPoints[sortedPoints.length - 1];
   if (!latestPoint) {
     return undefined;
   }
 
-  const startIndex = findStartIndex(series, preset.durationMs, latestPoint.time);
-  const maxIndex = series.points.length - 1;
-  if (maxIndex <= 0) {
-    return undefined;
-  }
-
-  const startPercent = clampToPercent((startIndex / maxIndex) * 100);
-
-  if (startPercent <= 0) {
-    return { start: 0, end: 100 };
-  }
-
+  const startValue = latestPoint.time - preset.durationMs;
   return {
-    start: startPercent,
-    end: 100,
+    startValue,
+    endValue: latestPoint.time,
   } satisfies DataZoomRange;
 };
 
 export const areZoomRangesEqual = (left?: DataZoomRange, right?: DataZoomRange): boolean => {
   const leftStart = left?.start ?? undefined;
   const leftEnd = left?.end ?? undefined;
+  const leftStartValue = left?.startValue ?? undefined;
+  const leftEndValue = left?.endValue ?? undefined;
   const rightStart = right?.start ?? undefined;
   const rightEnd = right?.end ?? undefined;
-  return leftStart === rightStart && leftEnd === rightEnd;
+  const rightStartValue = right?.startValue ?? undefined;
+  const rightEndValue = right?.endValue ?? undefined;
+  return (
+    leftStart === rightStart &&
+    leftEnd === rightEnd &&
+    leftStartValue === rightStartValue &&
+    leftEndValue === rightEndValue
+  );
 };
 
 const ZOOM_PRESET_STORAGE_VALUES = new Set<ActiveDealsZoomPreset>([

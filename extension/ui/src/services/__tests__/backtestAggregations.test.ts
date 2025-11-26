@@ -145,7 +145,12 @@ describe('aggregateBacktestsMetrics', () => {
         buildDeal({ id: 'p1', start: toTimestamp('2024-01-01T00:00:00Z'), end: toTimestamp('2024-01-01T06:00:00Z') }),
       ]),
       buildInfo({ id: 2, name: 'Overflow' }, [
-        buildDeal({ id: 'o1', start: toTimestamp('2024-01-01T01:00:00Z'), end: toTimestamp('2024-01-01T03:00:00Z'), net: 500 }),
+        buildDeal({
+          id: 'o1',
+          start: toTimestamp('2024-01-01T01:00:00Z'),
+          end: toTimestamp('2024-01-01T03:00:00Z'),
+          net: 500,
+        }),
       ]),
     ];
 

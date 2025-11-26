@@ -3,13 +3,13 @@ import type { ColumnsType } from 'antd/es/table';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
-import { Sparkline } from '../components/charts/Sparkline';
+import { Sparkline, type SparklineMarker, type SparklinePoint } from '../components/charts/Sparkline';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
 import PageHeader from '../components/ui/PageHeader';
 import { StatisticCard } from '../components/ui/StatisticCard';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
-import type { ActiveDealMetrics } from '../lib/activeDeals';
+import { type ActiveDealMetrics, buildExecutedOrdersIndex, getDealBaseAsset } from '../lib/activeDeals';
 import type { DealHistoryPoint } from '../lib/activeDealsHistory';
 import { ACTIVE_DEALS_REFRESH_INTERVALS, isActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import {
@@ -70,17 +70,6 @@ const formatPercent = (value: number): string => {
   return `${sign}${percentFormatter.format(value)}%`;
 };
 
-const getDealBaseAsset = (deal: ActiveDeal): string => {
-  if (deal.pair?.from) {
-    return deal.pair.from;
-  }
-  if (deal.symbol) {
-    const [base] = deal.symbol.split(/[/-]/);
-    return base?.replace(/USD(T)?$/i, '') ?? deal.symbol;
-  }
-  return '—';
-};
-
 const MAX_PRICE_DECIMALS = 6;
 
 const countFractionDigits = (value: number): number => {
@@ -121,31 +110,40 @@ const clampZoomPercent = (value?: number): number | undefined => {
   return value;
 };
 
-const calculateZoomTimeWindow = (
-  series: PortfolioEquitySeries,
-  range?: DataZoomRange,
-): ZoomTimeWindow | null => {
+const calculateZoomTimeWindow = (series: PortfolioEquitySeries, range?: DataZoomRange): ZoomTimeWindow | null => {
   if (!series.points.length) {
     return null;
   }
   const firstPoint = series.points[0];
   const lastPoint = series.points[series.points.length - 1];
-  if (!firstPoint || !lastPoint) {
+  if (!(firstPoint && lastPoint)) {
     return null;
   }
-  const totalSpan = Math.max(1, lastPoint.time - firstPoint.time);
-  const startPercent = clampZoomPercent(range?.start);
-  const endPercent = clampZoomPercent(range?.end);
-
   let start = firstPoint.time;
   let end = lastPoint.time;
 
-  if (typeof startPercent === 'number') {
-    start = firstPoint.time + (totalSpan * startPercent) / 100;
+  const clampTimestamp = (value: number) => Math.min(Math.max(value, firstPoint.time), lastPoint.time);
+
+  if (typeof range?.startValue === 'number') {
+    start = clampTimestamp(range.startValue);
+  } else {
+    const startPercent = clampZoomPercent(range?.start);
+    if (typeof startPercent === 'number') {
+      const totalSpan = Math.max(1, lastPoint.time - firstPoint.time);
+      start = firstPoint.time + (totalSpan * startPercent) / 100;
+    }
   }
-  if (typeof endPercent === 'number') {
-    end = firstPoint.time + (totalSpan * endPercent) / 100;
+
+  if (typeof range?.endValue === 'number') {
+    end = clampTimestamp(range.endValue);
+  } else {
+    const endPercent = clampZoomPercent(range?.end);
+    if (typeof endPercent === 'number') {
+      const totalSpan = Math.max(1, lastPoint.time - firstPoint.time);
+      end = firstPoint.time + (totalSpan * endPercent) / 100;
+    }
   }
+
   if (end <= start) {
     end = start + 1;
   }
@@ -173,7 +171,84 @@ const filterHistoryByWindow = (
   const effectiveStartIndex = Math.max(0, startIndex - 1);
 
   // Filter points up to window.end
-  return history.slice(effectiveStartIndex).filter((point) => point.time <= window.end || point === history[effectiveStartIndex]);
+  return history
+    .slice(effectiveStartIndex)
+    .filter((point) => point.time <= window.end || point === history[effectiveStartIndex]);
+};
+
+const ENTRY_MARKER_COLOR = '#10b981';
+const DCA_MARKER_COLOR = '#ef4444';
+
+const filterOrdersByWindow = (
+  orders: readonly ExecutedOrderPoint[],
+  window: ZoomTimeWindow | null,
+): ExecutedOrderPoint[] => {
+  if (!window) {
+    return [...orders];
+  }
+  return orders.filter((order) => order.time >= window.start && order.time <= window.end);
+};
+
+const interpolateHistoryValue = (points: readonly SparklinePoint[], timestamp: number): number | null => {
+  if (points.length === 0) {
+    return null;
+  }
+  if (points.length === 1) {
+    return points[0].value;
+  }
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (!(first && last)) {
+    return null;
+  }
+  if (timestamp <= first.time) {
+    return first.value;
+  }
+  if (timestamp >= last.time) {
+    return last.value;
+  }
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    if (!(previous && current)) {
+      continue;
+    }
+    if (timestamp === current.time) {
+      return current.value;
+    }
+    if (timestamp < current.time) {
+      const ratio = (timestamp - previous.time) / (current.time - previous.time);
+      return previous.value + (current.value - previous.value) * ratio;
+    }
+  }
+  return last.value;
+};
+
+const buildSparklineMarkers = (
+  orders: readonly ExecutedOrderPoint[],
+  points: readonly SparklinePoint[],
+  window: ZoomTimeWindow | null,
+): SparklineMarker[] => {
+  if (orders.length === 0 || points.length === 0) {
+    return [];
+  }
+
+  const windowedOrders = filterOrdersByWindow(orders, window);
+  if (windowedOrders.length === 0) {
+    return [];
+  }
+
+  return windowedOrders
+    .map((order) => {
+      const value = interpolateHistoryValue(points, order.time);
+      if (value === null) {
+        return null;
+      }
+      const color = order.type === 'ENTRY' ? ENTRY_MARKER_COLOR : DCA_MARKER_COLOR;
+      const marker: SparklineMarker = { time: order.time, value, color };
+      return marker;
+    })
+    .filter((marker): marker is SparklineMarker => marker !== null);
 };
 
 const getDateParts = (value: string | null | undefined): { time: string; date: string } => {
@@ -298,6 +373,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         const next: DataZoomRange = {
           start: typeof range.start === 'number' ? range.start : prev?.start,
           end: typeof range.end === 'number' ? range.end : prev?.end,
+          startValue: typeof range.startValue === 'number' ? range.startValue : undefined,
+          endValue: typeof range.endValue === 'number' ? range.endValue : undefined,
         };
         if (areZoomRangesEqual(prev, next)) {
           return prev;
@@ -355,14 +432,14 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     if (zoomPreset === 'custom') {
       return;
     }
-    const nextRange = calculateZoomRangeForPreset(seriesRef.current, zoomPreset);
+    const nextRange = calculateZoomRangeForPreset(pnlSeries, zoomPreset);
     setZoomRange((prev) => {
       if (areZoomRangesEqual(prev, nextRange)) {
         return prev;
       }
       return nextRange;
     });
-  }, [zoomPreset, setZoomRange]);
+  }, [pnlSeries, zoomPreset, setZoomRange]);
 
   const summary = useMemo(() => {
     const aggregation = dealsState.aggregation;
@@ -432,51 +509,12 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     return positions.filter((position) => allow.has(position.deal.apiKeyId));
   }, [apiKeyFilter, positions]);
 
-  const executedOrders = useMemo(() => {
-    const points: ExecutedOrderPoint[] = [];
-    positions.forEach((pos) => {
-      const deal = pos.deal;
-      if (deal.orders && deal.orders.length > 0) {
-        // Filter for executed orders that increase position (Entry/DCA)
-        // LONG: BUY, SHORT: SELL
-        const relevantSide = deal.algorithm === 'LONG' ? 'BUY' : 'SELL';
-
-        const filledOrders = deal.orders
-          .filter(
-            (o) =>
-              (o.status === 'FILLED' || o.status === 'EXECUTED') &&
-              o.executedAt &&
-              o.side === relevantSide
-          )
-          .sort((a, b) => {
-            if (!a.executedAt || !b.executedAt) return 0;
-            return new Date(a.executedAt).getTime() - new Date(b.executedAt).getTime();
-          });
-
-        filledOrders.forEach((order, index) => {
-          if (!order.executedAt) return;
-
-          const type: 'ENTRY' | 'DCA' = index === 0 ? 'ENTRY' : 'DCA';
-
-          points.push({
-            time: new Date(order.executedAt).getTime(),
-            price: order.price,
-            quantity: order.filled,
-            side: order.side,
-            dealId: deal.id,
-            pair: `${getDealBaseAsset(deal)}/${deal.pair.to}`,
-            apiKeyId: deal.apiKeyId,
-            botName: deal.botName,
-            botId: deal.botId,
-            algorithm: deal.algorithm,
-            positionVolume: order.position,
-            type,
-          });
-        });
-      }
-    });
-    return points.sort((a, b) => a.time - b.time);
-  }, [positions]);
+  const executedOrdersIndex = useMemo(
+    () => buildExecutedOrdersIndex(positions.map((position) => position.deal)),
+    [positions],
+  );
+  const executedOrders = executedOrdersIndex.all;
+  const executedOrdersByDeal = executedOrdersIndex.byDeal;
 
   const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
   const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
@@ -609,7 +647,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               </div>
             );
           }
-          const points = windowedHistory.map((item) => ({ time: item.time, value: item.pnl }));
+          const points: SparklinePoint[] = windowedHistory.map((item) => ({ time: item.time, value: item.pnl }));
+          const dealOrders = executedOrdersByDeal.get(record.deal.id) ?? [];
 
           if (dealsState.lastUpdated) {
             const lastUpdatedTime = new Date(dealsState.lastUpdated).getTime();
@@ -620,11 +659,13 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               points.push({ time: lastUpdatedTime, value: record.pnl });
             }
           }
+          const markers = buildSparklineMarkers(dealOrders, points, zoomTimeWindow);
 
           return (
             <div className="deal-sparkline-cell">
               <Sparkline
                 points={points}
+                markers={markers}
                 ariaLabel={`Динамика P&L сделки ${record.deal.id}`}
                 minTime={zoomTimeWindow?.start}
                 maxTime={zoomTimeWindow?.end}
@@ -749,7 +790,15 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         },
       },
     ],
-    [apiKeysById, closingDealId, handleCloseDeal, positionHistory, zoomTimeWindow],
+    [
+      apiKeysById,
+      closingDealId,
+      executedOrdersByDeal,
+      handleCloseDeal,
+      positionHistory,
+      zoomTimeWindow,
+      dealsState.lastUpdated,
+    ],
   );
 
   const {

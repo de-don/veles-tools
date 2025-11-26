@@ -203,9 +203,9 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const hasActiveFilters = useMemo(() => {
     return Boolean(
       appliedFilters.name ||
-      appliedFilters.apiKey ||
-      (appliedFilters.statuses && appliedFilters.statuses.length > 0) ||
-      (appliedFilters.algorithms && appliedFilters.algorithms.length > 0),
+        appliedFilters.apiKey ||
+        (appliedFilters.statuses && appliedFilters.statuses.length > 0) ||
+        (appliedFilters.algorithms && appliedFilters.algorithms.length > 0),
     );
   }, [appliedFilters]);
   const hasFilterDraft =
