@@ -83,6 +83,21 @@ export interface PortfolioEquityGroupedSeriesItem {
   apiKeyId?: number;
 }
 
+export interface ExecutedOrderPoint {
+  time: number;
+  price: number;
+  quantity: number;
+  side: 'BUY' | 'SELL';
+  dealId: number;
+  pair: string;
+  apiKeyId: number;
+  botName: string;
+  botId: number;
+  algorithm: 'LONG' | 'SHORT';
+  positionVolume: number;
+  type: 'ENTRY' | 'DCA';
+}
+
 export interface AggregateRiskPoint {
   time: number;
   value: number;

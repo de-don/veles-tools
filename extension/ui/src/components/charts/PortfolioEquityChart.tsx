@@ -1,7 +1,11 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
 import { createPortfolioEquityChartOptions, type DataZoomRange } from '../../lib/chartOptions';
-import type { PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../../lib/deprecatedFile';
+import type {
+  ExecutedOrderPoint,
+  PortfolioEquityGroupedSeriesItem,
+  PortfolioEquitySeries,
+} from '../../lib/deprecatedFile';
 
 interface PortfolioEquityChartProps {
   series: PortfolioEquitySeries;
@@ -12,12 +16,15 @@ interface PortfolioEquityChartProps {
   legendSelection?: Record<string, boolean>;
   onLegendSelectionChange?: (selection: Record<string, boolean>) => void;
   filterVisibleRange?: boolean;
+  executedOrders?: ExecutedOrderPoint[];
 }
 
 interface DataZoomEventParams {
   start?: number;
   end?: number;
-  batch?: Array<{ start?: number; end?: number }>;
+  startValue?: number;
+  endValue?: number;
+  batch?: Array<{ start?: number; end?: number; startValue?: number; endValue?: number }>;
 }
 
 interface LegendSelectionEventParams {
@@ -39,9 +46,13 @@ const clampRangeValue = (value?: number): number | undefined => {
 
 const extractRangeFromEvent = (event: DataZoomEventParams): DataZoomRange => {
   const payload = event.batch && event.batch.length > 0 ? event.batch[0] : event;
+  const start = clampRangeValue(payload.start);
+  const end = clampRangeValue(payload.end);
   return {
-    start: clampRangeValue(payload.start),
-    end: clampRangeValue(payload.end),
+    start,
+    end,
+    startValue: typeof payload.startValue === 'number' ? payload.startValue : undefined,
+    endValue: typeof payload.endValue === 'number' ? payload.endValue : undefined,
   };
 };
 
@@ -54,6 +65,7 @@ const PortfolioEquityChartComponent = ({
   legendSelection,
   onLegendSelectionChange,
   filterVisibleRange = false,
+  executedOrders,
 }: PortfolioEquityChartProps) => {
   const option = useMemo(
     () =>
@@ -61,10 +73,11 @@ const PortfolioEquityChartComponent = ({
         series,
         dataZoomRange,
         groupedSeries,
+        executedOrders,
         legendSelection,
         filterVisibleRange ? 'filter' : 'none',
       ),
-    [series, dataZoomRange, groupedSeries, legendSelection, filterVisibleRange],
+    [series, dataZoomRange, groupedSeries, executedOrders, legendSelection, filterVisibleRange],
   );
 
   const onEvents = useMemo(() => {
@@ -75,7 +88,12 @@ const PortfolioEquityChartComponent = ({
     if (onDataZoom) {
       handlers.datazoom = (event: unknown) => {
         const range = extractRangeFromEvent(event as DataZoomEventParams);
-        if (typeof range.start === 'number' || typeof range.end === 'number') {
+        if (
+          typeof range.start === 'number' ||
+          typeof range.end === 'number' ||
+          typeof range.startValue === 'number' ||
+          typeof range.endValue === 'number'
+        ) {
           onDataZoom(range);
         }
       };

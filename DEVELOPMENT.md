@@ -15,7 +15,7 @@
 - Запустите локальный сервер Vite командой `npm run dev`. UI станет доступен по адресу, который напечатает Vite.
 
 ## Основные команды
-- `npm run dev` — запускает дев-сервер Vite с горячей перезагрузкой.
+- `npm run dev` — запускает сборку в режиме наблюдения (watch mode) для разработки расширения.
 - `npm run build` — собирает production-версию UI в `extension/ui/dist`.
 - `npm run preview` — локально проверяет production-сборку.
 - `npm run typecheck` — выполняет `tsc --noEmit` для проверки типов.

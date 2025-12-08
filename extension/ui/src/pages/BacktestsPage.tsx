@@ -51,7 +51,7 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
   const { backtests, backtestsLoading, localCount, isSyncRunning, startSync, autoSyncPending } = useBacktestsSync();
 
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[1]);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[3]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const { groups, createGroup, appendToGroup } = useBacktestGroups();

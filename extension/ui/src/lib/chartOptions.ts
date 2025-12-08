@@ -1,8 +1,15 @@
-import type { BarSeriesOption, DataZoomComponentOption, EChartsOption, LineSeriesOption } from 'echarts';
+import type {
+  BarSeriesOption,
+  DataZoomComponentOption,
+  EChartsOption,
+  LineSeriesOption,
+  ScatterSeriesOption,
+} from 'echarts';
 import type {
   AggregateRiskSeries,
   DailyConcurrencyRecord,
   DailyConcurrencyStats,
+  ExecutedOrderPoint,
   PortfolioEquityGroupedSeriesItem,
   PortfolioEquitySeries,
 } from './deprecatedFile';
@@ -24,11 +31,57 @@ const numberFormatter = new Intl.NumberFormat('ru-RU', {
   minimumFractionDigits: 0,
 });
 
+const GROUPED_SERIES_COLOR_PALETTE = [
+  '#2563eb',
+  '#f97316',
+  '#14b8a6',
+  '#a855f7',
+  '#ef4444',
+  '#0ea5e9',
+  '#84cc16',
+  '#fb7185',
+  '#facc15',
+  '#22d3ee',
+  '#d946ef',
+  '#f59e0b',
+  '#10b981',
+  '#3b82f6',
+  '#e11d48',
+  '#6366f1',
+  '#059669',
+  '#f472b6',
+  '#65a30d',
+  '#0284c7',
+] as const;
+
 const formatNumber = (value: number): string => {
   if (!Number.isFinite(value)) {
     return '—';
   }
   return numberFormatter.format(value);
+};
+
+const hashString = (value: string): number => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash);
+};
+
+const resolveGroupColorIndex = (group: PortfolioEquityGroupedSeriesItem, fallbackIndex: number): number => {
+  if (typeof group.apiKeyId === 'number') {
+    return Math.abs(group.apiKeyId) % GROUPED_SERIES_COLOR_PALETTE.length;
+  }
+  if (group.id) {
+    return hashString(group.id) % GROUPED_SERIES_COLOR_PALETTE.length;
+  }
+  return fallbackIndex % GROUPED_SERIES_COLOR_PALETTE.length;
+};
+
+const resolveGroupColor = (group: PortfolioEquityGroupedSeriesItem, fallbackIndex: number): string => {
+  const paletteIndex = resolveGroupColorIndex(group, fallbackIndex);
+  return GROUPED_SERIES_COLOR_PALETTE[paletteIndex];
 };
 
 const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLine'] => {
@@ -58,6 +111,8 @@ const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLin
 export interface DataZoomRange {
   start?: number;
   end?: number;
+  startValue?: number;
+  endValue?: number;
 }
 
 const buildZeroLineForGroups = (
@@ -104,10 +159,16 @@ const applyRange = (base: DataZoomComponentOption, range?: DataZoomRange): DataZ
     return base;
   }
   const next: DataZoomComponentOption = { ...base };
-  if (typeof range.start === 'number') {
+  if (typeof range.startValue === 'number') {
+    delete next.start;
+    next.startValue = range.startValue;
+  } else if (typeof range.start === 'number') {
     next.start = range.start;
   }
-  if (typeof range.end === 'number') {
+  if (typeof range.endValue === 'number') {
+    delete next.end;
+    next.endValue = range.endValue;
+  } else if (typeof range.end === 'number') {
     next.end = range.end;
   }
   return next;
@@ -147,31 +208,125 @@ const buildDataZoomComponents = (
   return [insideZoom, sliderZoom];
 };
 
+const interpolateValue = (series: PortfolioEquitySeries, time: number): number | null => {
+  const points = series.points;
+  if (points.length === 0) {
+    return null;
+  }
+  if (time < points[0].time) {
+    return null;
+  }
+  if (time > points[points.length - 1].time) {
+    return null;
+  }
+
+  let left = 0;
+  let right = points.length - 1;
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    if (points[mid].time === time) {
+      return points[mid].value;
+    }
+    if (points[mid].time < time) {
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
+
+  const p1 = points[right];
+  const p2 = points[left];
+
+  if (!(p1 && p2)) {
+    return null;
+  }
+
+  const tRatio = (time - p1.time) / (p2.time - p1.time);
+  return p1.value + (p2.value - p1.value) * tRatio;
+};
+
+const buildOrderScatterSeries = (
+  orders: ExecutedOrderPoint[],
+  series: PortfolioEquitySeries,
+  name: string,
+): ScatterSeriesOption => {
+  const data = orders
+    .map((order) => {
+      const value = interpolateValue(series, order.time);
+      if (value === null) {
+        return null;
+      }
+
+      const isEntry = order.type === 'ENTRY';
+      const color = isEntry ? '#10b981' : '#ef4444';
+
+      return {
+        value: [order.time, value],
+        itemStyle: {
+          color,
+          borderColor: '#fff',
+          borderWidth: 1,
+        },
+        customData: order,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+
+  return {
+    name,
+    type: 'scatter',
+    symbol: 'circle',
+    symbolSize: 8,
+    z: 10,
+    cursor: 'default',
+    data,
+  };
+};
+
 export const createPortfolioEquityChartOptions = (
   series: PortfolioEquitySeries,
   range?: DataZoomRange,
   groupedSeries?: PortfolioEquityGroupedSeriesItem[],
+  executedOrders?: ExecutedOrderPoint[],
   legendSelection?: Record<string, boolean>,
   filterMode: DataZoomComponentOption['filterMode'] = 'none',
 ): EChartsOption => {
   if (groupedSeries && groupedSeries.length > 0) {
-    const lineSeries: LineSeriesOption[] = groupedSeries.map((group) => ({
-      id: group.id,
-      name: group.label,
-      type: 'line',
-      showSymbol: false,
-      smooth: false,
-      symbol: 'none',
-      lineStyle: {
-        width: 1.6,
-      },
-      emphasis: { focus: 'series' },
-      data: group.series.points.map((point) => [point.time, point.value]),
-    }));
+    const lineSeries: LineSeriesOption[] = groupedSeries.map((group, index) => {
+      const color = resolveGroupColor(group, index);
+      return {
+        id: group.id,
+        name: group.label,
+        type: 'line',
+        showSymbol: false,
+        smooth: false,
+        symbol: 'none',
+        color,
+        lineStyle: {
+          width: 1.6,
+          color,
+        },
+        itemStyle: {
+          color,
+        },
+        emphasis: { focus: 'series' },
+        data: group.series.points.map((point) => [point.time, point.value]),
+      };
+    });
 
     const zeroLine = buildZeroLineForGroups(groupedSeries);
     if (zeroLine && lineSeries.length > 0) {
       lineSeries[0].markLine = zeroLine;
+    }
+
+    const scatterSeries: ScatterSeriesOption[] = [];
+    if (executedOrders && executedOrders.length > 0) {
+      groupedSeries.forEach((group) => {
+        const groupOrders = executedOrders.filter((o) => o.apiKeyId === group.apiKeyId);
+        if (groupOrders.length > 0) {
+          scatterSeries.push(buildOrderScatterSeries(groupOrders, group.series, group.label));
+        }
+      });
     }
 
     return {
@@ -180,8 +335,74 @@ export const createPortfolioEquityChartOptions = (
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
-        valueFormatter: (value) => formatNumber(Number(value)),
         order: 'valueDesc',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderColor: '#e2e8f0',
+        textStyle: { color: '#1e293b', fontSize: 12 },
+        padding: [8, 12],
+        formatter: (params: any) => {
+          const items = Array.isArray(params) ? params : [params];
+          const orderItem = items.find((item: any) => item.seriesType === 'scatter' && item.data?.customData);
+
+          if (orderItem) {
+            const order = orderItem.data.customData as ExecutedOrderPoint;
+            const isEntry = order.type === 'ENTRY';
+            const typeLabel = isEntry ? 'Сделка открыта' : 'Усреднение';
+            const color = isEntry ? '#10b981' : '#ef4444';
+            const totalValue = order.price * order.quantity;
+
+            return `
+              <div style="font-family: sans-serif;">
+                <div style="font-weight: 600; margin-bottom: 4px;">${order.pair}</div>
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                  <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></span>
+                  <span style="font-weight: 500; color: ${color}">${typeLabel}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
+                  <span style="color: #64748b;">Цена:</span>
+                  <span style="text-align: right; font-weight: 500;">${formatNumber(order.price)}</span>
+                  
+                  <span style="color: #64748b;">Кол-во:</span>
+                  <span style="text-align: right; font-weight: 500;">${order.quantity}</span>
+                  
+                  <span style="color: #64748b;">Сумма:</span>
+                  <span style="text-align: right; font-weight: 500;">${formatNumber(totalValue)}</span>
+
+                  <span style="color: #64748b;">Позиция:</span>
+                  <span style="text-align: right; font-weight: 500;">${formatNumber(order.positionVolume)}</span>
+                </div>
+                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f1f5f9;">
+                  ${order.botName} <span style="margin: 0 4px;">·</span> ID ${order.dealId}
+                </div>
+              </div>
+            `;
+          }
+
+          if (items.length === 0) return '';
+          const dateLabel = dateTimeFormatter.format(new Date(items[0].axisValue));
+          const list = items
+            .map((item: any) => {
+              const value = item.value?.[1] ?? item.value;
+              if (value === null || value === undefined) return '';
+              return `
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    ${item.marker}
+                    <span style="color: #64748b;">${item.seriesName}</span>
+                  </div>
+                  <span style="font-weight: 500;">${formatNumber(Number(value))}</span>
+                </div>
+              `;
+            })
+            .join('');
+
+          return `
+            <div style="font-family: sans-serif;">
+              <div style="margin-bottom: 8px; font-weight: 500; color: #64748b;">${dateLabel}</div>
+              ${list}
+            </div>
+          `;
+        },
       },
       legend: {
         bottom: 0,
@@ -207,7 +428,7 @@ export const createPortfolioEquityChartOptions = (
         },
       },
       dataZoom: buildDataZoomComponents(range, filterMode),
-      series: lineSeries,
+      series: [...lineSeries, ...scatterSeries],
     } satisfies EChartsOption;
   }
 
@@ -283,14 +504,85 @@ export const createPortfolioEquityChartOptions = (
     markLine,
   };
 
+  let scatterSeries: ScatterSeriesOption | undefined;
+  if (executedOrders && executedOrders.length > 0) {
+    scatterSeries = buildOrderScatterSeries(executedOrders, series, 'Суммарный P&L');
+  }
+
   return {
     animation: false,
     grid: { left: 60, right: 24, top: 16, bottom: 92 },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross' },
-      valueFormatter: (value) => formatNumber(Number(value)),
       order: 'valueDesc',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#e2e8f0',
+      textStyle: { color: '#1e293b', fontSize: 12 },
+      padding: [8, 12],
+      formatter: (params: any) => {
+        const items = Array.isArray(params) ? params : [params];
+        const orderItem = items.find((item: any) => item.seriesType === 'scatter' && item.data?.customData);
+
+        if (orderItem) {
+          const order = orderItem.data.customData as ExecutedOrderPoint;
+          const isEntry = order.type === 'ENTRY';
+          const typeLabel = isEntry ? 'Сделка открыта' : 'Усреднение';
+          const color = isEntry ? '#10b981' : '#ef4444';
+          const totalValue = order.price * order.quantity;
+
+          return `
+            <div style="font-family: sans-serif;">
+              <div style="font-weight: 600; margin-bottom: 4px;">${order.pair}</div>
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></span>
+                <span style="font-weight: 500; color: ${color}">${typeLabel}</span>
+              </div>
+              <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
+                <span style="color: #64748b;">Цена:</span>
+                <span style="text-align: right; font-weight: 500;">${formatNumber(order.price)}</span>
+                
+                <span style="color: #64748b;">Кол-во:</span>
+                <span style="text-align: right; font-weight: 500;">${order.quantity}</span>
+                
+                <span style="color: #64748b;">Сумма:</span>
+                <span style="text-align: right; font-weight: 500;">${formatNumber(totalValue)}</span>
+
+                <span style="color: #64748b;">Позиция:</span>
+                <span style="text-align: right; font-weight: 500;">${formatNumber(order.positionVolume)}</span>
+              </div>
+              <div style="color: #94a3b8; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f1f5f9;">
+                ${order.botName} <span style="margin: 0 4px;">·</span> ID ${order.dealId}
+              </div>
+            </div>
+          `;
+        }
+
+        if (items.length === 0) return '';
+        const dateLabel = dateTimeFormatter.format(new Date(items[0].axisValue));
+        const list = items
+          .map((item: any) => {
+            const value = item.value?.[1] ?? item.value;
+            if (value === null || value === undefined) return '';
+            return `
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  ${item.marker}
+                  <span style="color: #64748b;">${item.seriesName}</span>
+                </div>
+                <span style="font-weight: 500;">${formatNumber(Number(value))}</span>
+              </div>
+            `;
+          })
+          .join('');
+
+        return `
+          <div style="font-family: sans-serif;">
+            <div style="margin-bottom: 8px; font-weight: 500; color: #64748b;">${dateLabel}</div>
+            ${list}
+          </div>
+        `;
+      },
     },
     legend: {
       bottom: 0,
@@ -316,7 +608,7 @@ export const createPortfolioEquityChartOptions = (
       },
     },
     dataZoom: buildDataZoomComponents(range, filterMode),
-    series: [positiveAreaSeries, negativeAreaSeries, equitySeries],
+    series: [positiveAreaSeries, negativeAreaSeries, equitySeries, ...(scatterSeries ? [scatterSeries] : [])],
   } satisfies EChartsOption;
 };
 

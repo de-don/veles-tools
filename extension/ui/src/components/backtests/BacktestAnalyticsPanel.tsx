@@ -9,6 +9,7 @@ import type { AggregateRiskSeries, DailyConcurrencyRecord, PortfolioEquitySeries
 import { formatDurationDays } from '../../lib/tableHelpers';
 import type { AggregatedBacktestsMetrics, ChartPoint } from '../../types/backtestAggregations';
 import { AggregateRiskChart } from '../charts/AggregateRiskChart';
+import { BacktestDealsTimelineChart } from '../charts/BacktestDealsTimelineChart';
 import { DailyConcurrencyChart } from '../charts/DailyConcurrencyChart';
 import { LimitImpactChart, LimitRiskEfficiencyChart } from '../charts/LimitImpactChart';
 import { PortfolioEquityChart } from '../charts/PortfolioEquityChart';
@@ -280,17 +281,47 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
   );
 
   const concurrencyRecords = buildDailyConcurrencyRecords(metrics.activeDealCountSeries);
+  const averageConcurrency =
+    concurrencyRecords.length > 0
+      ? concurrencyRecords.reduce((sum, record) => sum + record.maxCount, 0) / concurrencyRecords.length
+      : 0;
+
   const concurrencyContent = renderChartTab(
     'Одновременность',
     concurrencyRecords.length === 0 ? (
       <Empty description="Нет данных о позициях." style={{ padding: '24px 0' }} />
     ) : (
-      <DailyConcurrencyChart
-        records={concurrencyRecords}
-        filterVisibleRange
-        dataZoomRange={concurrencyZoomRange}
-        onDataZoom={setConcurrencyZoomRange}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '12px',
+          }}
+        >
+          <StatisticCard
+            title="Среднее значение"
+            tooltip={<InfoTooltip text="Среднее значение максимального количества одновременных сделок в день." />}
+            value={formatAmount(averageConcurrency)}
+          />
+        </div>
+        <DailyConcurrencyChart
+          records={concurrencyRecords}
+          filterVisibleRange
+          dataZoomRange={concurrencyZoomRange}
+          onDataZoom={setConcurrencyZoomRange}
+        />
+      </div>
+    ),
+  );
+
+  const hasTimelineData = metrics.dealTimelineRows.some((row) => row.items.length > 0);
+  const dealsTimelineContent = renderChartTab(
+    'Сделки',
+    hasTimelineData ? (
+      <BacktestDealsTimelineChart rows={metrics.dealTimelineRows} />
+    ) : (
+      <Empty description="Нет сделок для отображения." style={{ padding: '24px 0' }} />
     ),
   );
 
@@ -351,6 +382,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
     { key: 'portfolio', label: 'P&L портфеля', children: portfolioContent },
     { key: 'risk', label: 'Риски', children: riskContent },
     ...(limitTab ? [limitTab] : []),
+    { key: 'timeline', label: 'Сделки', children: dealsTimelineContent },
     { key: 'concurrency', label: 'Одновременность', children: concurrencyContent },
   ];
 

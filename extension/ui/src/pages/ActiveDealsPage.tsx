@@ -3,13 +3,14 @@ import type { ColumnsType } from 'antd/es/table';
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
-import { Sparkline } from '../components/charts/Sparkline';
+import { Sparkline, type SparklineMarker, type SparklinePoint } from '../components/charts/Sparkline';
 import { InfoTooltip } from '../components/ui/InfoTooltip';
 import PageHeader from '../components/ui/PageHeader';
 import { StatisticCard } from '../components/ui/StatisticCard';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
-import type { ActiveDealMetrics } from '../lib/activeDeals';
+import { type ActiveDealMetrics, buildExecutedOrdersIndex, getDealBaseAsset } from '../lib/activeDeals';
+import type { DealHistoryPoint } from '../lib/activeDealsHistory';
 import { ACTIVE_DEALS_REFRESH_INTERVALS, isActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import {
   ACTIVE_DEALS_ZOOM_PRESET_OPTIONS,
@@ -19,7 +20,7 @@ import {
 } from '../lib/activeDealsZoom';
 import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
 import type { DataZoomRange } from '../lib/chartOptions';
-import type { PortfolioEquitySeries } from '../lib/deprecatedFile';
+import type { ExecutedOrderPoint, PortfolioEquitySeries } from '../lib/deprecatedFile';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { ActiveDeal } from '../types/activeDeals';
@@ -69,17 +70,6 @@ const formatPercent = (value: number): string => {
   return `${sign}${percentFormatter.format(value)}%`;
 };
 
-const getDealBaseAsset = (deal: ActiveDeal): string => {
-  if (deal.pair?.from) {
-    return deal.pair.from;
-  }
-  if (deal.symbol) {
-    const [base] = deal.symbol.split(/[/-]/);
-    return base?.replace(/USD(T)?$/i, '') ?? deal.symbol;
-  }
-  return '—';
-};
-
 const MAX_PRICE_DECIMALS = 6;
 
 const countFractionDigits = (value: number): number => {
@@ -102,6 +92,165 @@ const formatPriceWithDigits = (value: number, fractionDigits: number): string =>
   });
 };
 
+interface ZoomTimeWindow {
+  start: number;
+  end: number;
+}
+
+const clampZoomPercent = (value?: number): number | undefined => {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return undefined;
+  }
+  if (value <= 0) {
+    return 0;
+  }
+  if (value >= 100) {
+    return 100;
+  }
+  return value;
+};
+
+const calculateZoomTimeWindow = (series: PortfolioEquitySeries, range?: DataZoomRange): ZoomTimeWindow | null => {
+  if (!series.points.length) {
+    return null;
+  }
+  const firstPoint = series.points[0];
+  const lastPoint = series.points[series.points.length - 1];
+  if (!(firstPoint && lastPoint)) {
+    return null;
+  }
+  let start = firstPoint.time;
+  let end = lastPoint.time;
+
+  const clampTimestamp = (value: number) => Math.min(Math.max(value, firstPoint.time), lastPoint.time);
+
+  if (typeof range?.startValue === 'number') {
+    start = clampTimestamp(range.startValue);
+  } else {
+    const startPercent = clampZoomPercent(range?.start);
+    if (typeof startPercent === 'number') {
+      const totalSpan = Math.max(1, lastPoint.time - firstPoint.time);
+      start = firstPoint.time + (totalSpan * startPercent) / 100;
+    }
+  }
+
+  if (typeof range?.endValue === 'number') {
+    end = clampTimestamp(range.endValue);
+  } else {
+    const endPercent = clampZoomPercent(range?.end);
+    if (typeof endPercent === 'number') {
+      const totalSpan = Math.max(1, lastPoint.time - firstPoint.time);
+      end = firstPoint.time + (totalSpan * endPercent) / 100;
+    }
+  }
+
+  if (end <= start) {
+    end = start + 1;
+  }
+  return { start, end } satisfies ZoomTimeWindow;
+};
+
+const filterHistoryByWindow = (
+  history: readonly DealHistoryPoint[],
+  window: ZoomTimeWindow | null,
+): DealHistoryPoint[] => {
+  if (!window) {
+    return [...history];
+  }
+  // Find the first point inside or after the window
+  const startIndex = history.findIndex((point) => point.time >= window.start);
+
+  if (startIndex === -1) {
+    // All points are before the window. Return the last one if exists (to draw a flat line from it)
+    // or empty if history is empty.
+    const last = history[history.length - 1];
+    return last ? [last] : [];
+  }
+
+  // Include the point immediately before the window start, if it exists
+  const effectiveStartIndex = Math.max(0, startIndex - 1);
+
+  // Filter points up to window.end
+  return history
+    .slice(effectiveStartIndex)
+    .filter((point) => point.time <= window.end || point === history[effectiveStartIndex]);
+};
+
+const ENTRY_MARKER_COLOR = '#10b981';
+const DCA_MARKER_COLOR = '#ef4444';
+
+const filterOrdersByWindow = (
+  orders: readonly ExecutedOrderPoint[],
+  window: ZoomTimeWindow | null,
+): ExecutedOrderPoint[] => {
+  if (!window) {
+    return [...orders];
+  }
+  return orders.filter((order) => order.time >= window.start && order.time <= window.end);
+};
+
+const interpolateHistoryValue = (points: readonly SparklinePoint[], timestamp: number): number | null => {
+  if (points.length === 0) {
+    return null;
+  }
+  if (points.length === 1) {
+    return points[0].value;
+  }
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (!(first && last)) {
+    return null;
+  }
+  if (timestamp <= first.time) {
+    return first.value;
+  }
+  if (timestamp >= last.time) {
+    return last.value;
+  }
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    if (!(previous && current)) {
+      continue;
+    }
+    if (timestamp === current.time) {
+      return current.value;
+    }
+    if (timestamp < current.time) {
+      const ratio = (timestamp - previous.time) / (current.time - previous.time);
+      return previous.value + (current.value - previous.value) * ratio;
+    }
+  }
+  return last.value;
+};
+
+const buildSparklineMarkers = (
+  orders: readonly ExecutedOrderPoint[],
+  points: readonly SparklinePoint[],
+  window: ZoomTimeWindow | null,
+): SparklineMarker[] => {
+  if (orders.length === 0 || points.length === 0) {
+    return [];
+  }
+
+  const windowedOrders = filterOrdersByWindow(orders, window);
+  if (windowedOrders.length === 0) {
+    return [];
+  }
+
+  return windowedOrders
+    .map((order) => {
+      const value = interpolateHistoryValue(points, order.time);
+      if (value === null) {
+        return null;
+      }
+      const color = order.type === 'ENTRY' ? ENTRY_MARKER_COLOR : DCA_MARKER_COLOR;
+      const marker: SparklineMarker = { time: order.time, value, color };
+      return marker;
+    })
+    .filter((marker): marker is SparklineMarker => marker !== null);
+};
+
 const getDateParts = (value: string | null | undefined): { time: string; date: string } => {
   if (!value) {
     return { time: '—', date: '—' };
@@ -118,6 +267,59 @@ const getDateParts = (value: string | null | undefined): { time: string; date: s
   });
   const dateLabel = date.toLocaleDateString('ru-RU');
   return { time: timeLabel, date: dateLabel };
+};
+
+const MS_IN_SECOND = 1000;
+const MS_IN_MINUTE = 60 * MS_IN_SECOND;
+const MS_IN_HOUR = 60 * MS_IN_MINUTE;
+const MS_IN_DAY = 24 * MS_IN_HOUR;
+
+const parseTimestamp = (value: string | null | undefined): number | null => {
+  if (!value) {
+    return null;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
+
+const getDealLifetimeMs = (deal: ActiveDeal, referenceTimestamp?: number): number | null => {
+  const createdAtTimestamp = parseTimestamp(deal.createdAt);
+  if (createdAtTimestamp === null) {
+    return null;
+  }
+  const now = typeof referenceTimestamp === 'number' ? referenceTimestamp : Date.now();
+  if (!Number.isFinite(now)) {
+    return null;
+  }
+  return Math.max(0, now - createdAtTimestamp);
+};
+
+const formatDealLifetime = (deal: ActiveDeal, referenceTimestamp?: number): string => {
+  const lifetimeMs = getDealLifetimeMs(deal, referenceTimestamp);
+  if (lifetimeMs === null) {
+    return '—';
+  }
+  if (lifetimeMs < MS_IN_MINUTE) {
+    const seconds = Math.max(1, Math.floor(lifetimeMs / MS_IN_SECOND));
+    return `${seconds} с`;
+  }
+  const days = Math.floor(lifetimeMs / MS_IN_DAY);
+  const hours = Math.floor((lifetimeMs % MS_IN_DAY) / MS_IN_HOUR);
+  const minutes = Math.floor((lifetimeMs % MS_IN_HOUR) / MS_IN_MINUTE);
+  const parts: string[] = [];
+  if (days > 0) {
+    parts.push(`${days}д`);
+  }
+  if (hours > 0) {
+    parts.push(`${hours}ч`);
+  }
+  if (parts.length < 2 && minutes > 0) {
+    parts.push(`${minutes} мин`);
+  }
+  if (parts.length === 0) {
+    parts.push('1 мин');
+  }
+  return parts.slice(0, 2).join(' ');
 };
 
 interface ActiveDealsPageProps {
@@ -145,6 +347,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     positionHistory,
   } = useActiveDeals();
 
+  const zoomTimeWindow = useMemo(() => calculateZoomTimeWindow(pnlSeries, zoomRange), [pnlSeries, zoomRange]);
+
   const [closingDealId, setClosingDealId] = useState<number | null>(null);
   const [apiKeyFilter, setApiKeyFilter] = useState<number[]>([]);
   const [messageApi, messageContextHolder] = message.useMessage();
@@ -169,6 +373,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         const next: DataZoomRange = {
           start: typeof range.start === 'number' ? range.start : prev?.start,
           end: typeof range.end === 'number' ? range.end : prev?.end,
+          startValue: typeof range.startValue === 'number' ? range.startValue : undefined,
+          endValue: typeof range.endValue === 'number' ? range.endValue : undefined,
         };
         if (areZoomRangesEqual(prev, next)) {
           return prev;
@@ -226,14 +432,14 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     if (zoomPreset === 'custom') {
       return;
     }
-    const nextRange = calculateZoomRangeForPreset(seriesRef.current, zoomPreset);
+    const nextRange = calculateZoomRangeForPreset(pnlSeries, zoomPreset);
     setZoomRange((prev) => {
       if (areZoomRangesEqual(prev, nextRange)) {
         return prev;
       }
       return nextRange;
     });
-  }, [zoomPreset, setZoomRange]);
+  }, [pnlSeries, zoomPreset, setZoomRange]);
 
   const summary = useMemo(() => {
     const aggregation = dealsState.aggregation;
@@ -302,6 +508,14 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     const allow = new Set(apiKeyFilter);
     return positions.filter((position) => allow.has(position.deal.apiKeyId));
   }, [apiKeyFilter, positions]);
+
+  const executedOrdersIndex = useMemo(
+    () => buildExecutedOrdersIndex(positions.map((position) => position.deal)),
+    [positions],
+  );
+  const executedOrders = executedOrdersIndex.all;
+  const executedOrdersByDeal = executedOrdersIndex.byDeal;
+
   const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
   const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
 
@@ -332,6 +546,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           const botName = record.deal.botName ?? '—';
           const baseAsset = getDealBaseAsset(record.deal);
           const botUrl = buildBotDetailsUrl(record.deal.botId);
+          const dealUrl = buildDealStatisticsUrl(record.deal.id);
           return (
             <div className="active-deals__bot-cell">
               <a className="active-deals__bot-link" href={botUrl} target="_blank" rel="noreferrer">
@@ -341,6 +556,10 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 <span>{baseAsset}</span>
                 <span>·</span>
                 <span>{record.deal.algorithm}</span>
+                <span>·</span>
+                <a href={dealUrl} target="_blank" rel="noreferrer" className="active-deals__id-link-meta">
+                  ID {record.deal.id}
+                </a>
               </div>
             </div>
           );
@@ -406,22 +625,51 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         ),
       },
       {
+        title: 'Экспозиция',
+        dataIndex: 'exposure',
+        key: 'exposure',
+        align: 'right',
+        width: 140,
+        sorter: (a, b) => a.exposure - b.exposure,
+        render: (_value, record) => formatCurrency(record.exposure),
+      },
+      {
         title: 'Динамика',
         key: 'pnlTrend',
         width: 140,
         render: (_value, record) => {
           const history = positionHistory.get(record.deal.id) ?? [];
-          if (history.length < 2) {
+          const windowedHistory = filterHistoryByWindow(history, zoomTimeWindow);
+          if (windowedHistory.length === 0) {
             return (
               <div className="deal-sparkline-cell">
                 <span className="deal-sparkline-cell__empty">—</span>
               </div>
             );
           }
-          const points = history.map((item) => ({ time: item.time, value: item.pnl }));
+          const points: SparklinePoint[] = windowedHistory.map((item) => ({ time: item.time, value: item.pnl }));
+          const dealOrders = executedOrdersByDeal.get(record.deal.id) ?? [];
+
+          if (dealsState.lastUpdated) {
+            const lastUpdatedTime = new Date(dealsState.lastUpdated).getTime();
+            const lastTime = points.length > 0 ? points[points.length - 1].time : 0;
+            // Only append if the update time is newer than the last history point
+            // and within or after the window (though sparkline handles clipping)
+            if (lastUpdatedTime > lastTime) {
+              points.push({ time: lastUpdatedTime, value: record.pnl });
+            }
+          }
+          const markers = buildSparklineMarkers(dealOrders, points, zoomTimeWindow);
+
           return (
             <div className="deal-sparkline-cell">
-              <Sparkline points={points} ariaLabel={`Динамика P&L сделки ${record.deal.id}`} />
+              <Sparkline
+                points={points}
+                markers={markers}
+                ariaLabel={`Динамика P&L сделки ${record.deal.id}`}
+                minTime={zoomTimeWindow?.start}
+                maxTime={zoomTimeWindow?.end}
+              />
             </div>
           );
         },
@@ -435,7 +683,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         render: (_value, record) => {
           const entryDigits = countFractionDigits(record.averageEntryPrice);
           const markDigits = countFractionDigits(record.markPrice);
-          const alignedDigits = Math.max(entryDigits, markDigits);
+          const nearestOrderDigits = countFractionDigits(record.nearestOpenOrderPrice ?? Number.NaN);
+          const alignedDigits = Math.max(entryDigits, markDigits, nearestOrderDigits);
           return (
             <div className="active-deals__price-cell">
               <div className="active-deals__price-row">
@@ -450,6 +699,14 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                   {formatPriceWithDigits(record.markPrice, alignedDigits)}
                 </span>
               </div>
+              {record.nearestOpenOrderPrice !== null && (
+                <div className="active-deals__price-row">
+                  <span className="active-deals__price-label">Ближ. ордер</span>
+                  <span className="active-deals__price-value">
+                    {formatPriceWithDigits(record.nearestOpenOrderPrice, alignedDigits)}
+                  </span>
+                </div>
+              )}
             </div>
           );
         },
@@ -470,6 +727,18 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         },
       },
       {
+        title: 'Время в сделке',
+        key: 'lifetime',
+        width: 160,
+        sorter: (a, b) => {
+          const reference = Date.now();
+          const left = getDealLifetimeMs(a.deal, reference) ?? 0;
+          const right = getDealLifetimeMs(b.deal, reference) ?? 0;
+          return left - right;
+        },
+        render: (_value, record) => formatDealLifetime(record.deal),
+      },
+      {
         title: 'Кол-во',
         dataIndex: 'absQuantity',
         key: 'quantity',
@@ -484,22 +753,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         width: 120,
         sorter: (a, b) => a.executedOrdersCount - b.executedOrdersCount,
         render: (_value, record) => `${record.executedOrdersCount}/${record.totalOrdersCount}`,
-      },
-      {
-        title: 'ID сделки',
-        dataIndex: ['deal', 'id'],
-        key: 'id',
-        width: 140,
-        align: 'right',
-        sorter: (a, b) => a.deal.id - b.deal.id,
-        render: (_value, record) => {
-          const target = buildDealStatisticsUrl(record.deal.id);
-          return (
-            <a className="active-deals__id-link" href={target} target="_blank" rel="noreferrer">
-              {record.deal.id}
-            </a>
-          );
-        },
       },
       {
         title: 'Действия',
@@ -537,7 +790,15 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         },
       },
     ],
-    [apiKeysById, closingDealId, handleCloseDeal, positionHistory],
+    [
+      apiKeysById,
+      closingDealId,
+      executedOrdersByDeal,
+      handleCloseDeal,
+      positionHistory,
+      zoomTimeWindow,
+      dealsState.lastUpdated,
+    ],
   );
 
   const {
@@ -681,6 +942,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 dataZoomRange={zoomRange}
                 onDataZoom={handleZoomChange}
                 groupedSeries={chartGroupedSeries}
+                executedOrders={executedOrders}
                 legendSelection={legendSelection}
                 onLegendSelectionChange={handleLegendSelectionChange}
                 filterVisibleRange

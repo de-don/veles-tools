@@ -78,7 +78,7 @@ const buildEquitySeries = (cycles: BacktestCycle[]): number[] => {
   let cumulative = 0;
 
   sorted.forEach((cycle) => {
-    const pnl = cycle.pnl;
+    const pnl = cycle.netQuote;
     cumulative += pnl ?? 0;
     series.push(cumulative);
   });
@@ -112,6 +112,9 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
       maeAbsolute: Math.abs(cycle.maeAbsolute),
       mfeAbsolute: Math.abs(cycle.mfeAbsolute),
       durationInDays: (endTime - startTime) / MS_IN_DAY,
+      backtestId: statistics.id,
+      backtestName: statistics.name,
+      quoteCurrency: statistics.quote,
     } satisfies BacktestInfoDeal;
   });
 
