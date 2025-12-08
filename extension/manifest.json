@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Veles Tools",
   "description": "Утилиты для удобной работы с veles.finance.",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -20,26 +20,49 @@
       "128": "icons/icon-128.png"
     }
   },
-  "permissions": ["storage", "tabs", "scripting"],
-  "host_permissions": ["https://veles.finance/*", "https://ru.veles.finance/*"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://veles.finance/*",
+    "https://ru.veles.finance/*"
+  ],
   "background": {
     "service_worker": "scripts/background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://veles.finance/*", "https://ru.veles.finance/*"],
-      "js": ["scripts/proxy-bridge.js"],
+      "matches": [
+        "https://veles.finance/*",
+        "https://ru.veles.finance/*"
+      ],
+      "js": [
+        "scripts/proxy-bridge.js"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["scripts/page-fetch-bridge.js"],
-      "matches": ["https://veles.finance/*", "https://ru.veles.finance/*"]
+      "resources": [
+        "scripts/page-fetch-bridge.js"
+      ],
+      "matches": [
+        "https://veles.finance/*",
+        "https://ru.veles.finance/*"
+      ]
     },
     {
-      "resources": ["ui/dist/index.html", "ui/dist/assets/*"],
-      "matches": ["https://veles.finance/*", "https://ru.veles.finance/*"]
+      "resources": [
+        "ui/dist/index.html",
+        "ui/dist/assets/*"
+      ],
+      "matches": [
+        "https://veles.finance/*",
+        "https://ru.veles.finance/*"
+      ]
     }
   ]
 }
