@@ -9,9 +9,7 @@ export interface DealHistoryPoint {
 export type DealHistorySnapshot = Record<string, DealHistoryPoint[]>;
 export type DealHistoryMap = Map<number, DealHistoryPoint[]>;
 
-export const DEAL_HISTORY_LIMIT = Number.POSITIVE_INFINITY;
 export const DEAL_HISTORY_WINDOW_MS = 0;
-export const PORTFOLIO_EQUITY_POINT_LIMIT = Number.POSITIVE_INFINITY;
 
 export const filterDealHistoryByTimeWindow = (
   points: readonly DealHistoryPoint[],
@@ -43,14 +41,6 @@ export const isDealHistorySnapshot = (value: unknown): value is DealHistorySnaps
   }
   const record = value as Record<string, unknown>;
   return Object.values(record).every((entry) => Array.isArray(entry) && entry.every(isDealHistoryPoint));
-};
-
-export const clampDealHistory = (
-  points: DealHistoryPoint[],
-  limit: number = DEAL_HISTORY_LIMIT,
-): DealHistoryPoint[] => {
-  void limit;
-  return [...points];
 };
 
 export const snapshotHistoryToMap = (snapshot: DealHistorySnapshot | undefined): DealHistoryMap => {
@@ -116,9 +106,4 @@ export const buildPortfolioEquitySeries = (points: PortfolioEquitySeries['points
     minValue: Math.min(...values),
     maxValue: Math.max(...values),
   };
-};
-
-export const trimPortfolioEquitySeries = (series: PortfolioEquitySeries, maxPoints: number): PortfolioEquitySeries => {
-  const trimmedPoints = thinTimedPointsFromEnd(series.points, maxPoints);
-  return buildPortfolioEquitySeries(trimmedPoints);
 };

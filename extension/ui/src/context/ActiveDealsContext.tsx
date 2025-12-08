@@ -16,14 +16,10 @@ import type { ActiveDealMetrics } from '../lib/activeDeals';
 import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
 import {
   buildPortfolioEquitySeries,
-  clampDealHistory,
   createEmptyPortfolioEquitySeries,
-  DEAL_HISTORY_LIMIT,
   DEAL_HISTORY_WINDOW_MS,
   type DealHistoryMap,
   filterDealHistoryByTimeWindow,
-  PORTFOLIO_EQUITY_POINT_LIMIT,
-  trimPortfolioEquitySeries,
 } from '../lib/activeDealsHistory';
 import { type ActiveDealsRefreshInterval, DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
 import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
@@ -73,8 +69,7 @@ const buildSeriesWithPoint = (
   timestamp: number,
 ): PortfolioEquitySeries => {
   const basePoints = current?.points ?? [];
-  const series = buildPortfolioEquitySeries([...basePoints, { time: timestamp, value }]);
-  return trimPortfolioEquitySeries(series, PORTFOLIO_EQUITY_POINT_LIMIT);
+  return buildPortfolioEquitySeries([...basePoints, { time: timestamp, value }]);
 };
 
 const composeGroupedSeries = (
@@ -299,8 +294,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
         const previous = next.get(dealId) ?? [];
         const filteredPrevious = filterDealHistoryByTimeWindow(previous, DEAL_HISTORY_WINDOW_MS, timestamp);
         const appended = [...filteredPrevious, { time: timestamp, pnl: position.pnl, pnlPercent: position.pnlPercent }];
-        const trimmed = clampDealHistory(appended, DEAL_HISTORY_LIMIT);
-        next.set(dealId, trimmed);
+        next.set(dealId, appended);
       });
 
       Array.from(next.keys()).forEach((dealId) => {
