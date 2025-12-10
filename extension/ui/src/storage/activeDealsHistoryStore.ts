@@ -1,7 +1,16 @@
-import type { DealHistoryMap, DealHistorySnapshot } from '../lib/activeDealsHistory';
 import {
+  ACTIVE_DEALS_HISTORY_POINT_LIMIT,
   buildPortfolioEquitySeries,
+  type DealHistoryMap,
+  type DealHistorySnapshot,
+  type ExecutedOrdersHistoryMap,
+  type ExecutedOrdersSnapshot,
+  getSeriesStartTimestamp,
   isDealHistorySnapshot,
+  isExecutedOrdersSnapshot,
+  mapExecutedOrdersToSnapshot,
+  mergeExecutedOrdersHistory,
+  snapshotExecutedOrdersToMap,
   snapshotHistoryToMap,
   thinTimedPointsFromEnd,
 } from '../lib/activeDealsHistory';
@@ -12,14 +21,13 @@ const DB_NAME = 'veles-active-deals-history';
 const DB_VERSION = 1;
 const STORE_NAME = 'history';
 const RECORD_KEY = 'history';
-const POINT_LIMIT = 10_000;
-
 type GroupedSeriesSnapshot = Record<string, PortfolioEquitySeries['points']>;
 
 interface StoredActiveDealsHistory {
   pnlSeries: PortfolioEquitySeries['points'];
   groupedSeries: GroupedSeriesSnapshot;
   positionHistory: DealHistorySnapshot;
+  executedOrders?: ExecutedOrdersSnapshot;
 }
 
 interface ActiveDealsHistoryRecord {
@@ -32,6 +40,7 @@ export interface ActiveDealsHistoryCache {
   pnlSeries: PortfolioEquitySeries;
   groupedSeries: Map<number, PortfolioEquitySeries>;
   positionHistory: DealHistoryMap;
+  executedOrders: ExecutedOrdersHistoryMap;
 }
 
 const databaseConfig = {
@@ -72,16 +81,24 @@ const isStoredActiveDealsHistory = (value: unknown): value is StoredActiveDealsH
   if (value === null || typeof value !== 'object') {
     return false;
   }
-  const candidate = value as { pnlSeries?: unknown; groupedSeries?: unknown; positionHistory?: unknown };
+  const candidate = value as {
+    pnlSeries?: unknown;
+    groupedSeries?: unknown;
+    positionHistory?: unknown;
+    executedOrders?: unknown;
+  };
   return (
     isPortfolioEquitySeriesPoints(candidate.pnlSeries) &&
     isGroupedSeriesSnapshot(candidate.groupedSeries) &&
-    isDealHistorySnapshot(candidate.positionHistory)
+    isDealHistorySnapshot(candidate.positionHistory) &&
+    (candidate.executedOrders === undefined ||
+      candidate.executedOrders === null ||
+      isExecutedOrdersSnapshot(candidate.executedOrders))
   );
 };
 
 const normalizeEquitySeries = (points: PortfolioEquitySeries['points']): PortfolioEquitySeries => {
-  return buildPortfolioEquitySeries(thinTimedPointsFromEnd(points, POINT_LIMIT));
+  return buildPortfolioEquitySeries(thinTimedPointsFromEnd(points, ACTIVE_DEALS_HISTORY_POINT_LIMIT));
 };
 
 const normalizeGroupedSeries = (snapshot: GroupedSeriesSnapshot): Map<number, PortfolioEquitySeries> => {
@@ -103,7 +120,7 @@ const normalizePositionHistory = (snapshot: DealHistorySnapshot): DealHistoryMap
   const map = snapshotHistoryToMap(snapshot);
   const normalized: DealHistoryMap = new Map();
   map.forEach((history, dealId) => {
-    const trimmed = thinTimedPointsFromEnd(history, POINT_LIMIT);
+    const trimmed = thinTimedPointsFromEnd(history, ACTIVE_DEALS_HISTORY_POINT_LIMIT);
     if (trimmed.length > 0) {
       normalized.set(dealId, trimmed);
     }
@@ -111,10 +128,31 @@ const normalizePositionHistory = (snapshot: DealHistorySnapshot): DealHistoryMap
   return normalized;
 };
 
+const normalizeExecutedOrdersHistory = (
+  snapshot: ExecutedOrdersSnapshot | null | undefined,
+  historyStart: number | null,
+): ExecutedOrdersHistoryMap => {
+  const map = snapshotExecutedOrdersToMap(snapshot ?? undefined);
+  const normalized: ExecutedOrdersHistoryMap = new Map();
+
+  map.forEach((orders, dealId) => {
+    const trimmed = thinTimedPointsFromEnd(orders, ACTIVE_DEALS_HISTORY_POINT_LIMIT).filter((order) =>
+      typeof historyStart === 'number' ? order.time >= historyStart : true,
+    );
+    if (trimmed.length > 0) {
+      normalized.set(dealId, trimmed);
+    }
+  });
+
+  return normalized;
+};
+
 const mapGroupedSeriesToSnapshot = (groupedSeries: Map<number, PortfolioEquitySeries>): GroupedSeriesSnapshot => {
   const snapshot: GroupedSeriesSnapshot = {};
   groupedSeries.forEach((series, apiKeyId) => {
-    snapshot[String(apiKeyId)] = thinTimedPointsFromEnd(series.points, POINT_LIMIT).map((point) => ({ ...point }));
+    snapshot[String(apiKeyId)] = thinTimedPointsFromEnd(series.points, ACTIVE_DEALS_HISTORY_POINT_LIMIT).map(
+      (point) => ({ ...point }),
+    );
   });
   return snapshot;
 };
@@ -122,7 +160,9 @@ const mapGroupedSeriesToSnapshot = (groupedSeries: Map<number, PortfolioEquitySe
 const mapPositionHistoryToSnapshot = (history: DealHistoryMap): DealHistorySnapshot => {
   const snapshot: DealHistorySnapshot = {};
   history.forEach((entries, dealId) => {
-    snapshot[String(dealId)] = thinTimedPointsFromEnd(entries, POINT_LIMIT).map((entry) => ({ ...entry }));
+    snapshot[String(dealId)] = thinTimedPointsFromEnd(entries, ACTIVE_DEALS_HISTORY_POINT_LIMIT).map((entry) => ({
+      ...entry,
+    }));
   });
   return snapshot;
 };
@@ -142,10 +182,16 @@ export const readActiveDealsHistoryCache = async (): Promise<ActiveDealsHistoryC
         resolve(null);
         return;
       }
+      const pnlSeries = normalizeEquitySeries(record.payload.pnlSeries);
+      const historyStart = getSeriesStartTimestamp(pnlSeries);
+      const groupedSeries = normalizeGroupedSeries(record.payload.groupedSeries);
+      const positionHistory = normalizePositionHistory(record.payload.positionHistory);
+      const executedOrders = normalizeExecutedOrdersHistory(record.payload.executedOrders, historyStart);
       resolve({
-        pnlSeries: normalizeEquitySeries(record.payload.pnlSeries),
-        groupedSeries: normalizeGroupedSeries(record.payload.groupedSeries),
-        positionHistory: normalizePositionHistory(record.payload.positionHistory),
+        pnlSeries,
+        groupedSeries,
+        positionHistory,
+        executedOrders,
       });
     };
 
@@ -158,9 +204,12 @@ export const readActiveDealsHistoryCache = async (): Promise<ActiveDealsHistoryC
 
 export const writeActiveDealsHistoryCache = async (cache: ActiveDealsHistoryCache): Promise<void> => {
   const payload: StoredActiveDealsHistory = {
-    pnlSeries: thinTimedPointsFromEnd(cache.pnlSeries.points, POINT_LIMIT),
+    pnlSeries: thinTimedPointsFromEnd(cache.pnlSeries.points, ACTIVE_DEALS_HISTORY_POINT_LIMIT),
     groupedSeries: mapGroupedSeriesToSnapshot(cache.groupedSeries),
     positionHistory: mapPositionHistoryToSnapshot(cache.positionHistory),
+    executedOrders: mapExecutedOrdersToSnapshot(
+      mergeExecutedOrdersHistory(cache.executedOrders, new Map(), getSeriesStartTimestamp(cache.pnlSeries)),
+    ),
   };
 
   try {

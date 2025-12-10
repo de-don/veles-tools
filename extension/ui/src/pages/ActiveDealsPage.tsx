@@ -9,7 +9,7 @@ import PageHeader from '../components/ui/PageHeader';
 import { StatisticCard } from '../components/ui/StatisticCard';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
-import { type ActiveDealMetrics, buildExecutedOrdersIndex, getDealBaseAsset } from '../lib/activeDeals';
+import { type ActiveDealMetrics, getDealBaseAsset } from '../lib/activeDeals';
 import type { DealHistoryPoint } from '../lib/activeDealsHistory';
 import { ACTIVE_DEALS_REFRESH_INTERVALS, isActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import {
@@ -345,6 +345,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     zoomPreset,
     setZoomPreset,
     positionHistory,
+    executedOrders,
+    executedOrdersByDeal,
   } = useActiveDeals();
 
   const zoomTimeWindow = useMemo(() => calculateZoomTimeWindow(pnlSeries, zoomRange), [pnlSeries, zoomRange]);
@@ -508,13 +510,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     const allow = new Set(apiKeyFilter);
     return positions.filter((position) => allow.has(position.deal.apiKeyId));
   }, [apiKeyFilter, positions]);
-
-  const executedOrdersIndex = useMemo(
-    () => buildExecutedOrdersIndex(positions.map((position) => position.deal)),
-    [positions],
-  );
-  const executedOrders = executedOrdersIndex.all;
-  const executedOrdersByDeal = executedOrdersIndex.byDeal;
 
   const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
   const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
