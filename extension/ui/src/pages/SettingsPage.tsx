@@ -1,6 +1,8 @@
-import { Alert, Button, Card, InputNumber, Space, Typography } from 'antd';
+import { Alert, Button, Card, InputNumber, Select, Space, Typography } from 'antd';
 import { useEffect, useState } from 'react';
+import { useDealsRefresh } from '../context/DealsRefreshContext';
 import { useRequestDelay } from '../context/RequestDelayContext';
+import type { ActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import { clearBacktestCache } from '../storage/backtestCache';
 import { normalizeRequestDelay } from '../storage/requestDelayStore';
 
@@ -9,10 +11,16 @@ const SettingsPage = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { delayMs, setDelayMs, defaultDelayMs } = useRequestDelay();
   const [requestDelayDraft, setRequestDelayDraft] = useState<number>(delayMs);
+  const { refreshInterval: dealsRefreshInterval, setRefreshInterval, defaultInterval, options } = useDealsRefresh();
+  const [dealsRefreshDraft, setDealsRefreshDraft] = useState<ActiveDealsRefreshInterval>(dealsRefreshInterval);
 
   useEffect(() => {
     setRequestDelayDraft(delayMs);
   }, [delayMs]);
+
+  useEffect(() => {
+    setDealsRefreshDraft(dealsRefreshInterval);
+  }, [dealsRefreshInterval]);
 
   const handleClearCache = async () => {
     if (status === 'pending') {
@@ -66,6 +74,8 @@ const SettingsPage = () => {
   const normalizedDraft = normalizeRequestDelay(requestDelayDraft);
   const saveDisabled = normalizedDraft === delayMs;
   const resetDisabled = delayMs === defaultDelayMs && normalizedDraft === defaultDelayMs;
+  const dealsSaveDisabled = dealsRefreshDraft === dealsRefreshInterval;
+  const dealsResetDisabled = dealsRefreshInterval === defaultInterval && dealsRefreshDraft === defaultInterval;
 
   return (
     <div className="page">
@@ -106,6 +116,35 @@ const SettingsPage = () => {
             <Typography.Text type="secondary">
               Новое значение применяется немедленно и сохраняется в локальном хранилище.
             </Typography.Text>
+          </Space>
+        </Card>
+
+        <Card title="Период подгрузки сделок" bordered>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Typography.Paragraph style={{ marginBottom: 0 }}>
+              Определяет частоту обновления активных сделок и автоматических проверок блокировок. Значение применяется
+              глобально для всех разделов.
+            </Typography.Paragraph>
+            <Space size={12} align="center" wrap>
+              <Select
+                style={{ minWidth: 160 }}
+                value={dealsRefreshDraft}
+                onChange={(value: ActiveDealsRefreshInterval) => setDealsRefreshDraft(value)}
+                options={options.map((value) => ({ value, label: `${value} сек` }))}
+              />
+              <Button type="primary" onClick={() => setRefreshInterval(dealsRefreshDraft)} disabled={dealsSaveDisabled}>
+                Сохранить
+              </Button>
+              <Button
+                onClick={() => {
+                  setDealsRefreshDraft(defaultInterval);
+                  setRefreshInterval(defaultInterval);
+                }}
+                disabled={dealsResetDisabled}
+              >
+                Сбросить к {defaultInterval} сек
+              </Button>
+            </Space>
           </Space>
         </Card>
 

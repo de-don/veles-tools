@@ -1,6 +1,6 @@
 import { Button, Card, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { Sparkline, type SparklineMarker, type SparklinePoint } from '../components/charts/Sparkline';
@@ -11,7 +11,6 @@ import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsB
 import { useActiveDeals } from '../context/ActiveDealsContext';
 import { type ActiveDealMetrics, getDealBaseAsset } from '../lib/activeDeals';
 import type { DealHistoryPoint } from '../lib/activeDealsHistory';
-import { ACTIVE_DEALS_REFRESH_INTERVALS, isActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import {
   ACTIVE_DEALS_ZOOM_PRESET_OPTIONS,
   type ActiveDealsZoomPresetKey,
@@ -336,8 +335,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     apiKeysById,
     loading,
     error,
-    refreshInterval,
-    setRefreshInterval,
     resetHistory,
     fetchDeals,
     zoomRange,
@@ -361,13 +358,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   useEffect(() => {
     seriesRef.current = pnlSeries;
   }, [pnlSeries]);
-
-  const onRefreshIntervalChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const nextValue = Number(event.target.value);
-    if (isActiveDealsRefreshInterval(nextValue)) {
-      setRefreshInterval(nextValue);
-    }
-  };
 
   const handleZoomChange = useCallback(
     (range: DataZoomRange) => {
@@ -815,20 +805,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         <PageHeader
           title="Активные сделки"
           description="Сводка открытых позиций с автоматическим обновлением и агрегированным P&amp;L."
-          extra={
-            <select
-              className="select"
-              value={refreshInterval}
-              onChange={onRefreshIntervalChange}
-              aria-label="Интервал обновления"
-            >
-              {ACTIVE_DEALS_REFRESH_INTERVALS.map((interval) => (
-                <option key={interval} value={interval}>
-                  {interval} сек
-                </option>
-              ))}
-            </select>
-          }
           className="page__header"
         ></PageHeader>
 

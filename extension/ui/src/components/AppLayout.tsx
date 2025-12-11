@@ -2,6 +2,7 @@ import {
   AppstoreOutlined,
   CheckCircleOutlined,
   CloudUploadOutlined,
+  ControlOutlined,
   ExclamationCircleOutlined,
   ExperimentOutlined,
   HeartFilled,
@@ -17,6 +18,7 @@ import { type PropsWithChildren, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { APP_NAME, APP_VERSION } from '../config/version';
+import { useDynamicBlocks } from '../context/DynamicBlocksContext';
 import SupportProjectModal from './SupportProjectModal';
 
 interface AppLayoutProps extends PropsWithChildren {
@@ -39,48 +41,6 @@ const REPOSITORY_URL = 'https://github.com/de-don/veles-tools';
 const AUTHOR_URL = 'https://t.me/dontsov';
 const CHROME_WEBSTORE_URL = 'https://chromewebstore.google.com/detail/veles-tools/hgfhapnhcnncjplmjkbbljhjpcjilbgm';
 
-const NAVIGATION_ITEMS = [
-  {
-    key: '/',
-    label: 'Главная',
-    icon: <HomeOutlined />,
-  },
-  {
-    key: '/active-deals',
-    label: 'Активные сделки',
-    icon: <ThunderboltOutlined />,
-  },
-  {
-    key: '/bots',
-    label: 'Мои боты',
-    icon: <RobotOutlined />,
-  },
-  {
-    key: '/import',
-    label: 'Импорт ботов',
-    icon: <CloudUploadOutlined />,
-  },
-  {
-    key: '/backtests',
-    label: 'Бэктесты',
-    icon: <ExperimentOutlined />,
-  },
-  {
-    key: '/backtest-groups',
-    label: 'Группы бэктестов',
-    icon: <AppstoreOutlined />,
-  },
-  {
-    key: '/settings',
-    label: 'Настройки',
-    icon: <SettingOutlined />,
-  },
-] satisfies MenuProps['items'];
-
-const NAVIGATION_KEYS = NAVIGATION_ITEMS.map((item) => (item && 'key' in item ? item.key : null)).filter(
-  (key): key is string => typeof key === 'string',
-);
-
 const formatTimestamp = (timestamp: number | null) => {
   if (!timestamp) {
     return '—';
@@ -88,24 +48,89 @@ const formatTimestamp = (timestamp: number | null) => {
   return new Date(timestamp).toLocaleTimeString();
 };
 
-const resolveSelectedKey = (pathname: string) => {
+const resolveSelectedKey = (pathname: string, navigationKeys: string[]) => {
   if (!pathname || pathname === '/') {
     return '/';
   }
   const normalized = pathname.replace(/\/+$/, '');
-  if (NAVIGATION_KEYS.includes(normalized)) {
+  if (navigationKeys.includes(normalized)) {
     return normalized;
   }
-  const nestedMatch = NAVIGATION_KEYS.find((key) => key !== '/' && normalized.startsWith(`${key}/`));
+  const nestedMatch = navigationKeys.find((key) => key !== '/' && normalized.startsWith(`${key}/`));
   return nestedMatch ?? '/';
 };
 
 const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenVeles }: AppLayoutProps) => {
+  const { activeConfigs } = useDynamicBlocks();
+  const dynamicBlocksActive = activeConfigs.length > 0;
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const selectedKey = useMemo(() => resolveSelectedKey(location.pathname), [location.pathname]);
+  const navigationItems = useMemo<MenuProps['items']>(() => {
+    const dynamicLabel = (
+      <Space size={4}>
+        <span>Динамическая блокировка</span>
+        {dynamicBlocksActive && (
+          <Tag color="green" bordered={false} style={{ marginLeft: 0 }}>
+            ON
+          </Tag>
+        )}
+      </Space>
+    );
+    return [
+      {
+        key: '/',
+        label: 'Главная',
+        icon: <HomeOutlined />,
+      },
+      {
+        key: '/active-deals',
+        label: 'Активные сделки',
+        icon: <ThunderboltOutlined />,
+      },
+      {
+        key: '/bots',
+        label: 'Мои боты',
+        icon: <RobotOutlined />,
+      },
+      {
+        key: '/dynamic-blocks',
+        label: dynamicLabel,
+        icon: <ControlOutlined />,
+      },
+      {
+        key: '/import',
+        label: 'Импорт ботов',
+        icon: <CloudUploadOutlined />,
+      },
+      {
+        key: '/backtests',
+        label: 'Бэктесты',
+        icon: <ExperimentOutlined />,
+      },
+      {
+        key: '/backtest-groups',
+        label: 'Группы бэктестов',
+        icon: <AppstoreOutlined />,
+      },
+      {
+        key: '/settings',
+        label: 'Настройки',
+        icon: <SettingOutlined />,
+      },
+    ];
+  }, [dynamicBlocksActive]);
+
+  const navigationKeys = useMemo(
+    () =>
+      (navigationItems ?? [])
+        .map((item) => (item && 'key' in item ? (item.key as string | undefined) : undefined))
+        .filter((key): key is string => Boolean(key)),
+    [navigationItems],
+  );
+
+  const selectedKey = useMemo(() => resolveSelectedKey(location.pathname, navigationKeys), [location.pathname, navigationKeys]);
   const lastCheckedLabel = formatTimestamp(connectionStatus.lastChecked);
 
   const brand = (
@@ -154,7 +179,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
       <Sider theme="light" width={240} className="app-layout__sider">
         {brand}
         <nav className="app-layout__nav">
-          <Menu mode="inline" items={NAVIGATION_ITEMS} selectedKeys={[selectedKey]} onClick={handleMenuClick} />
+          <Menu mode="inline" items={navigationItems} selectedKeys={[selectedKey]} onClick={handleMenuClick} />
         </nav>
         {!extensionReady && (
           <Alert

@@ -25,7 +25,7 @@ import {
   getSeriesStartTimestamp,
   mergeExecutedOrdersHistory,
 } from '../lib/activeDealsHistory';
-import { type ActiveDealsRefreshInterval, DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
+import type { ActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
 import type { DataZoomRange } from '../lib/chartOptions';
 import type {
@@ -45,6 +45,7 @@ import {
 } from '../storage/activeDealsPreferencesStore';
 import type { ActiveDeal } from '../types/activeDeals';
 import type { ApiKey } from '../types/apiKeys';
+import { useDealsRefresh } from './DealsRefreshContext';
 
 interface DealsState {
   aggregation: ActiveDealsAggregation | null;
@@ -133,7 +134,6 @@ export interface ActiveDealsContextValue {
   loading: boolean;
   error: string | null;
   refreshInterval: ActiveDealsRefreshInterval;
-  setRefreshInterval: (interval: ActiveDealsRefreshInterval) => void;
   fetchDeals: () => Promise<void>;
   resetHistory: () => void;
   zoomRange: DataZoomRange | undefined;
@@ -153,6 +153,7 @@ interface ActiveDealsProviderProps {
 }
 
 export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsProviderProps) => {
+  const { refreshInterval } = useDealsRefresh();
   const initialPreferencesRef = useRef<ActiveDealsPreferences | null | undefined>(undefined);
   if (initialPreferencesRef.current === undefined) {
     initialPreferencesRef.current = readActiveDealsPreferences();
@@ -162,9 +163,6 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   const initialGroupedSeries: GroupedSeriesMap = new Map();
   const initialPositionHistory: DealHistoryMap = new Map();
 
-  const [refreshInterval, setRefreshIntervalState] = useState<ActiveDealsRefreshInterval>(
-    () => initialPreferences?.refreshInterval ?? DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
-  );
   const [dealsState, setDealsState] = useState<DealsState>(INITIAL_DEALS_STATE);
   const [pnlSeries, setPnlSeries] = useState<PortfolioEquitySeries>(() => cachedSeries);
   const [groupedPnlSeries, setGroupedPnlSeries] = useState<PortfolioEquityGroupedSeriesItem[]>(() =>
@@ -517,10 +515,6 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     void clearActiveDealsHistoryCache();
   }, []);
 
-  const updateRefreshInterval = useCallback((interval: ActiveDealsRefreshInterval) => {
-    setRefreshIntervalState(interval);
-  }, []);
-
   const contextValue = useMemo<ActiveDealsContextValue>(
     () => ({
       dealsState,
@@ -532,7 +526,6 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       loading,
       error,
       refreshInterval,
-      setRefreshInterval: updateRefreshInterval,
       fetchDeals,
       resetHistory,
       zoomRange,
@@ -552,7 +545,6 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       error,
       refreshInterval,
       groupByApiKey,
-      updateRefreshInterval,
       fetchDeals,
       resetHistory,
       zoomRange,

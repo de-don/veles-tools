@@ -3,6 +3,8 @@ import { HashRouter, Route, Routes } from 'react-router-dom';
 import AppLayout, { type ConnectionStatus } from './components/AppLayout';
 import { ActiveDealsProvider } from './context/ActiveDealsContext';
 import { BacktestGroupsProvider } from './context/BacktestGroupsContext';
+import { DealsRefreshProvider } from './context/DealsRefreshContext';
+import { DynamicBlocksProvider } from './context/DynamicBlocksContext';
 import { ImportedBotsProvider } from './context/ImportedBotsContext';
 import { RequestDelayProvider } from './context/RequestDelayContext';
 import { isExtensionRuntime, pingConnection, readConnectionStatus, updateRequestDelay } from './lib/extensionMessaging';
@@ -11,6 +13,7 @@ import BacktestGroupDetailsPage from './pages/BacktestGroupDetailsPage';
 import BacktestGroupsPage from './pages/BacktestGroupsPage';
 import BacktestsPage from './pages/BacktestsPage';
 import BotsPage from './pages/BotsPage';
+import DynamicBlocksPage from './pages/DynamicBlocksPage';
 import HomePage from './pages/HomePage';
 import ImportBotsPage from './pages/ImportBotsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -178,36 +181,41 @@ const App = () => {
 
   return (
     <HashRouter>
-      <ImportedBotsProvider>
-        <ActiveDealsProvider extensionReady={extensionReady}>
-          <BacktestGroupsProvider>
-            <RequestDelayProvider
-              value={{ delayMs: requestDelay, setDelayMs, defaultDelayMs: DEFAULT_REQUEST_DELAY_MS }}
-            >
-              <AppLayout
-                extensionReady={extensionReady}
-                connectionStatus={connectionStatus}
-                onPing={triggerPing}
-                onOpenVeles={openVelesTab}
-              >
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
-                  <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
-                  <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
-                  <Route path="/backtest-groups" element={<BacktestGroupsPage />} />
-                  <Route
-                    path="/backtest-groups/:groupId"
-                    element={<BacktestGroupDetailsPage extensionReady={extensionReady} />}
-                  />
-                  <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                </Routes>
-              </AppLayout>
-            </RequestDelayProvider>
-          </BacktestGroupsProvider>
-        </ActiveDealsProvider>
-      </ImportedBotsProvider>
+      <DealsRefreshProvider>
+        <DynamicBlocksProvider extensionReady={extensionReady}>
+          <ImportedBotsProvider>
+            <ActiveDealsProvider extensionReady={extensionReady}>
+              <BacktestGroupsProvider>
+                <RequestDelayProvider
+                  value={{ delayMs: requestDelay, setDelayMs, defaultDelayMs: DEFAULT_REQUEST_DELAY_MS }}
+                >
+                  <AppLayout
+                    extensionReady={extensionReady}
+                    connectionStatus={connectionStatus}
+                    onPing={triggerPing}
+                    onOpenVeles={openVelesTab}
+                  >
+                    <Routes>
+                      <Route path="/" element={<HomePage />} />
+                      <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
+                      <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
+                      <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
+                      <Route path="/backtest-groups" element={<BacktestGroupsPage />} />
+                      <Route
+                        path="/backtest-groups/:groupId"
+                        element={<BacktestGroupDetailsPage extensionReady={extensionReady} />}
+                      />
+                      <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
+                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/dynamic-blocks" element={<DynamicBlocksPage extensionReady={extensionReady} />} />
+                    </Routes>
+                  </AppLayout>
+                </RequestDelayProvider>
+              </BacktestGroupsProvider>
+            </ActiveDealsProvider>
+          </ImportedBotsProvider>
+        </DynamicBlocksProvider>
+      </DealsRefreshProvider>
     </HashRouter>
   );
 };
