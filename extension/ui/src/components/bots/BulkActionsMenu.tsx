@@ -1,4 +1,11 @@
-import { CopyOutlined, DeleteOutlined, DownOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  EditOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
+} from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { Button, Dropdown, message } from 'antd';
 import type { ButtonProps } from 'antd/es/button';
@@ -8,10 +15,11 @@ import { deleteBot, startBot, stopBot } from '../../api/bots';
 import type { ApiKey } from '../../types/apiKeys';
 import type { TradingBot } from '../../types/bots';
 import BulkActionModal, { type BulkActionCopy, type BulkActionResult } from './BulkActionModal';
+import BulkEditBotsModal from './BulkEditBotsModal';
 import CloneBotsModal from './CloneBotsModal';
 
 type BulkActionKey = 'delete' | 'stop' | 'start';
-type BulkMenuKey = BulkActionKey | 'clone';
+type BulkMenuKey = BulkActionKey | 'clone' | 'edit';
 
 interface BulkActionConfig {
   key: BulkActionKey;
@@ -128,6 +136,11 @@ const buildMenuItems = (configs: Record<BulkActionKey, BulkActionConfig>): MenuP
     icon: configs.stop.menuIcon,
   },
   {
+    key: 'edit',
+    label: 'Редактировать',
+    icon: <EditOutlined />,
+  },
+  {
     key: 'clone',
     label: 'Клонировать',
     icon: <CopyOutlined />,
@@ -147,6 +160,8 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
   const [botsSnapshot, setBotsSnapshot] = useState<TradingBot[]>([]);
   const [isCloneModalOpen, setCloneModalOpen] = useState(false);
   const [cloneBotsSnapshot, setCloneBotsSnapshot] = useState<TradingBot[]>([]);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [editBotsSnapshot, setEditBotsSnapshot] = useState<TradingBot[]>([]);
 
   const menuItems = useMemo(() => buildMenuItems(ACTION_CONFIGS), []);
 
@@ -159,6 +174,11 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
       if (menuKey === 'clone') {
         setCloneBotsSnapshot([...bots]);
         setCloneModalOpen(true);
+        return;
+      }
+      if (menuKey === 'edit') {
+        setEditBotsSnapshot([...bots]);
+        setEditModalOpen(true);
         return;
       }
       const actionKey = menuKey as BulkActionKey;
@@ -178,6 +198,11 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
     setCloneBotsSnapshot([]);
   }, []);
 
+  const handleEditClose = useCallback(() => {
+    setEditModalOpen(false);
+    setEditBotsSnapshot([]);
+  }, []);
+
   const handleCloneCompleted = useCallback(
     (summary: { succeeded: number; failed: number }) => {
       const { succeeded, failed } = summary;
@@ -190,6 +215,29 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
       }
 
       if (succeeded > 0) {
+        onReloadRequested();
+      }
+    },
+    [messageApi, onReloadRequested],
+  );
+
+  const handleEditCompleted = useCallback(
+    (result: BulkActionResult) => {
+      const processedTotal = result.succeeded.length + result.failed.length;
+
+      if (processedTotal > 0) {
+        if (result.failed.length === 0) {
+          messageApi.success(`Обновлено ботов: ${result.succeeded.length}.`);
+        } else if (result.succeeded.length === 0) {
+          messageApi.error('Не удалось обновить выбранных ботов.');
+        } else {
+          messageApi.warning(
+            `Обновлено ${result.succeeded.length} из ${processedTotal}. Ошибок: ${result.failed.length}.`,
+          );
+        }
+      }
+
+      if (result.succeeded.length > 0) {
         onReloadRequested();
       }
     },
@@ -226,6 +274,7 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
   const currentAction = activeAction ? ACTION_CONFIGS[activeAction] : null;
   const currentBots = activeAction ? botsSnapshot : [];
   const cloneBots = isCloneModalOpen ? cloneBotsSnapshot : [];
+  const editBots = isEditModalOpen ? editBotsSnapshot : [];
 
   return (
     <>
@@ -245,6 +294,10 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
           onClose={handleModalClose}
           onCompleted={(result) => handleCompleted(activeAction, result)}
         />
+      )}
+
+      {isEditModalOpen && (
+        <BulkEditBotsModal open bots={editBots} onClose={handleEditClose} onCompleted={handleEditCompleted} />
       )}
 
       {isCloneModalOpen && (

@@ -49,6 +49,8 @@ export interface CreateBotResponse {
   status?: string | null;
 }
 
+export type UpdateBotPayload = Omit<BotConfigCreateDto, 'id'> & { id: number };
+
 interface BotsFilterRequestPayload {
   tags?: string[];
   apiKeys?: number[];
@@ -177,4 +179,27 @@ export const createBot = async (payload: CreateBotPayload): Promise<CreateBotRes
   }
 
   return response.body;
+};
+
+export const updateBot = async (payload: UpdateBotPayload): Promise<void> => {
+  if (!Number.isFinite(payload.id)) {
+    throw new Error('Некорректный идентификатор бота.');
+  }
+
+  const headers = mergeHeaders({ 'content-type': 'application/json' });
+
+  const response = await proxyHttpRequest<void>({
+    url: `${BOTS_ENDPOINT}/${payload.id}`,
+    init: {
+      method: 'PUT',
+      credentials: 'include',
+      headers,
+      body: JSON.stringify(payload),
+    },
+  });
+
+  if (!response.ok) {
+    const message = resolveProxyErrorMessage(response);
+    throw new Error(message);
+  }
 };

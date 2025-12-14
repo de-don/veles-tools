@@ -36,3 +36,6 @@ This directory contains shared utilities used across the UI. Every exported help
 - `areZoomRangesEqual(left?, right?)` – compares two zoom ranges by `start`/`end` values.
 - `ACTIVE_DEALS_ZOOM_PRESET_OPTIONS` – available preset definitions for the zoom segmented control.
 - `isActiveDealsZoomPreset(value)` – runtime guard for persisted preset keys.
+
+## `botUpdatePayload.ts`
+- `buildBotUpdatePayload(bot, overrides)` – creates a DTO payload for updating an existing bot while applying deposit/leverage overrides and keeping other config fields intact.

@@ -130,7 +130,10 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
     [navigationItems],
   );
 
-  const selectedKey = useMemo(() => resolveSelectedKey(location.pathname, navigationKeys), [location.pathname, navigationKeys]);
+  const selectedKey = useMemo(
+    () => resolveSelectedKey(location.pathname, navigationKeys),
+    [location.pathname, navigationKeys],
+  );
   const lastCheckedLabel = formatTimestamp(connectionStatus.lastChecked);
 
   const brand = (
