@@ -7,6 +7,7 @@ import BacktestModal, { type BacktestVariant } from '../components/BacktestModal
 import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { type ImportedBotEntry, useImportedBots } from '../context/ImportedBotsContext';
+import { buildVelesUrl } from '../lib/cabinetUrls';
 import { resolveBotStatusColor } from '../lib/statusColors';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import { BOT_STATUS_VALUES, type BotStatus, type BotSummary } from '../types/bots';
@@ -169,7 +170,7 @@ const buildImportedEntry = (alias: string, strategy: BotStrategy): ImportedBotEn
   return {
     id: alias,
     alias,
-    sourceUrl: `https://veles.finance/share/${alias}`,
+    sourceUrl: buildVelesUrl(`share/${alias}`),
     summary,
     strategy,
     savedAt: Date.now(),
@@ -185,6 +186,8 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
   const [activeModal, setActiveModal] = useState<BacktestVariant | null>(null);
   const [selection, setSelection] = useState<SelectionMap>(new Map());
   const [selectionDetailsOpen, setSelectionDetailsOpen] = useState(false);
+
+  const shareBaseUrl = buildVelesUrl('share');
 
   const importedIds = useMemo(() => new Set(importedBots.map((entry) => entry.id)), [importedBots]);
   const lastSelectedKeyRef = useRef<string | null>(null);
@@ -469,16 +472,16 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
 
       <Card title="Добавление новых ботов">
         <p className="panel__description">
-          Поддерживаются ссылки вида https://veles.finance/share/&lt;код&gt;, разделённые запятой или с новой строки.
-          Можно вставлять сами коды.
+          Поддерживаются ссылки вида {`${shareBaseUrl}/<код>`}, разделённые запятой или с новой строки. Можно вставлять
+          сами коды.
         </p>
         <textarea
           className="input"
           value={inputValue}
           style={{ width: '100%' }}
           onChange={(event) => setInputValue(event.target.value)}
-          placeholder={`https://veles.finance/share/pvXzq
-https://veles.finance/share/q1w2e`}
+          placeholder={`${shareBaseUrl}/pvXzq
+${shareBaseUrl}/q1w2e`}
           rows={4}
         />
         <Space className="panel__actions" style={{ marginTop: 12 }} wrap>

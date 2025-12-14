@@ -156,6 +156,8 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
     </Tag>
   );
 
+  const velesOriginLabel = (connectionStatus.origin ?? 'https://veles.finance').replace(/^https?:\/\//, '');
+
   const connectionPopover = (
     <Space direction="vertical" size={8} style={{ minWidth: 220 }}>
       <Typography.Text type="secondary">Обновлено: {lastCheckedLabel}</Typography.Text>
@@ -219,7 +221,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           <Space size="middle" wrap>
             {!connectionStatus.ok && (
               <Button type="primary" onClick={onOpenVeles}>
-                Открыть veles.finance
+                Открыть {velesOriginLabel}
               </Button>
             )}
             <Button

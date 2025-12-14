@@ -12,6 +12,7 @@ import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import { BacktestsSyncProvider, useBacktestsSync } from '../context/BacktestsSyncContext';
+import { buildCabinetUrl } from '../lib/cabinetUrls';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { BacktestStatistics } from '../types/backtests';
 
@@ -380,7 +381,7 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
                       <strong>{item.name}</strong>
                       <span>
                         <a
-                          href={`https://veles.finance/cabinet/backtests/${item.id}`}
+                          href={buildCabinetUrl(`backtests/${item.id}`)}
                           target="_blank"
                           rel="noreferrer noopener"
                           style={{ color: 'inherit', textDecoration: 'none' }}

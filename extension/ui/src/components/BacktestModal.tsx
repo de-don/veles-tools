@@ -20,6 +20,7 @@ import {
 } from '../api/backtestRunner';
 import { useImportedBots } from '../context/ImportedBotsContext';
 import { parseAssetList } from '../lib/assetList';
+import { buildCabinetUrl } from '../lib/cabinetUrls';
 import { applyBotNameTemplate } from '../lib/nameTemplate';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
@@ -518,7 +519,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 const response = await postBacktest(body);
                 const backtestId = typeof response.id === 'number' ? response.id : '—';
                 const backtestUrl =
-                  typeof response.id === 'number' ? `https://veles.finance/cabinet/backtests/${response.id}` : null;
+                  typeof response.id === 'number' ? buildCabinetUrl(`backtests/${response.id}`) : null;
                 const successNode = backtestUrl ? (
                   <>
                     ✅ «{backtestName}» в очереди (ID:{' '}
@@ -590,8 +591,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
               });
               const response = await postBacktest(body);
               const backtestId = typeof response.id === 'number' ? response.id : '—';
-              const backtestUrl =
-                typeof response.id === 'number' ? `https://veles.finance/cabinet/backtests/${response.id}` : null;
+              const backtestUrl = typeof response.id === 'number' ? buildCabinetUrl(`backtests/${response.id}`) : null;
               if (logId) {
                 replaceLog(
                   logId,

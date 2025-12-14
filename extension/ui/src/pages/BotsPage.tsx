@@ -9,6 +9,7 @@ import BacktestModal, { type BacktestVariant } from '../components/BacktestModal
 import BulkActionsMenu from '../components/bots/BulkActionsMenu';
 import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
+import { buildBotDetailsUrl } from '../lib/cabinetUrls';
 import { resolveBotStatusColor } from '../lib/statusColors';
 import { parseSortDescriptor, serializeSortDescriptor } from '../lib/tableSort';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
@@ -270,7 +271,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
             <div>{botRecord.name}</div>
             <div className="panel__description">
               ID:{' '}
-              <a href={`https://veles.finance/cabinet/bot/${botRecord.id}`} target="_blank" rel="noreferrer noopener">
+              <a href={buildBotDetailsUrl(botRecord.id)} target="_blank" rel="noreferrer noopener">
                 {botRecord.id}
               </a>
             </div>

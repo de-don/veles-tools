@@ -39,3 +39,9 @@ This directory contains shared utilities used across the UI. Every exported help
 
 ## `botUpdatePayload.ts`
 - `buildBotUpdatePayload(bot, overrides)` – creates a DTO payload for updating an existing bot while applying deposit/leverage overrides and keeping other config fields intact.
+
+## `cabinetUrls.ts`
+- `buildVelesUrl(path?)` – builds an absolute URL to the active veles.* origin derived from the stored connection or current location, normalising slashes.
+- `buildCabinetUrl(path?)` – constructs a `cabinet` URL on the active origin; defaults to the cabinet root when the path is empty.
+- `buildBotDetailsUrl(botId)` – produces a cabinet URL pointing to a bot details page using a validated numeric ID (number or numeric string).
+- `buildDealStatisticsUrl(dealId)` – produces a cabinet URL for a deal statistics page using a validated numeric ID.

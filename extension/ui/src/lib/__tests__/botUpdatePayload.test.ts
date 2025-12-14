@@ -48,7 +48,7 @@ const buildBot = (overrides: Partial<TradingBot> = {}): TradingBot => ({
     },
   ],
   status: overrides.status ?? 'RUNNING',
-  apiKey: overrides.apiKey ?? 10,
+  apiKey: overrides.apiKey !== undefined ? overrides.apiKey : 10,
   substatus: overrides.substatus ?? null,
   symbols: overrides.symbols ?? ['BTC/USDT'],
   createdAt: overrides.createdAt ?? null,

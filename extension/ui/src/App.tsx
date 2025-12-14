@@ -7,6 +7,7 @@ import { DealsRefreshProvider } from './context/DealsRefreshContext';
 import { DynamicBlocksProvider } from './context/DynamicBlocksContext';
 import { ImportedBotsProvider } from './context/ImportedBotsContext';
 import { RequestDelayProvider } from './context/RequestDelayContext';
+import { buildCabinetUrl } from './lib/cabinetUrls';
 import { isExtensionRuntime, pingConnection, readConnectionStatus, updateRequestDelay } from './lib/extensionMessaging';
 import ActiveDealsPage from './pages/ActiveDealsPage';
 import BacktestGroupDetailsPage from './pages/BacktestGroupDetailsPage';
@@ -94,7 +95,7 @@ const App = () => {
   }, [refreshConnectionStatus]);
 
   const openVelesTab = useCallback(() => {
-    const targetUrl = 'https://veles.finance/cabinet';
+    const targetUrl = buildCabinetUrl();
 
     if (!extensionReady || typeof chrome === 'undefined' || !chrome.tabs?.create) {
       window.open(targetUrl, '_blank', 'noopener');

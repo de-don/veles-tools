@@ -5,6 +5,7 @@ import type { TableRowSelection } from 'antd/es/table/interface';
 import type { Key, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { formatAmount, formatDateRu, formatLeverage, formatPercent } from '../../lib/backtestFormatting';
+import { buildCabinetUrl } from '../../lib/cabinetUrls';
 import { resolvePeriodDays } from '../../lib/dateTime';
 import { buildNumberSorter, formatDurationDays } from '../../lib/tableHelpers';
 import { useTableColumnSettings } from '../../lib/useTableColumnSettings';
@@ -44,7 +45,7 @@ const buildColumns = (): ColumnsType<BacktestInfo> =>
           <div>{item.name}</div>
           <div className="panel__description">
             ID{' '}
-            <a href={`https://veles.finance/cabinet/backtests/${item.id}`} target="_blank" rel="noreferrer noopener">
+            <a href={buildCabinetUrl(`backtests/${item.id}`)} target="_blank" rel="noreferrer noopener">
               {item.id}
             </a>
           </div>
