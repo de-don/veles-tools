@@ -397,16 +397,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
 
       persistActiveDealsHistory(nextSeries, nextGroupedSeries, nextPositionHistory, nextExecutedOrdersHistory);
     },
-    [
-      appendSeriesPoint,
-      loadApiKeys,
-      persistActiveDealsHistory,
-      updateGroupedSeries,
-      updatePositionHistory,
-      mergeExecutedOrdersHistory,
-      buildExecutedOrdersIndex,
-      getSeriesStartTimestamp,
-    ],
+    [appendSeriesPoint, loadApiKeys, persistActiveDealsHistory, updateGroupedSeries, updatePositionHistory],
   );
 
   const fetchDeals = useCallback(async () => {

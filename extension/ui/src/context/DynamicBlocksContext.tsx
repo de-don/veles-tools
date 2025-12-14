@@ -1,4 +1,13 @@
-import { createContext, type PropsWithChildren, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  type PropsWithChildren,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ACTIVE_DEALS_DEFAULT_SIZE, fetchAllActiveDeals } from '../api/activeDeals';
 import { fetchApiKeys } from '../api/apiKeys';
 import { positionConstraintsService } from '../services/positionConstraints';
@@ -93,7 +102,7 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
 
   const activeConfigs = useMemo(() => Object.values(configs).filter((config) => config.enabled), [configs]);
 
-  const computeCurrentBlockValue = (apiKeyId: number): number => {
+  const _computeCurrentBlockValue = (apiKeyId: number): number => {
     const constraint = constraints.find((item) => item.apiKeyId === apiKeyId);
     const config = resolveConfigForApiKey(apiKeyId, configs);
     const hasLimit = constraint?.limit !== null && constraint?.limit !== undefined;
@@ -101,7 +110,7 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
     return clamp(rawLimit, config.minPositionsBlock, config.maxPositionsBlock);
   };
 
-  const refreshSnapshot = async (): Promise<{
+  const refreshSnapshot = useCallback(async (): Promise<{
     constraints: PositionConstraint[];
     openPositionsByKey: Map<number, number>;
     apiKeys: ApiKey[];
@@ -133,137 +142,149 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
     } finally {
       setLoadingSnapshot(false);
     }
-  };
+  }, [extensionReady]);
 
   useEffect(() => {
     if (!extensionReady) {
       return;
     }
     refreshSnapshot().catch(() => {});
-  }, [extensionReady]);
+  }, [extensionReady, refreshSnapshot]);
 
-  const updateAutomationStatuses = (updates: Record<number, AutomationStatus>) => {
+  const updateAutomationStatuses = useCallback((updates: Record<number, AutomationStatus>) => {
     setAutomationStatuses((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
-  const runAutomation = async (triggeredManually = false) => {
-    if (!extensionReady || automationInFlightRef.current) {
-      return;
-    }
-    const enabledConfigs = Object.values(configs).filter((config) => config.enabled);
-    if (enabledConfigs.length === 0) {
-      return;
-    }
+  const runAutomation = useCallback(
+    async (triggeredManually = false) => {
+      if (!extensionReady || automationInFlightRef.current) {
+        return;
+      }
+      const enabledConfigs = Object.values(configs).filter((config) => config.enabled);
+      if (enabledConfigs.length === 0) {
+        return;
+      }
 
-    const now = Date.now();
-    const dueConfigs = enabledConfigs.filter((config) => {
-      const lastCheck = lastChecksRef.current[config.apiKeyId] ?? 0;
-      return triggeredManually || now - lastCheck >= dealsRefreshInterval * 1000;
-    });
-    if (dueConfigs.length === 0) {
-      return;
-    }
+      const now = Date.now();
+      const dueConfigs = enabledConfigs.filter((config) => {
+        const lastCheck = lastChecksRef.current[config.apiKeyId] ?? 0;
+        return triggeredManually || now - lastCheck >= dealsRefreshInterval * 1000;
+      });
+      if (dueConfigs.length === 0) {
+        return;
+      }
 
-    automationInFlightRef.current = true;
-    setAutomationError(null);
+      automationInFlightRef.current = true;
+      setAutomationError(null);
 
-    try {
-      const snapshot = (await refreshSnapshot()) ?? {
-        constraints,
-        openPositionsByKey,
-        apiKeys,
-      };
-      const snapshotConstraints = snapshot.constraints ?? [];
-      const updates: Record<number, AutomationStatus> = {};
-
-      for (const config of dueConfigs) {
-        lastChecksRef.current[config.apiKeyId] = now;
-        const constraint =
-          snapshotConstraints.find((item) => item.apiKeyId === config.apiKeyId) ??
-          constraints.find((item) => item.apiKeyId === config.apiKeyId) ??
-          null;
-
-        if (!constraint) {
-          updates[config.apiKeyId] = {
-            state: 'error',
-            lastCheckedAt: now,
-            lastChangeAt: config.lastChangeAt,
-            lastLimit: null,
-            note: 'Не найден исходный constraint для API-ключа.',
-          };
-          continue;
-        }
-
-        const openPositions = snapshot.openPositionsByKey.get(config.apiKeyId) ?? 0;
-        const rawLimit =
-          constraint.limit !== null && constraint.limit !== undefined ? constraint.limit : config.maxPositionsBlock;
-        const currentLimit = clamp(rawLimit, config.minPositionsBlock, config.maxPositionsBlock);
-        const cooldownPassed =
-          !config.lastChangeAt || now - config.lastChangeAt >= config.timeoutBetweenChangesSec * 1000;
-        const nextLimit = computeNextLimit(openPositions, currentLimit, config);
-
-        if (!cooldownPassed) {
-          const remainingMs = config.timeoutBetweenChangesSec * 1000 - (now - (config.lastChangeAt ?? 0));
-          updates[config.apiKeyId] = {
-            state: 'cooldown',
-            lastCheckedAt: now,
-            lastChangeAt: config.lastChangeAt,
-            lastLimit: currentLimit,
-            note: `Ожидаем ${Math.ceil(remainingMs / 1000)} секунд до следующей попытки`,
-          };
-          continue;
-        }
-
-        if (nextLimit === currentLimit) {
-          updates[config.apiKeyId] = {
-            state: 'skipped',
-            lastCheckedAt: now,
-            lastChangeAt: config.lastChangeAt,
-            lastLimit: currentLimit,
-            note: 'Изменение блокировки не требуется',
-          };
-          continue;
-        }
-
-        await positionConstraintsService.setPositionConstraintLimit({
-          apiKeyId: config.apiKeyId,
-          limit: nextLimit,
-          positionEnabled: constraint.positionEnabled,
-          long: constraint.long ?? null,
-          short: constraint.short ?? null,
-        });
-
-        setConstraints((prev) =>
-          prev.map((item) =>
-            item.apiKeyId === config.apiKeyId ? { ...item, limit: nextLimit, positionEnabled: true } : item,
-          ),
-        );
-
-        setConfigs((prev) => {
-          const current = resolveConfigForApiKey(config.apiKeyId, prev);
-          const nextRecord = { ...prev, [config.apiKeyId]: { ...current, lastChangeAt: now } };
-          return persistDynamicBlockConfigs(nextRecord);
-        });
-
-        updates[config.apiKeyId] = {
-          state: 'updated',
-          lastCheckedAt: now,
-          lastChangeAt: now,
-          lastLimit: nextLimit,
-          note: `Лимит обновлён до ${nextLimit}`,
+      try {
+        const snapshot = (await refreshSnapshot()) ?? {
+          constraints,
+          openPositionsByKey,
+          apiKeys,
         };
-      }
+        const snapshotConstraints = snapshot.constraints ?? [];
+        const updates: Record<number, AutomationStatus> = {};
 
-      if (Object.keys(updates).length > 0) {
-        updateAutomationStatuses(updates);
+        for (const config of dueConfigs) {
+          lastChecksRef.current[config.apiKeyId] = now;
+          const constraint =
+            snapshotConstraints.find((item) => item.apiKeyId === config.apiKeyId) ??
+            constraints.find((item) => item.apiKeyId === config.apiKeyId) ??
+            null;
+
+          if (!constraint) {
+            updates[config.apiKeyId] = {
+              state: 'error',
+              lastCheckedAt: now,
+              lastChangeAt: config.lastChangeAt,
+              lastLimit: null,
+              note: 'Не найден исходный constraint для API-ключа.',
+            };
+            continue;
+          }
+
+          const openPositions = snapshot.openPositionsByKey.get(config.apiKeyId) ?? 0;
+          const rawLimit =
+            constraint.limit !== null && constraint.limit !== undefined ? constraint.limit : config.maxPositionsBlock;
+          const currentLimit = clamp(rawLimit, config.minPositionsBlock, config.maxPositionsBlock);
+          const cooldownPassed =
+            !config.lastChangeAt || now - config.lastChangeAt >= config.timeoutBetweenChangesSec * 1000;
+          const nextLimit = computeNextLimit(openPositions, currentLimit, config);
+
+          if (!cooldownPassed) {
+            const remainingMs = config.timeoutBetweenChangesSec * 1000 - (now - (config.lastChangeAt ?? 0));
+            updates[config.apiKeyId] = {
+              state: 'cooldown',
+              lastCheckedAt: now,
+              lastChangeAt: config.lastChangeAt,
+              lastLimit: currentLimit,
+              note: `Ожидаем ${Math.ceil(remainingMs / 1000)} секунд до следующей попытки`,
+            };
+            continue;
+          }
+
+          if (nextLimit === currentLimit) {
+            updates[config.apiKeyId] = {
+              state: 'skipped',
+              lastCheckedAt: now,
+              lastChangeAt: config.lastChangeAt,
+              lastLimit: currentLimit,
+              note: 'Изменение блокировки не требуется',
+            };
+            continue;
+          }
+
+          await positionConstraintsService.setPositionConstraintLimit({
+            apiKeyId: config.apiKeyId,
+            limit: nextLimit,
+            positionEnabled: constraint.positionEnabled,
+            long: constraint.long ?? null,
+            short: constraint.short ?? null,
+          });
+
+          setConstraints((prev) =>
+            prev.map((item) =>
+              item.apiKeyId === config.apiKeyId ? { ...item, limit: nextLimit, positionEnabled: true } : item,
+            ),
+          );
+
+          setConfigs((prev) => {
+            const current = resolveConfigForApiKey(config.apiKeyId, prev);
+            const nextRecord = { ...prev, [config.apiKeyId]: { ...current, lastChangeAt: now } };
+            return persistDynamicBlockConfigs(nextRecord);
+          });
+
+          updates[config.apiKeyId] = {
+            state: 'updated',
+            lastCheckedAt: now,
+            lastChangeAt: now,
+            lastLimit: nextLimit,
+            note: `Лимит обновлён до ${nextLimit}`,
+          };
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updateAutomationStatuses(updates);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setAutomationError(message);
+      } finally {
+        automationInFlightRef.current = false;
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setAutomationError(message);
-    } finally {
-      automationInFlightRef.current = false;
-    }
-  };
+    },
+    [
+      apiKeys,
+      configs,
+      constraints,
+      dealsRefreshInterval,
+      extensionReady,
+      openPositionsByKey,
+      refreshSnapshot,
+      updateAutomationStatuses,
+    ],
+  );
 
   useEffect(() => {
     if (!extensionReady || activeConfigs.length === 0) {
@@ -278,18 +299,21 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
     };
   }, [extensionReady, activeConfigs.length, dealsRefreshInterval, runAutomation]);
 
-  const manualRun = async () => {
+  const manualRun = useCallback(async () => {
     await runAutomation(true);
-  };
+  }, [runAutomation]);
 
-  const upsertConfig = (config: DynamicBlockConfig) => {
-    setConfigs((prev) => {
-      const merged = { ...prev, [config.apiKeyId]: { ...config, checkPeriodSec: dealsRefreshInterval } };
-      return persistDynamicBlockConfigs(merged);
-    });
-  };
+  const upsertConfig = useCallback(
+    (config: DynamicBlockConfig) => {
+      setConfigs((prev) => {
+        const merged = { ...prev, [config.apiKeyId]: { ...config, checkPeriodSec: dealsRefreshInterval } };
+        return persistDynamicBlockConfigs(merged);
+      });
+    },
+    [dealsRefreshInterval],
+  );
 
-  const disableConfig = (apiKeyId: number) => {
+  const disableConfig = useCallback((apiKeyId: number) => {
     setConfigs((prev) => {
       const next = {
         ...prev,
@@ -302,26 +326,29 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
       delete next[apiKeyId];
       return next;
     });
-  };
+  }, []);
 
-  const resetConfig = (apiKeyId: number) => {
-    setConfigs((prev) => {
-      const next = {
-        ...prev,
-        [apiKeyId]: {
-          ...resolveConfigForApiKey(apiKeyId, prev),
-          minPositionsBlock: DEFAULT_DYNAMIC_BLOCK_CONFIG.minPositionsBlock,
-          maxPositionsBlock: DEFAULT_DYNAMIC_BLOCK_CONFIG.maxPositionsBlock,
-          timeoutBetweenChangesSec: DEFAULT_DYNAMIC_BLOCK_CONFIG.timeoutBetweenChangesSec,
-          checkPeriodSec: dealsRefreshInterval,
-          lastChangeAt: null,
-          enabled: resolveConfigForApiKey(apiKeyId, prev).enabled,
-          apiKeyId,
-        },
-      };
-      return persistDynamicBlockConfigs(next);
-    });
-  };
+  const resetConfig = useCallback(
+    (apiKeyId: number) => {
+      setConfigs((prev) => {
+        const next = {
+          ...prev,
+          [apiKeyId]: {
+            ...resolveConfigForApiKey(apiKeyId, prev),
+            minPositionsBlock: DEFAULT_DYNAMIC_BLOCK_CONFIG.minPositionsBlock,
+            maxPositionsBlock: DEFAULT_DYNAMIC_BLOCK_CONFIG.maxPositionsBlock,
+            timeoutBetweenChangesSec: DEFAULT_DYNAMIC_BLOCK_CONFIG.timeoutBetweenChangesSec,
+            checkPeriodSec: dealsRefreshInterval,
+            lastChangeAt: null,
+            enabled: resolveConfigForApiKey(apiKeyId, prev).enabled,
+            apiKeyId,
+          },
+        };
+        return persistDynamicBlockConfigs(next);
+      });
+    },
+    [dealsRefreshInterval],
+  );
 
   const value = useMemo<DynamicBlocksContextValue>(
     () => ({

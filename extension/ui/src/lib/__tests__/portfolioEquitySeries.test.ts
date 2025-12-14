@@ -5,7 +5,7 @@ import {
   thinTimedPointsFromEnd,
 } from '../activeDealsHistory';
 
-const createSeries = (points: { time: number; value: number }[]) => {
+const _createSeries = (points: { time: number; value: number }[]) => {
   if (points.length === 0) {
     return createEmptyPortfolioEquitySeries();
   }

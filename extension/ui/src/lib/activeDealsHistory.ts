@@ -172,8 +172,8 @@ export const mergeExecutedOrdersHistory = (
     }
   };
 
-  current.forEach((orders, dealId) => appendOrders(dealId, orders));
-  incoming.forEach((orders, dealId) => appendOrders(dealId, orders));
+  current.forEach((orders, dealId) => void appendOrders(dealId, orders));
+  incoming.forEach((orders, dealId) => void appendOrders(dealId, orders));
 
   return next;
 };

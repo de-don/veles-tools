@@ -1,4 +1,4 @@
-import { createContext, type PropsWithChildren, useContext, useMemo, useState } from 'react';
+import { createContext, type PropsWithChildren, useCallback, useContext, useMemo, useState } from 'react';
 import type { ActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import { DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
 import {
@@ -21,10 +21,10 @@ export const DealsRefreshProvider = ({ children }: PropsWithChildren) => {
     readDealsRefreshInterval(),
   );
 
-  const setRefreshInterval = (value: ActiveDealsRefreshInterval) => {
+  const setRefreshInterval = useCallback((value: ActiveDealsRefreshInterval) => {
     const sanitized = writeDealsRefreshInterval(value);
     setRefreshIntervalState(sanitized);
-  };
+  }, []);
 
   const value = useMemo<DealsRefreshContextValue>(
     () => ({
@@ -33,7 +33,7 @@ export const DealsRefreshProvider = ({ children }: PropsWithChildren) => {
       defaultInterval: DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
       options: DEALS_REFRESH_OPTIONS,
     }),
-    [refreshInterval],
+    [refreshInterval, setRefreshInterval],
   );
 
   return <DealsRefreshContext.Provider value={value}>{children}</DealsRefreshContext.Provider>;

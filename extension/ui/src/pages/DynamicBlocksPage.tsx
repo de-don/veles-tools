@@ -66,7 +66,6 @@ const formatTimestamp = (value: number | null | undefined): string => {
 const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
   const { refreshInterval: dealsRefreshInterval } = useDealsRefresh();
   const {
-    configs,
     activeConfigs,
     constraints,
     openPositionsByKey,
