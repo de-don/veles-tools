@@ -6,10 +6,10 @@ type StatisticTrend = 'default' | 'positive' | 'negative' | 'neutral' | 'muted';
 
 const trendValueStyles: Record<StatisticTrend, CSSProperties> = {
   default: {},
-  positive: { color: '#047857' },
-  negative: { color: '#b91c1c' },
-  neutral: { color: '#0f172a' },
-  muted: { color: '#475467' },
+  positive: { color: 'var(--ant-color-success, #047857)' },
+  negative: { color: 'var(--ant-color-error, #b91c1c)' },
+  neutral: { color: 'var(--ant-color-text, #0f172a)' },
+  muted: { color: 'var(--ant-color-text, #0f172a)' },
 };
 
 export interface StatisticCardProps extends Omit<StatisticProps, 'title'> {

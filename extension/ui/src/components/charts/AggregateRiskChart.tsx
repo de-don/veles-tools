@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
+import { useThemeMode } from '../../context/ThemeContext';
 import { createAggregateRiskChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 import type { AggregateRiskSeries } from '../../lib/deprecatedFile';
 
@@ -49,9 +50,10 @@ const AggregateRiskChartComponent = ({
   onDataZoom,
   filterVisibleRange = false,
 }: AggregateRiskChartProps) => {
+  const { mode } = useThemeMode();
   const option = useMemo(
-    () => createAggregateRiskChartOptions(series, dataZoomRange, filterVisibleRange ? 'filter' : 'none'),
-    [series, dataZoomRange, filterVisibleRange],
+    () => createAggregateRiskChartOptions(series, dataZoomRange, filterVisibleRange ? 'filter' : 'none', mode),
+    [series, dataZoomRange, filterVisibleRange, mode],
   );
 
   const onEvents = useMemo(() => {
@@ -74,10 +76,12 @@ const AggregateRiskChartComponent = ({
   }, [onDataZoom]);
 
   const resolvedClassName = ['chart__full-width', className].filter(Boolean).join(' ');
+  const chartTheme = mode === 'dark' ? 'dark' : undefined;
 
   return (
     <ReactECharts
       className={resolvedClassName}
+      theme={chartTheme}
       opts={{ renderer: 'canvas' }}
       notMerge
       option={option}

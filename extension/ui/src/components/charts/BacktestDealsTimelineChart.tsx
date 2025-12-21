@@ -2,6 +2,7 @@ import type { CustomSeriesRenderItem, CustomSeriesRenderItemReturn, EChartsOptio
 import * as echarts from 'echarts';
 import ReactECharts from 'echarts-for-react';
 import { memo, useEffect, useMemo, useState } from 'react';
+import { useThemeMode } from '../../context/ThemeContext';
 import { formatAmount } from '../../lib/backtestFormatting';
 import type { DealTimelineRow } from '../../types/backtestAggregations';
 
@@ -116,6 +117,7 @@ const renderTimelineItem: CustomSeriesRenderItem = (params, api): CustomSeriesRe
 type TimelineDatumWithStyle = TimelineSeriesDatum & { itemStyle: { color: string } };
 
 const BacktestDealsTimelineChartComponent = ({ rows }: BacktestDealsTimelineChartProps) => {
+  const { mode } = useThemeMode();
   const [viewportHeight, setViewportHeight] = useState<number>(() =>
     typeof window !== 'undefined' ? window.innerHeight : 0,
   );
@@ -155,6 +157,9 @@ const BacktestDealsTimelineChartComponent = ({ rows }: BacktestDealsTimelineChar
   }, [rows]);
 
   const option = useMemo<EChartsOption>(() => {
+    const axisLabelColor = mode === 'dark' ? '#cbd5e1' : '#475569';
+    const axisLineColor = mode === 'dark' ? 'rgba(148, 163, 184, 0.4)' : '#cbd5f5';
+    const splitLineColor = mode === 'dark' ? 'rgba(148, 163, 184, 0.2)' : '#e2e8f0';
     const tooltipFormatter = (params: unknown): string => {
       const datum = (params as { data?: TimelineSeriesDatum } | undefined)?.data;
       if (!datum) {
@@ -176,9 +181,9 @@ const BacktestDealsTimelineChartComponent = ({ rows }: BacktestDealsTimelineChar
       },
       xAxis: {
         type: 'time',
-        axisLabel: { color: '#475569' },
-        axisLine: { lineStyle: { color: '#cbd5f5' } },
-        splitLine: { show: true, lineStyle: { color: '#e2e8f0' } },
+        axisLabel: { color: axisLabelColor },
+        axisLine: { lineStyle: { color: axisLineColor } },
+        splitLine: { show: true, lineStyle: { color: splitLineColor } },
       },
       yAxis: {
         type: 'category',
@@ -229,15 +234,18 @@ const BacktestDealsTimelineChartComponent = ({ rows }: BacktestDealsTimelineChar
         },
       ],
     } satisfies EChartsOption;
-  }, [categories, data]);
+  }, [categories, data, mode]);
 
   const maxViewportHeight = viewportHeight > 0 ? Math.round(viewportHeight * 0.8) : 360;
   const autoHeight = rows.length * (ROW_BAR_THICKNESS + ROW_GAP) + 140;
   const chartHeight = Math.max(240, Math.min(maxViewportHeight, autoHeight));
 
+  const chartTheme = mode === 'dark' ? 'dark' : undefined;
+
   return (
     <ReactECharts
       className="chart__full-width chart--timeline"
+      theme={chartTheme}
       option={option}
       notMerge
       opts={{ renderer: 'canvas', height: chartHeight }}

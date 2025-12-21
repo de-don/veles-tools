@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
+import { useThemeMode } from '../../context/ThemeContext';
 import { createPortfolioEquityChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 import type {
   ExecutedOrderPoint,
@@ -67,6 +68,7 @@ const PortfolioEquityChartComponent = ({
   filterVisibleRange = false,
   executedOrders,
 }: PortfolioEquityChartProps) => {
+  const { mode } = useThemeMode();
   const option = useMemo(
     () =>
       createPortfolioEquityChartOptions(
@@ -76,8 +78,9 @@ const PortfolioEquityChartComponent = ({
         executedOrders,
         legendSelection,
         filterVisibleRange ? 'filter' : 'none',
+        mode,
       ),
-    [series, dataZoomRange, groupedSeries, executedOrders, legendSelection, filterVisibleRange],
+    [series, dataZoomRange, groupedSeries, executedOrders, legendSelection, filterVisibleRange, mode],
   );
 
   const onEvents = useMemo(() => {
@@ -111,10 +114,12 @@ const PortfolioEquityChartComponent = ({
   }, [onDataZoom, onLegendSelectionChange]);
 
   const resolvedClassName = ['chart__full-width', className].filter(Boolean).join(' ');
+  const chartTheme = mode === 'dark' ? 'dark' : undefined;
 
   return (
     <ReactECharts
       className={resolvedClassName}
+      theme={chartTheme}
       opts={{ renderer: 'canvas' }}
       notMerge
       option={option}

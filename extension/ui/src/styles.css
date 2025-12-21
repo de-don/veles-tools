@@ -2,6 +2,11 @@
   font-family: var(--ant-font-family, "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
   color: var(--ant-color-text, #0f172a);
   background-color: var(--ant-color-bg-layout, #f5f7fb);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 * {
@@ -996,6 +1001,7 @@ body {
 .textarea {
   border-radius: 10px;
   border: 1px solid var(--ant-color-border, #cbd5f5);
+  background-color: var(--ant-color-bg-container, #fff);
   padding: 10px 12px;
   font-size: 14px;
   color: var(--ant-color-text, #0f172a);

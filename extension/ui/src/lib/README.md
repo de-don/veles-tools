@@ -40,12 +40,12 @@ This directory contains shared utilities used across the UI. Every exported help
 
 ## `chartOptions.ts`
 - `DataZoomRange` – shape describing optional zoom bounds for ECharts data zoom components.
-- `createPortfolioEquityChartOptions(series, range?, groupedSeries?, executedOrders?, legendSelection?, filterMode?)` – builds ECharts options for portfolio equity charts with optional grouped series, executed orders, and zoom range handling.
-- `createAggregateRiskChartOptions(series, range?, filterMode?)` – builds ECharts options for aggregated risk charts with optional zoom range handling.
+- `createPortfolioEquityChartOptions(series, range?, groupedSeries?, executedOrders?, legendSelection?, filterMode?, themeMode?)` – builds ECharts options for portfolio equity charts with optional grouped series, executed orders, zoom range handling, and theme mode.
+- `createAggregateRiskChartOptions(series, range?, filterMode?, themeMode?)` – builds ECharts options for aggregated risk charts with optional zoom range handling and theme mode.
 - `LimitImpactPoint` – shape describing points used in limit impact/efficiency charts.
-- `createLimitImpactChartOptions(points)` – builds ECharts options for limit impact charts.
-- `createLimitEfficiencyChartOptions(points)` – builds ECharts options for limit efficiency charts.
-- `createDailyConcurrencyChartOptions(records, stats?, range?, filterMode?)` – builds ECharts options for daily concurrency charts with optional summary stats and zoom range handling.
+- `createLimitImpactChartOptions(points, themeMode?)` – builds ECharts options for limit impact charts with optional theme mode.
+- `createLimitEfficiencyChartOptions(points, themeMode?)` – builds ECharts options for limit efficiency charts with optional theme mode.
+- `createDailyConcurrencyChartOptions(records, stats?, range?, filterMode?, themeMode?)` – builds ECharts options for daily concurrency charts with optional summary stats, zoom range handling, and theme mode.
 
 ## `botUpdatePayload.ts`
 - `buildBotUpdatePayload(bot, overrides)` – creates a DTO payload for updating an existing bot while applying deposit/leverage overrides and keeping other config fields intact.

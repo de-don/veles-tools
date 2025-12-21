@@ -7,18 +7,21 @@ import {
   ExperimentOutlined,
   HeartFilled,
   HomeOutlined,
+  MoonOutlined,
   ReloadOutlined,
   RobotOutlined,
   SettingOutlined,
+  SunOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Alert, Button, Layout, Menu, Popover, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Layout, Menu, Popover, Segmented, Space, Tag, Typography } from 'antd';
 import { type PropsWithChildren, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { APP_NAME, APP_VERSION } from '../config/version';
 import { useDynamicBlocks } from '../context/DynamicBlocksContext';
+import { useThemeMode } from '../context/ThemeContext';
 import SupportProjectModal from './SupportProjectModal';
 
 interface AppLayoutProps extends PropsWithChildren {
@@ -61,6 +64,7 @@ const resolveSelectedKey = (pathname: string, navigationKeys: string[]) => {
 };
 
 const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenVeles }: AppLayoutProps) => {
+  const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
   const { activeConfigs } = useDynamicBlocks();
   const dynamicBlocksActive = activeConfigs.length > 0;
   const [supportModalOpen, setSupportModalOpen] = useState(false);
@@ -224,6 +228,15 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
                 Открыть {velesOriginLabel}
               </Button>
             )}
+            <Segmented
+              size="middle"
+              options={[
+                { label: 'Светлая', value: 'light', icon: <SunOutlined /> },
+                { label: 'Тёмная', value: 'dark', icon: <MoonOutlined /> },
+              ]}
+              value={themeMode}
+              onChange={(value) => setThemeMode(value as 'light' | 'dark')}
+            />
             <Button
               type="primary"
               icon={<HeartFilled className="support-button__icon" />}
