@@ -1,4 +1,6 @@
-import { Button, Card, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
+import { Button, Card, Dropdown, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
@@ -336,6 +338,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     loading,
     error,
     resetHistory,
+    compressHistory,
     fetchDeals,
     zoomRange,
     setZoomRange,
@@ -395,6 +398,41 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   const handleResetHistory = useCallback(() => {
     resetHistory();
   }, [resetHistory]);
+
+  const handleCompressHistory = useCallback(() => {
+    compressHistory();
+    messageApi.success('Данные сжаты.');
+  }, [compressHistory, messageApi]);
+
+  const historyMenuItems = useMemo<MenuProps['items']>(
+    () => [
+      {
+        key: 'reset',
+        label: 'Сбросить данные',
+      },
+      {
+        key: 'compress',
+        label: 'Сжать данные',
+      },
+    ],
+    [],
+  );
+
+  const handleHistoryMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
+    ({ key }) => {
+      switch (key) {
+        case 'reset':
+          handleResetHistory();
+          break;
+        case 'compress':
+          handleCompressHistory();
+          break;
+        default:
+          break;
+      }
+    },
+    [handleCompressHistory, handleResetHistory],
+  );
 
   const handleCloseDeal = useCallback(
     async (deal: ActiveDeal) => {
@@ -891,7 +929,11 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                   size="middle"
                   onChange={(value) => applyZoomPreset(value as ActiveDealsZoomPresetKey)}
                 />
-                <Button onClick={handleResetHistory}>Сбросить данные</Button>
+                <Dropdown menu={{ items: historyMenuItems, onClick: handleHistoryMenuClick }} trigger={['click']}>
+                  <Button>
+                    Данные <DownOutlined />
+                  </Button>
+                </Dropdown>
               </Space>
               <Space align="center" size="middle">
                 <Switch

@@ -17,6 +17,7 @@ import { type ActiveDealsAggregation, aggregateDeals, buildExecutedOrdersIndex }
 import {
   ACTIVE_DEALS_HISTORY_POINT_LIMIT,
   buildPortfolioEquitySeries,
+  compressTimedPoints,
   createEmptyPortfolioEquitySeries,
   DEAL_HISTORY_WINDOW_MS,
   type DealHistoryMap,
@@ -136,6 +137,7 @@ export interface ActiveDealsContextValue {
   refreshInterval: ActiveDealsRefreshInterval;
   fetchDeals: () => Promise<void>;
   resetHistory: () => void;
+  compressHistory: () => void;
   zoomRange: DataZoomRange | undefined;
   setZoomRange: Dispatch<SetStateAction<DataZoomRange | undefined>>;
   zoomPreset: ActiveDealsZoomPreset;
@@ -506,6 +508,49 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     void clearActiveDealsHistoryCache();
   }, []);
 
+  const compressHistory = useCallback(() => {
+    const compressedSeries = buildPortfolioEquitySeries(compressTimedPoints(seriesRef.current.points));
+    seriesRef.current = compressedSeries;
+    setPnlSeries(compressedSeries);
+
+    const nextGroupedSeries: GroupedSeriesMap = new Map();
+    groupedSeriesRef.current.forEach((series, apiKeyId) => {
+      const compressed = buildPortfolioEquitySeries(compressTimedPoints(series.points));
+      if (compressed.points.length > 0) {
+        nextGroupedSeries.set(apiKeyId, compressed);
+      }
+    });
+    groupedSeriesRef.current = nextGroupedSeries;
+    setGroupedPnlSeries(composeGroupedSeries(nextGroupedSeries, groupedSamplesRef.current, apiKeysRef.current));
+
+    const nextPositionHistory: DealHistoryMap = new Map();
+    positionHistoryRef.current.forEach((history, dealId) => {
+      const compressed = compressTimedPoints(history);
+      if (compressed.length > 0) {
+        nextPositionHistory.set(dealId, compressed);
+      }
+    });
+    positionHistoryRef.current = nextPositionHistory;
+    setPositionHistory(nextPositionHistory);
+
+    const nextExecutedOrdersHistory: ExecutedOrdersHistoryMap = new Map();
+    executedOrdersHistoryRef.current.forEach((orders, dealId) => {
+      const compressed = compressTimedPoints(orders);
+      if (compressed.length > 0) {
+        nextExecutedOrdersHistory.set(dealId, compressed);
+      }
+    });
+    executedOrdersHistoryRef.current = nextExecutedOrdersHistory;
+    setExecutedOrdersIndex(buildExecutedOrdersIndexFromHistory(nextExecutedOrdersHistory));
+
+    void writeActiveDealsHistoryCache({
+      pnlSeries: compressedSeries,
+      groupedSeries: nextGroupedSeries,
+      positionHistory: nextPositionHistory,
+      executedOrders: nextExecutedOrdersHistory,
+    });
+  }, []);
+
   const contextValue = useMemo<ActiveDealsContextValue>(
     () => ({
       dealsState,
@@ -519,6 +564,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       refreshInterval,
       fetchDeals,
       resetHistory,
+      compressHistory,
       zoomRange,
       setZoomRange,
       zoomPreset,
@@ -538,6 +584,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       groupByApiKey,
       fetchDeals,
       resetHistory,
+      compressHistory,
       zoomRange,
       zoomPreset,
       positionHistory,

@@ -23,6 +23,7 @@ This directory contains shared utilities used across the UI. Every exported help
 - `getSeriesStartTimestamp(series)` – returns the earliest timestamp in a portfolio equity series or `null` when empty.
 - `createEmptyPortfolioEquitySeries()` / `buildPortfolioEquitySeries(points)` – normalise portfolio equity series with recomputed min/max values.
 - `sortPortfolioEquityPoints(points)` – sorts equity points chronologically without mutating the original array.
+- `compressTimedPoints(points)` – sorts timed points and removes every other entry to halve the history size.
 - `thinTimedPointsFromEnd(points, limit)` – sorts timed points then removes every other entry from the end until the series fits the limit.
 
 ## `activeDeals.ts`

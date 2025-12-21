@@ -199,6 +199,14 @@ export const sortPortfolioEquityPoints = (points: PortfolioEquitySeries['points'
   return [...points].sort((left, right) => left.time - right.time);
 };
 
+export const compressTimedPoints = <T extends { time: number }>(points: readonly T[]): T[] => {
+  const sorted = [...points].sort((left, right) => left.time - right.time);
+  if (sorted.length <= 1) {
+    return sorted;
+  }
+  return sorted.filter((_point, index) => index % 2 === 0);
+};
+
 export const thinTimedPointsFromEnd = <T extends { time: number }>(points: readonly T[], limit: number): T[] => {
   const sorted = [...points].sort((left, right) => left.time - right.time);
   if (!Number.isFinite(limit) || limit <= 0 || sorted.length <= limit) {
