@@ -57,12 +57,12 @@ const faqItems = [
 const HomePage = () => {
   return (
     <div className="page">
-      <Space direction="vertical" size={24} style={{ width: '100%' }}>
+      <Space direction="vertical" size={24} className="u-full-width">
         <Space direction="vertical" size={4} className="page__header">
-          <Typography.Title level={1} style={{ marginBottom: 0 }}>
+          <Typography.Title level={1} className="page__title">
             {APP_NAME}
           </Typography.Title>
-          <Typography.Paragraph type="secondary" className="page__subtitle" style={{ marginBottom: 0 }}>
+          <Typography.Paragraph type="secondary" className="page__subtitle">
             Veles Tools — рабочая панель для управления мультизапусками бэктестов и ботами veles.finance. Текущая версия
             — v{APP_VERSION}.
           </Typography.Paragraph>
@@ -102,9 +102,9 @@ const HomePage = () => {
             split={false}
             renderItem={(item) => (
               <List.Item key={item.question}>
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <Space direction="vertical" size={4} className="u-full-width">
                   <Typography.Text strong>{item.question}</Typography.Text>
-                  <Typography.Paragraph style={{ marginBottom: 0 }}>{item.answer}</Typography.Paragraph>
+                  <Typography.Paragraph className="u-mb-0">{item.answer}</Typography.Paragraph>
                 </Space>
               </List.Item>
             )}

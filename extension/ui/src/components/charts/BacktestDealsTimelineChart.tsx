@@ -235,7 +235,14 @@ const BacktestDealsTimelineChartComponent = ({ rows }: BacktestDealsTimelineChar
   const autoHeight = rows.length * (ROW_BAR_THICKNESS + ROW_GAP) + 140;
   const chartHeight = Math.max(240, Math.min(maxViewportHeight, autoHeight));
 
-  return <ReactECharts option={option} notMerge style={{ width: '100%', height: chartHeight }} />;
+  return (
+    <ReactECharts
+      className="chart__full-width chart--timeline"
+      option={option}
+      notMerge
+      opts={{ renderer: 'canvas', height: chartHeight }}
+    />
+  );
 };
 
 export const BacktestDealsTimelineChart = memo(BacktestDealsTimelineChartComponent);

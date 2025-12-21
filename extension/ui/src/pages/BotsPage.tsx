@@ -296,7 +296,10 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         key: 'status',
         render: (_value, botRecord) => (
           <div>
-            <Tag color={resolveBotStatusColor(botRecord.status)} style={{ marginBottom: botRecord.substatus ? 4 : 0 }}>
+            <Tag
+              color={resolveBotStatusColor(botRecord.status)}
+              className={botRecord.substatus ? 'tag--with-substatus' : undefined}
+            >
               {formatStatusLabel(botRecord.status)}
             </Tag>
             {botRecord.substatus && <div className="panel__description">{botRecord.substatus}</div>}
@@ -527,7 +530,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
               Сбросить фильтры
             </Button>
           </Space>
-          <div className="panel__filters-actions" style={{ marginLeft: 'auto' }}>
+          <div className="panel__filters-actions panel__filters-actions--right">
             <TableColumnSettingsButton
               settings={columnSettings}
               moveColumn={moveColumn}
@@ -537,11 +540,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
             />
           </div>
         </form>
-        {filtersError && (
-          <div className="form-error" style={{ marginTop: 8 }}>
-            {filtersError}
-          </div>
-        )}
+        {filtersError && <div className="form-error u-mt-8">{filtersError}</div>}
 
         {totalSelected > 0 ? (
           <SelectionSummaryBar
@@ -602,7 +601,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         {selection.length === 0 ? (
           <Typography.Text type="secondary">Список пуст — выберите ботов в таблице.</Typography.Text>
         ) : (
-          <ul className="panel__list--compact" style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <ul className="panel__list--compact panel__list--scroll">
             {selection.map((bot) => (
               <li key={bot.id}>
                 <span className="chip">

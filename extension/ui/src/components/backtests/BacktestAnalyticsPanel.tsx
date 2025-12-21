@@ -1,5 +1,5 @@
 import type { TabsProps } from 'antd';
-import { Button, Card, Empty, Slider, Tabs } from 'antd';
+import { Button, Card, Empty, Flex, Slider, Tabs } from 'antd';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { formatAmount } from '../../lib/backtestFormatting';
@@ -28,8 +28,6 @@ interface BacktestAnalyticsPanelProps {
     points: LimitImpactPoint[] | null;
   };
 }
-
-const CHART_HEIGHT = 320;
 
 const numberFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
@@ -108,20 +106,15 @@ const buildDailyConcurrencyRecords = (points: ChartPoint[]): DailyConcurrencyRec
     }));
 };
 
-const ChartCard = ({ title, children, minHeight }: PropsWithChildren<{ title: string; minHeight?: number }>) => (
-  <Card
-    bodyStyle={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 12,
-      padding: 16,
-      minHeight: minHeight !== undefined ? minHeight : CHART_HEIGHT + 64,
-    }}
-  >
-    <div style={{ fontWeight: 600 }}>{title}</div>
-    <div style={{ flex: 1 }}>{children}</div>
-  </Card>
-);
+const ChartCard = ({ title, children, minHeight }: PropsWithChildren<{ title: string; minHeight?: number }>) => {
+  const className = ['chart-card', minHeight === 0 ? 'chart-card--compact' : null].filter(Boolean).join(' ');
+  return (
+    <Card className={className}>
+      <div className="chart-card__title">{title}</div>
+      <div className="chart-card__body">{children}</div>
+    </Card>
+  );
+};
 
 const renderChartTab = (title: string, content: ReactNode) => {
   return <ChartCard title={title}>{content}</ChartCard>;
@@ -150,7 +143,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
     setConcurrencyZoomRange(undefined);
   }, [concurrencySeriesKey]);
   if (!metrics) {
-    return <Empty description="Нет данных для расчёта метрик." style={{ padding: '24px 0' }} />;
+    return <Empty description="Нет данных для расчёта метрик." className="empty-state--padded" />;
   }
 
   const totalPnlDisplay = formatSignedAmount(metrics.totalProfitQuote);
@@ -165,14 +158,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
   const drawdownDisplay = formatAmount(metrics.maxAggregatedDrawdown);
 
   const summaryTab = (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-        marginTop: '12px',
-        gap: '12px',
-      }}
-    >
+    <div className="aggregation-summary u-mt-12">
       <StatisticCard
         title="Бэктесты (Σ)"
         tooltip={<InfoTooltip text="Количество бэктестов, включённых в расчёт агрегированных показателей." />}
@@ -256,7 +242,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
   const portfolioContent = renderChartTab(
     'P&L портфеля',
     metrics.pnlSeries.length === 0 ? (
-      <Empty description="Недостаточно данных для расчёта P&L портфеля." style={{ padding: '24px 0' }} />
+      <Empty description="Недостаточно данных для расчёта P&L портфеля." className="empty-state--padded" />
     ) : (
       <PortfolioEquityChart
         series={buildPortfolioEquitySeries(metrics.pnlSeries)}
@@ -269,7 +255,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
   const riskContent = renderChartTab(
     'Риски',
     metrics.maeSeries.length === 0 ? (
-      <Empty description="Нет данных о риске." style={{ padding: '24px 0' }} />
+      <Empty description="Нет данных о риске." className="empty-state--padded" />
     ) : (
       <AggregateRiskChart
         series={buildAggregateRiskSeries(metrics.maeSeries)}
@@ -289,16 +275,10 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
   const concurrencyContent = renderChartTab(
     'Одновременность',
     concurrencyRecords.length === 0 ? (
-      <Empty description="Нет данных о позициях." style={{ padding: '24px 0' }} />
+      <Empty description="Нет данных о позициях." className="empty-state--padded" />
     ) : (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '12px',
-          }}
-        >
+      <Flex vertical gap={16}>
+        <div className="aggregation-summary">
           <StatisticCard
             title="Среднее значение"
             tooltip={<InfoTooltip text="Среднее значение максимального количества одновременных сделок в день." />}
@@ -311,7 +291,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
           dataZoomRange={concurrencyZoomRange}
           onDataZoom={setConcurrencyZoomRange}
         />
-      </div>
+      </Flex>
     ),
   );
 
@@ -321,7 +301,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
     hasTimelineData ? (
       <BacktestDealsTimelineChart rows={metrics.dealTimelineRows} />
     ) : (
-      <Empty description="Нет сделок для отображения." style={{ padding: '24px 0' }} />
+      <Empty description="Нет сделок для отображения." className="empty-state--padded" />
     ),
   );
 
@@ -332,10 +312,10 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
           key: 'limit',
           label: 'Лимит по ботам',
           children: (
-            <div style={{ display: 'grid', gap: 16 }}>
+            <div className="chart-grid">
               <ChartCard title="Параметры расчёта" minHeight={0}>
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontWeight: 500, marginBottom: 8 }}>Максимальный лимит</div>
+                <div className="u-mb-16">
+                  <div className="chart-card__label">Максимальный лимит</div>
                   <Slider
                     min={1}
                     max={Math.max(1, limitAnalysis.maxCap)}
@@ -352,7 +332,7 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
                     disabled={limitAnalysis.loading || limitAnalysis.maxCap <= 1}
                   />
                 </div>
-                <p className="panel__description" style={{ marginBottom: 12 }}>
+                <p className="panel__description u-mb-12">
                   Чем больше лимит, тем дольше выполняется расчёт. При значениях выше сотни вкладка может подвиснуть.
                 </p>
                 <Button type="primary" onClick={limitAnalysis.onCompute} loading={limitAnalysis.loading}>
@@ -363,14 +343,14 @@ const BacktestAnalyticsPanel = ({ metrics, limitAnalysis }: BacktestAnalyticsPan
                 {limitAnalysis.points?.length ? (
                   <LimitImpactChart points={limitAnalysis.points} />
                 ) : (
-                  <Empty description="Нет подготовленных данных. Запустите расчёт." style={{ padding: '24px 0' }} />
+                  <Empty description="Нет подготовленных данных. Запустите расчёт." className="empty-state--padded" />
                 )}
               </ChartCard>
               <ChartCard title="Эффективность лимита">
                 {limitAnalysis.points?.length ? (
                   <LimitRiskEfficiencyChart points={limitAnalysis.points} />
                 ) : (
-                  <Empty description="Нет подготовленных данных. Запустите расчёт." style={{ padding: '24px 0' }} />
+                  <Empty description="Нет подготовленных данных. Запустите расчёт." className="empty-state--padded" />
                 )}
               </ChartCard>
             </div>

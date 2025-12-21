@@ -69,10 +69,10 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
 
   const navigationItems = useMemo<MenuProps['items']>(() => {
     const dynamicLabel = (
-      <Space size={4}>
+      <Space size={4} className="app-layout__dynamic-label">
         <span>Динамическая блокировка</span>
         {dynamicBlocksActive && (
-          <Tag color="green" bordered={false} style={{ marginLeft: 0 }}>
+          <Tag color="green" bordered={false} className="app-layout__dynamic-tag">
             ON
           </Tag>
         )}
@@ -159,7 +159,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
   const velesOriginLabel = (connectionStatus.origin ?? 'https://veles.finance').replace(/^https?:\/\//, '');
 
   const connectionPopover = (
-    <Space direction="vertical" size={8} style={{ minWidth: 220 }}>
+    <Space direction="vertical" size={8} className="app-layout__popover">
       <Typography.Text type="secondary">Обновлено: {lastCheckedLabel}</Typography.Text>
       <Typography.Text type={connectionStatus.ok ? 'secondary' : 'danger'}>
         {connectionStatus.ok
@@ -180,7 +180,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
   };
 
   return (
-    <Layout className="app-layout" style={{ minHeight: '100vh' }}>
+    <Layout className="app-layout">
       <Sider theme="light" width={240} className="app-layout__sider">
         {brand}
         <nav className="app-layout__nav">
@@ -226,7 +226,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
             )}
             <Button
               type="primary"
-              icon={<HeartFilled style={{ color: '#fff' }} />}
+              icon={<HeartFilled className="support-button__icon" />}
               className="support-button support-button--wave"
               onClick={() => setSupportModalOpen(true)}
             >

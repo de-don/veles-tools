@@ -110,10 +110,11 @@ const PortfolioEquityChartComponent = ({
     return handlers;
   }, [onDataZoom, onLegendSelectionChange]);
 
+  const resolvedClassName = ['chart__full-width', className].filter(Boolean).join(' ');
+
   return (
     <ReactECharts
-      className={className}
-      style={{ width: '100%' }}
+      className={resolvedClassName}
       opts={{ renderer: 'canvas' }}
       notMerge
       option={option}

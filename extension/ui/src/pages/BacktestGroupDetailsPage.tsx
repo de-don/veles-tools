@@ -607,7 +607,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
         />
         <Card>
           <Empty description="Нет данных по указанной группе." />
-          <Button type="primary" style={{ marginTop: 16 }} onClick={() => navigate('/backtest-groups')}>
+          <Button type="primary" className="u-mt-16" onClick={() => navigate('/backtest-groups')}>
             Вернуться к списку групп
           </Button>
         </Card>
@@ -648,7 +648,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
               Локально отсутствуют нужные данные по {missingCount} бэктестам.
               {!extensionReady && 'Подключите расширение, чтобы загрузить данные.'}
               {missingLoading && missingProgress && (
-                <div style={{ marginTop: 12 }}>
+                <div className="u-mt-12">
                   <Progress
                     percent={missingProgressPercent}
                     size="small"
@@ -673,7 +673,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
         />
       )}
 
-      <Card title="Аналитика и бэктесты" style={{ marginTop: 16 }}>
+      <Card title="Аналитика и бэктесты" className="u-mt-16">
         <div className="panel__header">
           <div>
             <p className="panel__description">
@@ -715,11 +715,11 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
             actions={actionMenu}
           />
         ) : (
-          <Empty description="Нет загруженных данных о бэктестах." style={{ padding: '48px 0' }} />
+          <Empty description="Нет загруженных данных о бэктестах." className="empty-state--padded-lg" />
         )}
       </Card>
 
-      {error && <Alert type="warning" message={error} showIcon style={{ marginTop: 16 }} />}
+      {error && <Alert type="warning" message={error} showIcon className="u-mt-16" />}
 
       <RenameBacktestGroupModal
         open={renameOpen}
@@ -743,7 +743,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
           <Select
             placeholder="Выберите группу"
             value={transferTargetGroupId ?? undefined}
-            style={{ width: '100%' }}
+            className="u-full-width"
             options={availableTransferGroups.map((item) => ({ value: item.id, label: item.name }))}
             onChange={(value) => setTransferTargetGroupId(value)}
           />

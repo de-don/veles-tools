@@ -40,7 +40,7 @@ const SaveBacktestGroupModal = ({ open, selectedBacktests, onCancel, onSubmit }:
       cancelText="Отмена"
       destroyOnClose
     >
-      <p style={{ marginBottom: 16 }}>
+      <p className="u-mb-16">
         Будет сохранена группа из {totalSelected} выбранных бэктестов. Вы сможете открыть её позднее на странице групп.
       </p>
       <Form<SaveGroupFormValues> form={form} layout="vertical" initialValues={{ name: '' }}>

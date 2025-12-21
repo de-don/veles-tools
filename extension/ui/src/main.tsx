@@ -17,7 +17,13 @@ if (!(container instanceof HTMLElement)) {
 
 ReactDOM.createRoot(container).render(
   <React.StrictMode>
-    <ConfigProvider locale={ruRU} theme={{ token: { fontFamily: '"Inter", sans-serif' } }}>
+    <ConfigProvider
+      locale={ruRU}
+      theme={{
+        cssVar: true,
+        token: { fontFamily: '"Inter", sans-serif' },
+      }}
+    >
       <App />
     </ConfigProvider>
   </React.StrictMode>,

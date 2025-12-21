@@ -352,27 +352,27 @@ export const createPortfolioEquityChartOptions = (
             const totalValue = order.price * order.quantity;
 
             return `
-              <div style="font-family: sans-serif;">
-                <div style="font-weight: 600; margin-bottom: 4px;">${order.pair}</div>
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                  <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></span>
-                  <span style="font-weight: 500; color: ${color}">${typeLabel}</span>
+              <div class="chart-tooltip" style="--tooltip-accent: ${color};">
+                <div class="chart-tooltip__title">${order.pair}</div>
+                <div class="chart-tooltip__row">
+                  <span class="chart-tooltip__dot"></span>
+                  <span class="chart-tooltip__accent">${typeLabel}</span>
                 </div>
-                <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
-                  <span style="color: #64748b;">Цена:</span>
-                  <span style="text-align: right; font-weight: 500;">${formatNumber(order.price)}</span>
+                <div class="chart-tooltip__grid">
+                  <span class="chart-tooltip__label">Цена:</span>
+                  <span class="chart-tooltip__value">${formatNumber(order.price)}</span>
                   
-                  <span style="color: #64748b;">Кол-во:</span>
-                  <span style="text-align: right; font-weight: 500;">${order.quantity}</span>
+                  <span class="chart-tooltip__label">Кол-во:</span>
+                  <span class="chart-tooltip__value">${order.quantity}</span>
                   
-                  <span style="color: #64748b;">Сумма:</span>
-                  <span style="text-align: right; font-weight: 500;">${formatNumber(totalValue)}</span>
+                  <span class="chart-tooltip__label">Сумма:</span>
+                  <span class="chart-tooltip__value">${formatNumber(totalValue)}</span>
 
-                  <span style="color: #64748b;">Позиция:</span>
-                  <span style="text-align: right; font-weight: 500;">${formatNumber(order.positionVolume)}</span>
+                  <span class="chart-tooltip__label">Позиция:</span>
+                  <span class="chart-tooltip__value">${formatNumber(order.positionVolume)}</span>
                 </div>
-                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f1f5f9;">
-                  ${order.botName} <span style="margin: 0 4px;">·</span> ID ${order.dealId}
+                <div class="chart-tooltip__footer">
+                  ${order.botName} <span class="chart-tooltip__divider">·</span> ID ${order.dealId}
                 </div>
               </div>
             `;
@@ -385,20 +385,20 @@ export const createPortfolioEquityChartOptions = (
               const value = item.value?.[1] ?? item.value;
               if (value === null || value === undefined) return '';
               return `
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px;">
-                  <div style="display: flex; align-items: center; gap: 6px;">
+                <div class="chart-tooltip__item">
+                  <div class="chart-tooltip__item-meta">
                     ${item.marker}
-                    <span style="color: #64748b;">${item.seriesName}</span>
+                    <span class="chart-tooltip__label">${item.seriesName}</span>
                   </div>
-                  <span style="font-weight: 500;">${formatNumber(Number(value))}</span>
+                  <span class="chart-tooltip__value">${formatNumber(Number(value))}</span>
                 </div>
               `;
             })
             .join('');
 
           return `
-            <div style="font-family: sans-serif;">
-              <div style="margin-bottom: 8px; font-weight: 500; color: #64748b;">${dateLabel}</div>
+            <div class="chart-tooltip">
+              <div class="chart-tooltip__date">${dateLabel}</div>
               ${list}
             </div>
           `;
@@ -532,27 +532,27 @@ export const createPortfolioEquityChartOptions = (
           const totalValue = order.price * order.quantity;
 
           return `
-            <div style="font-family: sans-serif;">
-              <div style="font-weight: 600; margin-bottom: 4px;">${order.pair}</div>
-              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></span>
-                <span style="font-weight: 500; color: ${color}">${typeLabel}</span>
+            <div class="chart-tooltip" style="--tooltip-accent: ${color};">
+              <div class="chart-tooltip__title">${order.pair}</div>
+              <div class="chart-tooltip__row">
+                <span class="chart-tooltip__dot"></span>
+                <span class="chart-tooltip__accent">${typeLabel}</span>
               </div>
-              <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
-                <span style="color: #64748b;">Цена:</span>
-                <span style="text-align: right; font-weight: 500;">${formatNumber(order.price)}</span>
+              <div class="chart-tooltip__grid">
+                <span class="chart-tooltip__label">Цена:</span>
+                <span class="chart-tooltip__value">${formatNumber(order.price)}</span>
                 
-                <span style="color: #64748b;">Кол-во:</span>
-                <span style="text-align: right; font-weight: 500;">${order.quantity}</span>
+                <span class="chart-tooltip__label">Кол-во:</span>
+                <span class="chart-tooltip__value">${order.quantity}</span>
                 
-                <span style="color: #64748b;">Сумма:</span>
-                <span style="text-align: right; font-weight: 500;">${formatNumber(totalValue)}</span>
+                <span class="chart-tooltip__label">Сумма:</span>
+                <span class="chart-tooltip__value">${formatNumber(totalValue)}</span>
 
-                <span style="color: #64748b;">Позиция:</span>
-                <span style="text-align: right; font-weight: 500;">${formatNumber(order.positionVolume)}</span>
+                <span class="chart-tooltip__label">Позиция:</span>
+                <span class="chart-tooltip__value">${formatNumber(order.positionVolume)}</span>
               </div>
-              <div style="color: #94a3b8; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f1f5f9;">
-                ${order.botName} <span style="margin: 0 4px;">·</span> ID ${order.dealId}
+              <div class="chart-tooltip__footer">
+                ${order.botName} <span class="chart-tooltip__divider">·</span> ID ${order.dealId}
               </div>
             </div>
           `;
@@ -565,20 +565,20 @@ export const createPortfolioEquityChartOptions = (
             const value = item.value?.[1] ?? item.value;
             if (value === null || value === undefined) return '';
             return `
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="chart-tooltip__item">
+                <div class="chart-tooltip__item-meta">
                   ${item.marker}
-                  <span style="color: #64748b;">${item.seriesName}</span>
+                  <span class="chart-tooltip__label">${item.seriesName}</span>
                 </div>
-                <span style="font-weight: 500;">${formatNumber(Number(value))}</span>
+                <span class="chart-tooltip__value">${formatNumber(Number(value))}</span>
               </div>
             `;
           })
           .join('');
 
         return `
-          <div style="font-family: sans-serif;">
-            <div style="margin-bottom: 8px; font-weight: 500; color: #64748b;">${dateLabel}</div>
+          <div class="chart-tooltip">
+            <div class="chart-tooltip__date">${dateLabel}</div>
             ${list}
           </div>
         `;

@@ -38,6 +38,15 @@ This directory contains shared utilities used across the UI. Every exported help
 - `ACTIVE_DEALS_ZOOM_PRESET_OPTIONS` – available preset definitions for the zoom segmented control.
 - `isActiveDealsZoomPreset(value)` – runtime guard for persisted preset keys.
 
+## `chartOptions.ts`
+- `DataZoomRange` – shape describing optional zoom bounds for ECharts data zoom components.
+- `createPortfolioEquityChartOptions(series, range?, groupedSeries?, executedOrders?, legendSelection?, filterMode?)` – builds ECharts options for portfolio equity charts with optional grouped series, executed orders, and zoom range handling.
+- `createAggregateRiskChartOptions(series, range?, filterMode?)` – builds ECharts options for aggregated risk charts with optional zoom range handling.
+- `LimitImpactPoint` – shape describing points used in limit impact/efficiency charts.
+- `createLimitImpactChartOptions(points)` – builds ECharts options for limit impact charts.
+- `createLimitEfficiencyChartOptions(points)` – builds ECharts options for limit efficiency charts.
+- `createDailyConcurrencyChartOptions(records, stats?, range?, filterMode?)` – builds ECharts options for daily concurrency charts with optional summary stats and zoom range handling.
+
 ## `botUpdatePayload.ts`
 - `buildBotUpdatePayload(bot, overrides)` – creates a DTO payload for updating an existing bot while applying deposit/leverage overrides and keeping other config fields intact.
 

@@ -12,18 +12,12 @@ export interface InfoTooltipProps {
 }
 
 export const InfoTooltip = ({ text, className, icon, placement = 'top', style }: InfoTooltipProps) => {
-  const baseStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 6,
-  };
-  const mergedStyle = className ? style : { ...baseStyle, ...style };
+  const mergedClassName = ['info-tooltip', className].filter(Boolean).join(' ');
 
   return (
-    <Tooltip title={text} placement={placement} overlayStyle={{ maxWidth: 320 }}>
-      <span className={className} aria-hidden style={mergedStyle}>
-        {icon ?? <QuestionCircleOutlined style={{ color: 'var(--ant-color-primary-text, #1677ff)' }} />}
+    <Tooltip title={text} placement={placement} overlayClassName="info-tooltip__overlay">
+      <span className={mergedClassName} aria-hidden style={style}>
+        {icon ?? <QuestionCircleOutlined className="info-tooltip__icon" />}
       </span>
     </Tooltip>
   );

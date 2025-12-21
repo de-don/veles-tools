@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Table } from 'antd';
+import { Flex, Table } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { Key, ReactNode } from 'react';
@@ -21,13 +21,11 @@ interface BacktestInfoTableProps {
 }
 
 const COLUMN_WIDTH = 200;
-const COLUMN_MIN_WIDTH = 150;
-
 const applyColumnSizing = (columns: ColumnsType<BacktestInfo>): ColumnsType<BacktestInfo> => {
   return columns.map((column) => ({
     ...column,
     width: COLUMN_WIDTH,
-    onCell: column.onCell ?? (() => ({ style: { minWidth: COLUMN_MIN_WIDTH } })),
+    onCell: column.onCell ?? (() => ({ className: 'backtest-info-table__cell' })),
   }));
 };
 
@@ -275,15 +273,8 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
   }, [selectedIds, onSelectionChange]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 8,
-        }}
-      >
+    <Flex vertical gap={12} className="backtest-info-table u-mt-12">
+      <Flex justify="space-between" wrap gap={8}>
         <div>{actions}</div>
         <TableColumnSettingsButton
           settings={settings}
@@ -293,7 +284,7 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
           hasCustomSettings={hasCustomSettings}
           minimumVisibleColumns={3}
         />
-      </div>
+      </Flex>
       <Table
         rowKey={(item) => item.id}
         columns={columns}
@@ -305,7 +296,7 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
         scroll={{ x: true }}
         size="small"
       />
-    </div>
+    </Flex>
   );
 };
 

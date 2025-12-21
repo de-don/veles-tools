@@ -1,6 +1,6 @@
 import { DownOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Button, Card, Dropdown, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
+import { Button, Card, Dropdown, Flex, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
@@ -69,6 +69,16 @@ const formatPercent = (value: number): string => {
   }
   const sign = value > 0 ? '+' : value < 0 ? '' : '';
   return `${sign}${percentFormatter.format(value)}%`;
+};
+
+const resolvePnlClassName = (value: number): string => {
+  if (value > 0) {
+    return 'pnl-value pnl-value--positive';
+  }
+  if (value < 0) {
+    return 'pnl-value pnl-value--negative';
+  }
+  return 'pnl-value pnl-value--neutral';
 };
 
 const MAX_PRICE_DECIMALS = 6;
@@ -622,13 +632,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         sorter: (a, b) => a.pnl - b.pnl,
         defaultSortOrder: 'descend',
         render: (_value, record) => (
-          <span
-            style={{
-              color: record.pnl > 0 ? '#047857' : record.pnl < 0 ? '#b91c1c' : '#334155',
-            }}
-          >
-            {formatSignedCurrency(record.pnl)}
-          </span>
+          <span className={resolvePnlClassName(record.pnl)}>{formatSignedCurrency(record.pnl)}</span>
         ),
       },
       {
@@ -638,13 +642,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         align: 'right',
         sorter: (a, b) => a.pnlPercent - b.pnlPercent,
         render: (_value, record) => (
-          <span
-            style={{
-              color: record.pnlPercent > 0 ? '#047857' : record.pnlPercent < 0 ? '#b91c1c' : '#334155',
-            }}
-          >
-            {formatPercent(record.pnlPercent)}
-          </span>
+          <span className={resolvePnlClassName(record.pnlPercent)}>{formatPercent(record.pnlPercent)}</span>
         ),
       },
       {
@@ -910,15 +908,12 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         </Card>
 
         <Card title="Динамика агрегированного P&amp;L" bordered>
-          <div className="panel__header" style={{ paddingBottom: 12 }}>
+          <div className="panel__header panel__header--padded">
             <p className="panel__description">
               На графике отображается история суммарного результата портфеля с выбранным интервалом обновления. История
               накапливается только когда вкладка с расширением открыта.
             </p>
-            <div
-              className="panel__actions"
-              style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', width: '100%' }}
-            >
+            <Flex className="panel__actions panel__actions--spread u-full-width" gap={8} wrap>
               <Space className="chart-zoom-presets" align="center" size="middle" wrap>
                 <Segmented
                   options={ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => ({
@@ -943,7 +938,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 />
                 <span>Группировка по ключу</span>
               </Space>
-            </div>
+            </Flex>
           </div>
           <div className="aggregation-equity__chart">
             {pnlSeries.points.length === 0 ? (
@@ -965,23 +960,13 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         </Card>
 
         <Card title="Список сделок">
-          <div className="panel__header" style={{ paddingBottom: 12 }}>
-            <div
-              className="panel__actions"
-              style={{
-                display: 'flex',
-                gap: 12,
-                width: '100%',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
+          <div className="panel__header panel__header--padded">
+            <Flex className="panel__actions panel__actions--spread u-full-width" gap={12} align="center" wrap>
               <Select
                 mode="multiple"
                 allowClear
                 placeholder="Все API ключи"
-                style={{ minWidth: 240 }}
+                className="u-min-w-240"
                 options={apiKeyOptions}
                 value={apiKeyFilter}
                 onChange={(values) => setApiKeyFilter((values as number[]) ?? [])}
@@ -994,13 +979,9 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 reset={resetDealsColumns}
                 hasCustomSettings={dealsHasCustomSettings}
               />
-            </div>
+            </Flex>
           </div>
-          {error && (
-            <div className="form-error" style={{ marginBottom: 16 }}>
-              {error}
-            </div>
-          )}
+          {error && <div className="form-error u-mb-16">{error}</div>}
           <div className="table-container">
             <Table<ActiveDealMetrics>
               columns={visibleDealsColumns}

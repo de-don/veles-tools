@@ -1,4 +1,4 @@
-import { Alert, Button, Checkbox, Input, Modal, Progress, Typography } from 'antd';
+import { Alert, Button, Checkbox, Flex, Input, Modal, Progress, Space, Typography } from 'antd';
 import type { ProgressProps } from 'antd/es/progress';
 import { useEffect, useMemo, useState } from 'react';
 import { updateBot } from '../../api/bots';
@@ -216,7 +216,7 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
         </label>
         <Input
           id="bulk-edit-deposit-amount"
-          className="input"
+          className="input u-mt-8"
           type="text"
           inputMode="decimal"
           value={depositValue}
@@ -226,7 +226,6 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
           }}
           disabled={!depositEnabled || isRunning}
           placeholder="Например, 150"
-          style={{ marginTop: 8 }}
         />
       </div>
 
@@ -246,7 +245,7 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
         </label>
         <Input
           id="bulk-edit-deposit-leverage"
-          className="input"
+          className="input u-mt-8"
           type="text"
           inputMode="decimal"
           value={leverageValue}
@@ -256,24 +255,19 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
           }}
           disabled={!leverageEnabled || isRunning}
           placeholder="Например, 5"
-          style={{ marginTop: 8 }}
         />
       </div>
 
-      {error && (
-        <div className="form-error" style={{ marginTop: 8 }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="form-error u-mt-8">{error}</div>}
 
-      <div style={{ marginTop: 16 }}>
+      <Space direction="vertical" size={8} className="u-mt-16">
         <Text type="secondary">
           {progressLabel}: {processedCount} из {totalBots}
         </Text>
-        <Progress percent={percent} status={progressStatus} style={{ marginTop: 8 }} />
-      </div>
+        <Progress percent={percent} status={progressStatus} />
+      </Space>
 
-      <div style={{ marginTop: 16 }}>
+      <Flex vertical className="u-mt-16">
         {isRunning && <Text>Обновляем параметры...</Text>}
         {isCompleted && !hasFailures && <Alert type="success" message="Параметры успешно обновлены." showIcon />}
         {isCompleted && hasFailures && (
@@ -281,7 +275,7 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
             type="error"
             message="Не удалось обновить часть ботов."
             description={
-              <ul style={{ paddingLeft: 18, margin: 0 }}>
+              <ul className="alert-list">
                 {result?.failed.map((entry) => (
                   <li key={entry.botId}>
                     <Text>
@@ -294,7 +288,7 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
             showIcon
           />
         )}
-      </div>
+      </Flex>
     </Modal>
   );
 };

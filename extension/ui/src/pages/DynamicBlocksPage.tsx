@@ -183,15 +183,15 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             {constraint && !constraint.positionEnabled && <Tag color="orange">Блокировка выключена на стороне API</Tag>}
           </Space>
         }
-        style={{ height: '100%' }}
+        className="card--full-height"
       >
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space direction="vertical" size={12} className="u-full-width">
           <Row gutter={[16, 16]}>
             <Col xs={12} md={6}>
               <Statistic title="Открытые позиции" value={openPositions} />
             </Col>
             <Col xs={12} md={6}>
-              <Statistic title="Текущий лимит" value={currentLimit} suffix="поз." valueStyle={{ color: '#1677ff' }} />
+              <Statistic title="Текущий лимит" value={currentLimit} suffix="поз." className="statistic--highlight" />
             </Col>
             <Col xs={12} md={6}>
               <Statistic title="Диапазон" value={`${config.minPositionsBlock} – ${config.maxPositionsBlock}`} />
@@ -217,7 +217,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               <Col xs={24} md={12} lg={6}>
                 <Form.Item label="Минимальный блок">
                   <InputNumber
-                    style={{ width: '100%' }}
+                    className="u-full-width"
                     value={config.minPositionsBlock}
                     min={1}
                     onChange={(value) =>
@@ -233,7 +233,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               <Col xs={24} md={12} lg={6}>
                 <Form.Item label="Максимальный блок">
                   <InputNumber
-                    style={{ width: '100%' }}
+                    className="u-full-width"
                     value={config.maxPositionsBlock}
                     min={config.minPositionsBlock}
                     onChange={(value) =>
@@ -251,7 +251,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               <Col xs={24} md={12} lg={6}>
                 <Form.Item label="Таймаут между изменениями (мин)">
                   <InputNumber
-                    style={{ width: '100%' }}
+                    className="u-full-width"
                     value={Math.round(config.timeoutBetweenChangesSec / 60)}
                     min={1}
                     onChange={(value) =>
@@ -323,11 +323,11 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
           showIcon
           message="Расширение неактивно"
           description="Подключите интерфейс через расширение Veles Tools, чтобы управлять блокировкой позиций."
-          style={{ marginBottom: 16 }}
+          className="u-mb-16"
         />
       )}
 
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space direction="vertical" size={16} className="u-full-width">
         <Card
           title="Управление"
           extra={
@@ -360,7 +360,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             </Space>
           }
         >
-          <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <Space direction="vertical" size={12} className="u-full-width">
             <Row gutter={[16, 16]} align="middle">
               <Col xs={24} md={12} lg={8}>
                 <Statistic
@@ -427,7 +427,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             name="minPositionsBlock"
             rules={[{ required: true, type: 'number', min: 1 }]}
           >
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <InputNumber min={1} className="u-full-width" />
           </Form.Item>
           <Form.Item
             label="Максимальный блок"
@@ -446,14 +446,14 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               }),
             ]}
           >
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <InputNumber min={1} className="u-full-width" />
           </Form.Item>
           <Form.Item
             label="Таймаут между изменениями (мин)"
             name="timeoutBetweenChangesMin"
             rules={[{ required: true, type: 'number', min: 1 }]}
           >
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <InputNumber min={1} className="u-full-width" />
           </Form.Item>
         </Form>
       </Modal>

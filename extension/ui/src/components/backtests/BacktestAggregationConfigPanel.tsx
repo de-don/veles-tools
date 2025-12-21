@@ -34,7 +34,7 @@ const BacktestAggregationConfigPanel = ({
 
   return (
     <div>
-      <div style={{ marginBottom: 8, fontWeight: 500 }}>Лимит по одновременным позициям</div>
+      <div className="aggregation-config__title">Лимит по одновременным позициям</div>
       <Slider
         min={MIN_CONCURRENCY}
         max={maxValue}

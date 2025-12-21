@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button, Progress } from 'antd';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -847,9 +847,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           {logs.length > 0 && (
             <div className="run-log">
               <div className="run-log__progress">
-                <div className="progress-bar">
-                  <div className="progress-bar__fill" style={{ width: `${progress}%` }} />
-                </div>
+                <Progress percent={progress} size="small" showInfo={false} />
                 <span className="progress-bar__label">{progress}%</span>
               </div>
               <div className="run-log__messages" role="log" aria-live="polite" ref={logContainerRef}>
