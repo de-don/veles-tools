@@ -186,6 +186,64 @@ body {
   color: var(--ant-color-text-secondary, #475467);
 }
 
+.dynamic-blocks-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 340px));
+  justify-content: start;
+}
+
+.dynamic-blocks-grid__item {
+  width: 100%;
+  max-width: 340px;
+}
+
+.dynamic-blocks-card .ant-card-head {
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.dynamic-blocks-card .ant-card-body {
+  padding: 12px;
+}
+
+.dynamic-blocks-card .ant-form-item {
+  margin-bottom: 8px;
+}
+
+.dynamic-blocks-card__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dynamic-blocks-card__stats .ant-statistic {
+  min-width: 0;
+}
+
+.dynamic-blocks-card__stats .ant-statistic-title {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.dynamic-blocks-card__stats .ant-statistic-content {
+  font-size: 15px;
+}
+
+.dynamic-blocks-card__form .ant-form-item-label > label {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .dynamic-blocks-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dynamic-blocks-grid__item {
+    max-width: none;
+  }
+}
+
 .page-header__row {
   display: flex;
   align-items: center;

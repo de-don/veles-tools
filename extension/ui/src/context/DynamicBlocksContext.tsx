@@ -13,6 +13,7 @@ import { fetchApiKeys } from '../api/apiKeys';
 import { positionConstraintsService } from '../services/positionConstraints';
 import {
   DEFAULT_DYNAMIC_BLOCK_CONFIG,
+  normalizeDynamicBlockConfigs,
   persistDynamicBlockConfigs,
   readDynamicBlockConfigs,
   resolveConfigForApiKey,
@@ -90,7 +91,7 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [constraints, setConstraints] = useState<PositionConstraint[]>([]);
   const [openPositionsByKey, setOpenPositionsByKey] = useState<Map<number, number>>(new Map());
-  const [configs, setConfigs] = useState<Record<number, DynamicBlockConfig>>(() => readDynamicBlockConfigs());
+  const [configs, setConfigs] = useState<Record<number, DynamicBlockConfig>>({});
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [automationError, setAutomationError] = useState<string | null>(null);
@@ -150,6 +151,23 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
     }
     refreshSnapshot().catch(() => {});
   }, [extensionReady, refreshSnapshot]);
+
+  useEffect(() => {
+    let isActive = true;
+    readDynamicBlockConfigs()
+      .then((stored) => {
+        if (isActive) {
+          setConfigs(stored);
+        }
+      })
+      .catch((error) => {
+        console.warn('[Veles Tools] Не удалось загрузить dynamic-blocks из IndexedDB', error);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const updateAutomationStatuses = useCallback((updates: Record<number, AutomationStatus>) => {
     setAutomationStatuses((prev) => ({ ...prev, ...updates }));
@@ -252,7 +270,8 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
           setConfigs((prev) => {
             const current = resolveConfigForApiKey(config.apiKeyId, prev);
             const nextRecord = { ...prev, [config.apiKeyId]: { ...current, lastChangeAt: now } };
-            return persistDynamicBlockConfigs(nextRecord);
+            void persistDynamicBlockConfigs(nextRecord);
+            return normalizeDynamicBlockConfigs(nextRecord);
           });
 
           updates[config.apiKeyId] = {
@@ -307,7 +326,8 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
     (config: DynamicBlockConfig) => {
       setConfigs((prev) => {
         const merged = { ...prev, [config.apiKeyId]: { ...config, checkPeriodSec: dealsRefreshInterval } };
-        return persistDynamicBlockConfigs(merged);
+        void persistDynamicBlockConfigs(merged);
+        return normalizeDynamicBlockConfigs(merged);
       });
     },
     [dealsRefreshInterval],
@@ -319,7 +339,8 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
         ...prev,
         [apiKeyId]: { ...resolveConfigForApiKey(apiKeyId, prev), enabled: false, lastChangeAt: null },
       };
-      return persistDynamicBlockConfigs(next);
+      void persistDynamicBlockConfigs(next);
+      return normalizeDynamicBlockConfigs(next);
     });
     setAutomationStatuses((prev) => {
       const next = { ...prev };
@@ -344,7 +365,8 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
             apiKeyId,
           },
         };
-        return persistDynamicBlockConfigs(next);
+        void persistDynamicBlockConfigs(next);
+        return normalizeDynamicBlockConfigs(next);
       });
     },
     [dealsRefreshInterval],

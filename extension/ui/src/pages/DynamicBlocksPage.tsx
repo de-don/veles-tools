@@ -1,4 +1,4 @@
-import { ControlOutlined, PlusOutlined, ReloadOutlined, StopOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { ControlOutlined, DeleteOutlined, PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { SelectProps } from 'antd';
 import {
   Alert,
@@ -10,16 +10,16 @@ import {
   InputNumber,
   Modal,
   message,
+  Popconfirm,
   Row,
   Select,
   Slider,
   Space,
   Statistic,
   Switch,
-  Tag,
   Typography,
 } from 'antd';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useDealsRefresh } from '../context/DealsRefreshContext';
 import { useDynamicBlocks } from '../context/DynamicBlocksContext';
 import { DEFAULT_DYNAMIC_BLOCK_CONFIG } from '../storage/dynamicPositionBlocksStore';
@@ -38,22 +38,12 @@ interface AddFormValues {
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
-const formatExchangeLabel = (exchange: string): string => {
-  return exchange
-    .toLowerCase()
-    .split('_')
-    .map((chunk) => (chunk ? `${chunk[0].toUpperCase()}${chunk.slice(1)}` : ''))
-    .join(' ')
-    .trim();
-};
-
 const resolveApiKeyLabel = (apiKeyId: number, apiKeys: { id: number; name: string; exchange: string }[]): string => {
   const key = apiKeys.find((item) => item.id === apiKeyId);
   if (!key) {
     return `API key ${apiKeyId}`;
   }
-  const exchange = formatExchangeLabel(key.exchange);
-  return key.name ? `${key.name} · ${exchange}` : `API key ${apiKeyId} · ${exchange}`;
+  return key.name ? `${key.name}` : `API key ${apiKeyId}`;
 };
 
 const formatTimestamp = (value: number | null | undefined): string => {
@@ -79,11 +69,16 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
     manualRun,
     upsertConfig,
     disableConfig,
-    resetConfig,
   } = useDynamicBlocks();
   const [manualRunPending, setManualRunPending] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addForm] = Form.useForm<AddFormValues>();
+  const updateConfig = useCallback(
+    (config: DynamicBlockConfig, patch: Partial<DynamicBlockConfig>) => {
+      upsertConfig({ ...config, ...patch });
+    },
+    [upsertConfig],
+  );
 
   const availableApiKeysForAdd = useMemo(() => {
     const usedIds = new Set(activeConfigs.map((config) => config.apiKeyId));
@@ -94,7 +89,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
     () =>
       availableApiKeysForAdd.map((key) => ({
         value: key.id,
-        label: key.name ? `${key.name} · ${formatExchangeLabel(key.exchange)}` : `API key ${key.id}`,
+        label: key.name ? `${key.name}` : `API key ${key.id}`,
       })),
     [availableApiKeysForAdd],
   );
@@ -163,7 +158,6 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
   };
 
   const renderConfigCard = (config: DynamicBlockConfig) => {
-    const constraint = constraints.find((item) => item.apiKeyId === config.apiKeyId) ?? null;
     const currentLimit = computeCurrentBlockValue(config);
     const openPositions = openPositionsByKey.get(config.apiKeyId) ?? 0;
     const apiKeyLabel = resolveApiKeyLabel(config.apiKeyId, apiKeys);
@@ -177,26 +171,25 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             <span>{apiKeyLabel}</span>
           </Space>
         }
+        className="dynamic-blocks-card card--full-height"
+        size="small"
         extra={
-          <Space size="small">
-            <Tag color="processing">{constraint?.exchange ? formatExchangeLabel(constraint.exchange) : '—'}</Tag>
-            {constraint && !constraint.positionEnabled && <Tag color="orange">Блокировка выключена на стороне API</Tag>}
-          </Space>
+          <Popconfirm
+            title="Отключить блокировку?"
+            okText="Да"
+            cancelText="Нет"
+            onConfirm={() => disableConfig(config.apiKeyId)}
+          >
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label="Отключить блокировку" />
+          </Popconfirm>
         }
-        className="card--full-height"
       >
         <Space direction="vertical" size={12} className="u-full-width">
-          <Row gutter={[16, 16]}>
-            <Col xs={12} md={6}>
-              <Statistic title="Открытые позиции" value={openPositions} />
-            </Col>
-            <Col xs={12} md={6}>
-              <Statistic title="Текущий лимит" value={currentLimit} suffix="поз." className="statistic--highlight" />
-            </Col>
-            <Col xs={12} md={6}>
-              <Statistic title="Диапазон" value={`${config.minPositionsBlock} – ${config.maxPositionsBlock}`} />
-            </Col>
-          </Row>
+          <div className="dynamic-blocks-card__stats">
+            <Statistic title="Позиции" value={openPositions} />
+            <Statistic title="Лимит" value={currentLimit} suffix="поз." className="statistic--highlight" />
+            <Statistic title="Диапазон" value={`${config.minPositionsBlock} – ${config.maxPositionsBlock}`} />
+          </div>
 
           <Slider
             min={config.minPositionsBlock}
@@ -212,17 +205,17 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             tooltip={{ open: false }}
           />
 
-          <Form layout="vertical" component="div">
-            <Row gutter={[16, 16]}>
-              <Col xs={24} md={12} lg={6}>
-                <Form.Item label="Минимальный блок">
+          <Form layout="vertical" component="div" size="small" className="dynamic-blocks-card__form">
+            <Row gutter={[8, 8]}>
+              <Col xs={24} md={12} lg={8}>
+                <Form.Item label="Мин. блок">
                   <InputNumber
                     className="u-full-width"
                     value={config.minPositionsBlock}
                     min={1}
+                    size="small"
                     onChange={(value) =>
-                      upsertConfig({
-                        ...config,
+                      updateConfig(config, {
                         minPositionsBlock: Number(value ?? 1),
                         maxPositionsBlock: Math.max(config.maxPositionsBlock, Number(value ?? 1)),
                       })
@@ -230,15 +223,15 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
                   />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12} lg={6}>
-                <Form.Item label="Максимальный блок">
+              <Col xs={24} md={12} lg={8}>
+                <Form.Item label="Макс. блок">
                   <InputNumber
                     className="u-full-width"
                     value={config.maxPositionsBlock}
                     min={config.minPositionsBlock}
+                    size="small"
                     onChange={(value) =>
-                      upsertConfig({
-                        ...config,
+                      updateConfig(config, {
                         maxPositionsBlock: Math.max(
                           Number(value ?? config.minPositionsBlock),
                           config.minPositionsBlock,
@@ -248,15 +241,15 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
                   />
                 </Form.Item>
               </Col>
-              <Col xs={24} md={12} lg={6}>
-                <Form.Item label="Таймаут между изменениями (мин)">
+              <Col xs={24} md={12} lg={8}>
+                <Form.Item label="Таймаут (мин)">
                   <InputNumber
                     className="u-full-width"
                     value={Math.round(config.timeoutBetweenChangesSec / 60)}
                     min={1}
+                    size="small"
                     onChange={(value) =>
-                      upsertConfig({
-                        ...config,
+                      updateConfig(config, {
                         timeoutBetweenChangesSec: Math.max(60, Math.round(Number(value ?? 1) * 60)),
                       })
                     }
@@ -272,19 +265,11 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
                 <Switch
                   checked={config.enabled}
                   onChange={(checked) => {
-                    upsertConfig({ ...config, enabled: checked });
+                    updateConfig(config, { enabled: checked });
                   }}
                   disabled={!extensionReady}
                 />
                 <Typography.Text>Автоматически менять блокировку</Typography.Text>
-              </Space>
-            </Col>
-            <Col>
-              <Space wrap>
-                <Button onClick={() => disableConfig(config.apiKeyId)} icon={<StopOutlined />} danger>
-                  Отключить
-                </Button>
-                <Button onClick={() => resetConfig(config.apiKeyId)}>Сбросить к дефолту</Button>
               </Space>
             </Col>
           </Row>
@@ -394,13 +379,13 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             </Empty>
           </Card>
         ) : (
-          <Row gutter={[16, 16]}>
+          <div className="dynamic-blocks-grid">
             {activeConfigs.map((config) => (
-              <Col key={config.apiKeyId} xs={24}>
+              <div key={config.apiKeyId} className="dynamic-blocks-grid__item">
                 {renderConfigCard(config)}
-              </Col>
+              </div>
             ))}
-          </Row>
+          </div>
         )}
       </Space>
 
@@ -412,7 +397,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
         okText="Сохранить"
         okButtonProps={{ disabled: apiKeyOptions.length === 0 }}
       >
-        <Form form={addForm} layout="vertical">
+        <Form form={addForm} layout="vertical" size="small">
           <Form.Item label="API-ключ" name="apiKeyId" rules={[{ required: true, message: 'Выберите ключ' }]}>
             <Select
               placeholder="Выберите ключ"
@@ -422,15 +407,11 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               disabled={apiKeyOptions.length === 0}
             />
           </Form.Item>
-          <Form.Item
-            label="Минимальный блок"
-            name="minPositionsBlock"
-            rules={[{ required: true, type: 'number', min: 1 }]}
-          >
-            <InputNumber min={1} className="u-full-width" />
+          <Form.Item label="Мин. блок" name="minPositionsBlock" rules={[{ required: true, type: 'number', min: 1 }]}>
+            <InputNumber min={1} className="u-full-width" size="small" />
           </Form.Item>
           <Form.Item
-            label="Максимальный блок"
+            label="Макс. блок"
             name="maxPositionsBlock"
             dependencies={['minPositionsBlock']}
             rules={[
@@ -446,14 +427,14 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               }),
             ]}
           >
-            <InputNumber min={1} className="u-full-width" />
+            <InputNumber min={1} className="u-full-width" size="small" />
           </Form.Item>
           <Form.Item
-            label="Таймаут между изменениями (мин)"
+            label="Таймаут (мин)"
             name="timeoutBetweenChangesMin"
             rules={[{ required: true, type: 'number', min: 1 }]}
           >
-            <InputNumber min={1} className="u-full-width" />
+            <InputNumber min={1} className="u-full-width" size="small" />
           </Form.Item>
         </Form>
       </Modal>
