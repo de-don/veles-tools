@@ -20,7 +20,6 @@ import { type PropsWithChildren, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { APP_NAME, APP_VERSION } from '../config/version';
-import { useDynamicBlocks } from '../context/DynamicBlocksContext';
 import { useThemeMode } from '../context/ThemeContext';
 import SupportProjectModal from './SupportProjectModal';
 
@@ -65,74 +64,56 @@ const resolveSelectedKey = (pathname: string, navigationKeys: string[]) => {
 
 const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenVeles }: AppLayoutProps) => {
   const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
-  const { activeConfigs } = useDynamicBlocks();
-  const dynamicBlocksActive = activeConfigs.length > 0;
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const navigationItems = useMemo<MenuProps['items']>(() => {
-    const dynamicLabel = (
-      <Space size={4} className="app-layout__dynamic-label">
-        <span>Динамическая блокировка</span>
-        {dynamicBlocksActive && (
-          <Tag color="green" bordered={false} className="app-layout__dynamic-tag">
-            ON
-          </Tag>
-        )}
-      </Space>
-    );
-    return [
-      {
-        key: '/',
-        label: 'Главная',
-        icon: <HomeOutlined />,
-      },
-      {
-        key: '/active-deals',
-        label: 'Активные сделки',
-        icon: <ThunderboltOutlined />,
-      },
-      {
-        key: '/bots',
-        label: 'Мои боты',
-        icon: <RobotOutlined />,
-      },
-      {
-        key: '/dynamic-blocks',
-        label: dynamicLabel,
-        icon: <ControlOutlined />,
-      },
-      {
-        key: '/import',
-        label: 'Импорт ботов',
-        icon: <CloudUploadOutlined />,
-      },
-      {
-        key: '/backtests',
-        label: 'Бэктесты',
-        icon: <ExperimentOutlined />,
-      },
-      {
-        key: '/backtest-groups',
-        label: 'Группы бэктестов',
-        icon: <AppstoreOutlined />,
-      },
-      {
-        key: '/settings',
-        label: 'Настройки',
-        icon: <SettingOutlined />,
-      },
-    ];
-  }, [dynamicBlocksActive]);
+  const navigationItems = [
+    {
+      key: '/',
+      label: 'Главная',
+      icon: <HomeOutlined />,
+    },
+    {
+      key: '/active-deals',
+      label: 'Активные сделки',
+      icon: <ThunderboltOutlined />,
+    },
+    {
+      key: '/bots',
+      label: 'Мои боты',
+      icon: <RobotOutlined />,
+    },
+    {
+      key: '/dynamic-blocks',
+      label: 'Динамич. блок.',
+      icon: <ControlOutlined />,
+    },
+    {
+      key: '/import',
+      label: 'Импорт ботов',
+      icon: <CloudUploadOutlined />,
+    },
+    {
+      key: '/backtests',
+      label: 'Бэктесты',
+      icon: <ExperimentOutlined />,
+    },
+    {
+      key: '/backtest-groups',
+      label: 'Группы бэктестов',
+      icon: <AppstoreOutlined />,
+    },
+    {
+      key: '/settings',
+      label: 'Настройки',
+      icon: <SettingOutlined />,
+    },
+  ];
 
-  const navigationKeys = useMemo(
-    () =>
-      (navigationItems ?? [])
-        .map((item) => (item && 'key' in item ? (item.key as string | undefined) : undefined))
-        .filter((key): key is string => Boolean(key)),
-    [navigationItems],
-  );
+  const navigationKeys = (navigationItems ?? [])
+    .map((item) => (item && 'key' in item ? (item.key as string | undefined) : undefined))
+    .filter((key): key is string => Boolean(key));
 
   const selectedKey = useMemo(
     () => resolveSelectedKey(location.pathname, navigationKeys),
