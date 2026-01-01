@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Button, Card, Modal, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -92,7 +92,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const [activeModal, setActiveModal] = useState<BacktestVariant | null>(null);
   const [nameFilter, setNameFilter] = useState('');
   const [apiKeyFilter, setApiKeyFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<BotStatus | ''>('');
+  const [statusFilter, setStatusFilter] = useState<BotStatus[]>([]);
   const [algorithmFilter, setAlgorithmFilter] = useState<BotAlgorithm | ''>('');
   const [appliedFilters, setAppliedFilters] = useState<BotsListFilters>({});
   const [filtersError, setFiltersError] = useState<string | null>(null);
@@ -210,7 +210,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     );
   }, [appliedFilters]);
   const hasFilterDraft =
-    nameFilter.trim().length > 0 || apiKeyFilter !== '' || Boolean(statusFilter) || Boolean(algorithmFilter);
+    nameFilter.trim().length > 0 || apiKeyFilter !== '' || statusFilter.length > 0 || Boolean(algorithmFilter);
   const isResetDisabled = !(hasActiveFilters || hasFilterDraft);
 
   const selectedRowKeys = useMemo(() => selection.map((s) => s.id), [selection]);
@@ -378,8 +378,8 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     }
 
     setFiltersError(null);
-    if (statusFilter) {
-      nextFilters.statuses = [statusFilter];
+    if (statusFilter.length > 0) {
+      nextFilters.statuses = statusFilter;
     }
 
     if (algorithmFilter) {
@@ -394,7 +394,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const handleFiltersReset = () => {
     setNameFilter('');
     setApiKeyFilter('');
-    setStatusFilter('');
+    setStatusFilter([]);
     setAlgorithmFilter('');
     setAppliedFilters({});
     setFiltersError(null);
@@ -486,22 +486,22 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
           </div>
           <div className="filter-field">
             <label htmlFor="bots-filter-status">Статус</label>
-            <select
+            <Select<BotStatus[]>
               id="bots-filter-status"
-              className="select"
+              mode="multiple"
+              allowClear
+              placeholder="Все статусы"
+              className="u-min-w-160"
               value={statusFilter}
-              onChange={(event) => {
-                setStatusFilter(event.target.value as BotStatus | '');
+              options={STATUS_OPTIONS.map((status) => ({
+                value: status,
+                label: formatStatusLabel(status),
+              }))}
+              onChange={(values) => {
+                setStatusFilter(values ?? []);
                 setFiltersError(null);
               }}
-            >
-              <option value="">Все статусы</option>
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status} value={status}>
-                  {formatStatusLabel(status)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div className="filter-field">
             <label htmlFor="bots-filter-algorithm">Тип</label>
