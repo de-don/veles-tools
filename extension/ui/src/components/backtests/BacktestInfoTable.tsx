@@ -4,7 +4,13 @@ import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { Key, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { formatAmount, formatDateRu, formatLeverage, formatPercent } from '../../lib/backtestFormatting';
+import {
+  formatAmount,
+  formatDateRu,
+  formatDurationMinutes,
+  formatLeverage,
+  formatPercent,
+} from '../../lib/backtestFormatting';
 import { buildCabinetUrl } from '../../lib/cabinetUrls';
 import { resolvePeriodDays } from '../../lib/dateTime';
 import { buildNumberSorter, formatDurationDays } from '../../lib/tableHelpers';
@@ -170,6 +176,14 @@ const buildColumns = (): ColumnsType<BacktestInfo> =>
       width: 200,
       sorter: buildNumberSorter((item) => item.averageDurationDays),
       render: (_value, item) => formatDurationDays(item.averageDurationDays),
+    },
+    {
+      title: 'Макс. время в сделке',
+      dataIndex: 'maxDurationSeconds',
+      key: 'maxDurationSeconds',
+      width: 200,
+      sorter: buildNumberSorter((item) => item.maxDurationSeconds),
+      render: (_value, item) => formatDurationMinutes(item.maxDurationSeconds),
     },
     {
       title: 'Торговых дней',
