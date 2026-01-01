@@ -9,3 +9,4 @@
 - Keep the API layer (files under `src/api`) limited to raw transport: work purely with DTO types, do not introduce caching, data massaging, or other business logic there.
 - Expose all application-facing logic through services (e.g. `src/services/*`), which consume API DTOs, map them into domain entities (DTO suffix removed), and encapsulate caching, aggregation, pagination helpers, etc.
 - Every data contract coming from the backend must be represented as a `...Dto` interface. DTO shapes mirror backend responses exactly and must never be altered for convenience—derive separate domain types instead.
+- In the bots page filters, use Ant Design `Select` components instead of native selects for consistency.
