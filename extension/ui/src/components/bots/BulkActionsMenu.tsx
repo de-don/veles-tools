@@ -19,7 +19,7 @@ import BulkEditBotsModal from './BulkEditBotsModal';
 import CloneBotsModal from './CloneBotsModal';
 
 type BulkActionKey = 'delete' | 'stop' | 'start';
-type BulkMenuKey = BulkActionKey | 'clone' | 'edit';
+type BulkMenuKey = BulkActionKey | 'clone' | 'edit' | 'copy-currencies';
 
 interface BulkActionConfig {
   key: BulkActionKey;
@@ -145,6 +145,11 @@ const buildMenuItems = (configs: Record<BulkActionKey, BulkActionConfig>): MenuP
     label: 'Клонировать',
     icon: <CopyOutlined />,
   },
+  {
+    key: 'copy-currencies',
+    label: 'Скопировать список валют',
+    icon: <CopyOutlined />,
+  },
   { type: 'divider' },
   {
     key: configs.delete.key,
@@ -165,6 +170,34 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
 
   const menuItems = useMemo(() => buildMenuItems(ACTION_CONFIGS), []);
 
+  const handleCopyCurrencies = useCallback(async () => {
+    if (navigator.clipboard?.writeText == null) {
+      messageApi.error('Буфер обмена недоступен');
+      return;
+    }
+    const uniqueSymbols = new Set<string>();
+    bots.forEach((bot) => {
+      bot.symbols.forEach((symbol) => {
+        const trimmed = symbol.trim();
+        if (trimmed) {
+          const [base] = trimmed.split('/');
+          uniqueSymbols.add(base);
+        }
+      });
+    });
+    const payload = Array.from(uniqueSymbols).join(' ');
+    if (!payload) {
+      messageApi.warning('Нет валют для копирования.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+      messageApi.success('Список валют скопирован.');
+    } catch {
+      messageApi.error('Не удалось скопировать в буфер обмена');
+    }
+  }, [bots, messageApi]);
+
   const handleMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
     (info) => {
       if (bots.length === 0) {
@@ -181,11 +214,15 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
         setEditModalOpen(true);
         return;
       }
+      if (menuKey === 'copy-currencies') {
+        void handleCopyCurrencies();
+        return;
+      }
       const actionKey = menuKey as BulkActionKey;
       setBotsSnapshot([...bots]);
       setActiveAction(actionKey);
     },
-    [bots],
+    [bots, handleCopyCurrencies],
   );
 
   const handleModalClose = useCallback(() => {
