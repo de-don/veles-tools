@@ -24,7 +24,7 @@ import type { DataZoomRange } from '../lib/chartOptions';
 import type { ExecutedOrderPoint, PortfolioEquitySeries } from '../lib/deprecatedFile';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
-import type { ActiveDeal } from '../types/activeDeals';
+import type { ActiveDeal, ActiveDealAlgorithm } from '../types/activeDeals';
 
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
@@ -363,6 +363,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
 
   const [closingDealId, setClosingDealId] = useState<number | null>(null);
   const [apiKeyFilter, setApiKeyFilter] = useState<number[]>([]);
+  const [algorithmFilter, setAlgorithmFilter] = useState<ActiveDealAlgorithm[]>([]);
   const [messageApi, messageContextHolder] = message.useMessage();
 
   const seriesRef = useRef<PortfolioEquitySeries>(pnlSeries);
@@ -541,13 +542,26 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
       });
   }, [apiKeysById, uniqueApiKeyIds]);
 
+  const algorithmOptions = useMemo(
+    () => [
+      { value: 'LONG', label: 'Лонг' },
+      { value: 'SHORT', label: 'Шорт' },
+    ],
+    [],
+  );
+
   const filteredPositions = useMemo(() => {
-    if (apiKeyFilter.length === 0) {
-      return positions;
+    let filtered = positions;
+    if (apiKeyFilter.length > 0) {
+      const allow = new Set(apiKeyFilter);
+      filtered = filtered.filter((position) => allow.has(position.deal.apiKeyId));
     }
-    const allow = new Set(apiKeyFilter);
-    return positions.filter((position) => allow.has(position.deal.apiKeyId));
-  }, [apiKeyFilter, positions]);
+    if (algorithmFilter.length > 0) {
+      const allow = new Set(algorithmFilter);
+      filtered = filtered.filter((position) => allow.has(position.deal.algorithm));
+    }
+    return filtered;
+  }, [algorithmFilter, apiKeyFilter, positions]);
 
   const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
   const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
@@ -962,16 +976,28 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         <Card title="Список сделок">
           <div className="panel__header panel__header--padded">
             <Flex className="panel__actions panel__actions--spread u-full-width" gap={12} align="center" wrap>
-              <Select
-                mode="multiple"
-                allowClear
-                placeholder="Все API ключи"
-                className="u-min-w-240"
-                options={apiKeyOptions}
-                value={apiKeyFilter}
-                onChange={(values) => setApiKeyFilter((values as number[]) ?? [])}
-                maxTagCount="responsive"
-              />
+              <Flex gap={12} wrap>
+                <Select
+                  mode="multiple"
+                  allowClear
+                  placeholder="Все API ключи"
+                  className="u-min-w-240"
+                  options={apiKeyOptions}
+                  value={apiKeyFilter}
+                  onChange={(values) => setApiKeyFilter((values as number[]) ?? [])}
+                  maxTagCount="responsive"
+                />
+                <Select<ActiveDealAlgorithm[]>
+                  mode="multiple"
+                  allowClear
+                  placeholder="Все направления"
+                  className="u-min-w-240"
+                  options={algorithmOptions}
+                  value={algorithmFilter}
+                  onChange={(values) => setAlgorithmFilter(values ?? [])}
+                  maxTagCount="responsive"
+                />
+              </Flex>
               <TableColumnSettingsButton
                 settings={dealsColumnSettings}
                 moveColumn={moveDealsColumn}
