@@ -1,5 +1,5 @@
 import type { MenuProps } from 'antd';
-import { Alert, Button, Card, Dropdown, Empty, Modal, message, Progress, Select } from 'antd';
+import { Alert, Button, Card, Dropdown, Empty, Input, Modal, message, Progress, Radio, Select } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import BacktestAggregationConfigPanel from '../components/backtests/BacktestAggregationConfigPanel';
@@ -45,7 +45,7 @@ const DEFAULT_LIMIT_IMPACT_VALUE = 5;
 const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPageProps) => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { groups, deleteGroup, updateGroupName, removeBacktests, transferBacktests } = useBacktestGroups();
+  const { groups, createGroup, deleteGroup, updateGroupName, removeBacktests, transferBacktests } = useBacktestGroups();
   const [messageApi, messageContextHolder] = message.useMessage();
   const group: BacktestGroup | null = useMemo(() => {
     return groups.find((item) => item.id === groupId) ?? null;
@@ -63,6 +63,8 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
   const [detailsById, setDetailsById] = useState<Map<number, BacktestDetail>>(() => new Map());
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [transferTargetGroupId, setTransferTargetGroupId] = useState<string | null>(null);
+  const [transferMode, setTransferMode] = useState<'existing' | 'new'>('existing');
+  const [newGroupName, setNewGroupName] = useState('');
   const [createBotsOpen, setCreateBotsOpen] = useState(false);
   const [botTargets, setBotTargets] = useState<BacktestBotTarget[]>([]);
   const [limitImpactValue, setLimitImpactValue] = useState(DEFAULT_LIMIT_IMPACT_VALUE);
@@ -446,7 +448,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
   );
 
   const hasSelection = selectedIds.length > 0;
-  const canTransfer = hasSelection && availableTransferGroups.length > 0;
+  const canTransfer = hasSelection;
   const canCreateBots = hasSelection && selectedIds.every((id) => detailsById.has(id));
   const canInvertSelection = backtestInfos.length > 0;
 
@@ -486,7 +488,10 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     if (!canTransfer) {
       return;
     }
+    const hasAvailableGroups = availableTransferGroups.length > 0;
+    setTransferMode(hasAvailableGroups ? 'existing' : 'new');
     setTransferTargetGroupId(availableTransferGroups[0]?.id ?? null);
+    setNewGroupName('');
     setTransferModalOpen(true);
   }, [availableTransferGroups, canTransfer]);
 
@@ -494,10 +499,27 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     if (!group) {
       return;
     }
-    if (!transferTargetGroupId) {
+    if (selectedIds.length === 0) {
       return;
     }
-    if (selectedIds.length === 0) {
+    if (transferMode === 'new') {
+      const createdGroup = createGroup(newGroupName, selectedIds);
+      if (!createdGroup) {
+        messageApi.error('Укажите имя новой группы.');
+        return;
+      }
+      const updatedGroup = removeBacktests(group.id, selectedIds);
+      if (!updatedGroup) {
+        messageApi.error('Не удалось перенести бэктесты.');
+        return;
+      }
+      syncStateWithGroupIds(updatedGroup.backtestIds);
+      messageApi.success(`Перенесено ${selectedIds.length} бэктестов в «${createdGroup.name}».`);
+      setTransferTargetGroupId(createdGroup.id);
+      setTransferModalOpen(false);
+      return;
+    }
+    if (!transferTargetGroupId) {
       return;
     }
     const transferResult = transferBacktests(group.id, transferTargetGroupId, selectedIds);
@@ -508,7 +530,18 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     syncStateWithGroupIds(transferResult.source.backtestIds);
     messageApi.success(`Перенесено ${selectedIds.length} бэктестов.`);
     setTransferModalOpen(false);
-  }, [group, messageApi, selectedIds, syncStateWithGroupIds, transferBacktests, transferTargetGroupId]);
+  }, [
+    createGroup,
+    group,
+    messageApi,
+    newGroupName,
+    removeBacktests,
+    selectedIds,
+    syncStateWithGroupIds,
+    transferBacktests,
+    transferMode,
+    transferTargetGroupId,
+  ]);
 
   const handleOpenCreateBots = useCallback(() => {
     if (!hasSelection) {
@@ -734,18 +767,39 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
         okText="Перенести"
         cancelText="Отмена"
         onOk={handleTransferSubmit}
-        okButtonProps={{ disabled: !transferTargetGroupId }}
+        okButtonProps={{
+          disabled: transferMode === 'new' ? newGroupName.trim().length === 0 : transferTargetGroupId === null,
+        }}
         destroyOnClose
       >
-        {availableTransferGroups.length === 0 ? (
-          <p>Нет доступных групп для переноса.</p>
+        <Radio.Group
+          value={transferMode}
+          onChange={(event) => setTransferMode(event.target.value as 'existing' | 'new')}
+          className="u-mb-16"
+        >
+          <Radio.Button value="existing" disabled={availableTransferGroups.length === 0}>
+            В существующую группу
+          </Radio.Button>
+          <Radio.Button value="new">В новую группу</Radio.Button>
+        </Radio.Group>
+
+        {transferMode === 'existing' ? (
+          availableTransferGroups.length === 0 ? (
+            <p>Нет доступных групп для переноса.</p>
+          ) : (
+            <Select
+              placeholder="Выберите группу"
+              value={transferTargetGroupId ?? undefined}
+              className="u-full-width"
+              options={availableTransferGroups.map((item) => ({ value: item.id, label: item.name }))}
+              onChange={(value) => setTransferTargetGroupId(value)}
+            />
+          )
         ) : (
-          <Select
-            placeholder="Выберите группу"
-            value={transferTargetGroupId ?? undefined}
-            className="u-full-width"
-            options={availableTransferGroups.map((item) => ({ value: item.id, label: item.name }))}
-            onChange={(value) => setTransferTargetGroupId(value)}
+          <Input
+            placeholder="Название новой группы"
+            value={newGroupName}
+            onChange={(event) => setNewGroupName(event.target.value)}
           />
         )}
       </Modal>
