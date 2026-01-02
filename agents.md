@@ -10,3 +10,4 @@
 - Expose all application-facing logic through services (e.g. `src/services/*`), which consume API DTOs, map them into domain entities (DTO suffix removed), and encapsulate caching, aggregation, pagination helpers, etc.
 - Every data contract coming from the backend must be represented as a `...Dto` interface. DTO shapes mirror backend responses exactly and must never be altered for convenience—derive separate domain types instead.
 - In the bots page filters, use Ant Design `Select` components instead of native selects for consistency.
+- For one-time onboarding or announcement modals, guard display with `readStorageValue`/`writeStorageValue` so users see them only once.

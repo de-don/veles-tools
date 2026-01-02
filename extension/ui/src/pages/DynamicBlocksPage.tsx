@@ -1,4 +1,11 @@
-import { ControlOutlined, DeleteOutlined, PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import {
+  ControlOutlined,
+  DeleteOutlined,
+  InfoCircleOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
 import type { SelectProps } from 'antd';
 import {
   Alert,
@@ -72,6 +79,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
   } = useDynamicBlocks();
   const [manualRunPending, setManualRunPending] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [addForm] = Form.useForm<AddFormValues>();
   const updateConfig = useCallback(
     (config: DynamicBlockConfig, patch: Partial<DynamicBlockConfig>) => {
@@ -300,6 +308,11 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
           Автоматически регулирует максимальное количество одновременных позиций для выбранных API-ключей на основе
           текущего числа открытых сделок.
         </p>
+        <div>
+          <Button type="default" size="small" icon={<InfoCircleOutlined />} onClick={() => setInfoModalOpen(true)}>
+            Как это работает
+          </Button>
+        </div>
       </header>
 
       {!extensionReady && (
@@ -437,6 +450,29 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             <InputNumber min={1} className="u-full-width" size="small" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="Как работает динамическая блокировка"
+        open={infoModalOpen}
+        onCancel={() => setInfoModalOpen(false)}
+        footer={null}
+      >
+        <Space direction="vertical" size={12}>
+          <Typography.Text>
+            Динамическая блокировка автоматически подстраивает лимит открытых позиций для каждого API-ключа в пределах
+            заданного диапазона.
+          </Typography.Text>
+          <Typography.Text>
+            Лимит открытых сделок плавно увеличивается и уменьшается в зависимости от текущего числа открытых позиций,
+            позволяя избегать резкой нагрузки на баланс аккаунта. Изменения происходят не чаще указанного таймаута.
+          </Typography.Text>
+          <Typography.Text type="secondary">
+            Установите минимальную и максимальную блокировку, а также таймаут между изменениями. Чем чаще обновляется
+            информация о сделках (настройка в общем разделе), тем точнее будет регулировка блокировки. Имейте в виду,
+            что данный механизм работает только при активном расширении и открытом интерфейсе.
+          </Typography.Text>
+        </Space>
       </Modal>
     </section>
   );

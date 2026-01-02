@@ -16,12 +16,14 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { Alert, Button, Layout, Menu, Popover, Segmented, Space, Tag, Typography } from 'antd';
-import { type PropsWithChildren, useMemo, useState } from 'react';
+import { type PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { APP_NAME, APP_VERSION } from '../config/version';
 import { useThemeMode } from '../context/ThemeContext';
+import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
 import SupportProjectModal from './SupportProjectModal';
+import TelegramChannelModal from './TelegramChannelModal';
 
 interface AppLayoutProps extends PropsWithChildren {
   extensionReady: boolean;
@@ -42,6 +44,8 @@ const { Header, Sider, Content } = Layout;
 const REPOSITORY_URL = 'https://github.com/de-don/veles-tools';
 const AUTHOR_URL = 'https://t.me/dontsov';
 const CHROME_WEBSTORE_URL = 'https://chromewebstore.google.com/detail/veles-tools/hgfhapnhcnncjplmjkbbljhjpcjilbgm';
+const TELEGRAM_CHANNEL_URL = 'https://t.me/veles_tools';
+const TELEGRAM_MODAL_KEY = '__VELES_TG_CHANNEL_SHOWN';
 
 const formatTimestamp = (timestamp: number | null) => {
   if (!timestamp) {
@@ -65,8 +69,16 @@ const resolveSelectedKey = (pathname: string, navigationKeys: string[]) => {
 const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenVeles }: AppLayoutProps) => {
   const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
   const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [telegramModalOpen, setTelegramModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (readStorageValue(TELEGRAM_MODAL_KEY) !== 'shown') {
+      setTelegramModalOpen(true);
+      writeStorageValue(TELEGRAM_MODAL_KEY, 'shown');
+    }
+  }, []);
 
   const navigationItems = [
     {
@@ -183,7 +195,10 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
         <div className="app-layout__sider-footer">
           <Space direction="vertical" size={8}>
             <Typography.Link href={CHROME_WEBSTORE_URL} target="_blank" rel="noreferrer noopener">
-              Расширение в Chrome Web Store
+              Страница в Chrome Web Store
+            </Typography.Link>
+            <Typography.Link href={TELEGRAM_CHANNEL_URL} target="_blank" rel="noreferrer noopener">
+              Telegram-канал Veles Tools
             </Typography.Link>
             <Typography.Link href={REPOSITORY_URL} target="_blank" rel="noreferrer noopener">
               Исходный код на GitHub
@@ -231,6 +246,11 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
         <Content className="app-layout__content">{children}</Content>
       </Layout>
       <SupportProjectModal open={supportModalOpen} onClose={() => setSupportModalOpen(false)} />
+      <TelegramChannelModal
+        open={telegramModalOpen}
+        onClose={() => setTelegramModalOpen(false)}
+        channelUrl={TELEGRAM_CHANNEL_URL}
+      />
     </Layout>
   );
 };
