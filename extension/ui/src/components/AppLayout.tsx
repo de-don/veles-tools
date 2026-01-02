@@ -2,21 +2,25 @@ import {
   AppstoreOutlined,
   CheckCircleOutlined,
   CloudUploadOutlined,
+  ControlOutlined,
   ExclamationCircleOutlined,
   ExperimentOutlined,
   HeartFilled,
   HomeOutlined,
+  MoonOutlined,
   ReloadOutlined,
   RobotOutlined,
   SettingOutlined,
+  SunOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Alert, Button, Layout, Menu, Popover, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Layout, Menu, Popover, Segmented, Space, Tag, Typography } from 'antd';
 import { type PropsWithChildren, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { APP_NAME, APP_VERSION } from '../config/version';
+import { useThemeMode } from '../context/ThemeContext';
 import SupportProjectModal from './SupportProjectModal';
 
 interface AppLayoutProps extends PropsWithChildren {
@@ -39,48 +43,6 @@ const REPOSITORY_URL = 'https://github.com/de-don/veles-tools';
 const AUTHOR_URL = 'https://t.me/dontsov';
 const CHROME_WEBSTORE_URL = 'https://chromewebstore.google.com/detail/veles-tools/hgfhapnhcnncjplmjkbbljhjpcjilbgm';
 
-const NAVIGATION_ITEMS = [
-  {
-    key: '/',
-    label: 'Главная',
-    icon: <HomeOutlined />,
-  },
-  {
-    key: '/active-deals',
-    label: 'Активные сделки',
-    icon: <ThunderboltOutlined />,
-  },
-  {
-    key: '/bots',
-    label: 'Мои боты',
-    icon: <RobotOutlined />,
-  },
-  {
-    key: '/import',
-    label: 'Импорт ботов',
-    icon: <CloudUploadOutlined />,
-  },
-  {
-    key: '/backtests',
-    label: 'Бэктесты',
-    icon: <ExperimentOutlined />,
-  },
-  {
-    key: '/backtest-groups',
-    label: 'Группы бэктестов',
-    icon: <AppstoreOutlined />,
-  },
-  {
-    key: '/settings',
-    label: 'Настройки',
-    icon: <SettingOutlined />,
-  },
-] satisfies MenuProps['items'];
-
-const NAVIGATION_KEYS = NAVIGATION_ITEMS.map((item) => (item && 'key' in item ? item.key : null)).filter(
-  (key): key is string => typeof key === 'string',
-);
-
 const formatTimestamp = (timestamp: number | null) => {
   if (!timestamp) {
     return '—';
@@ -88,24 +50,75 @@ const formatTimestamp = (timestamp: number | null) => {
   return new Date(timestamp).toLocaleTimeString();
 };
 
-const resolveSelectedKey = (pathname: string) => {
+const resolveSelectedKey = (pathname: string, navigationKeys: string[]) => {
   if (!pathname || pathname === '/') {
     return '/';
   }
   const normalized = pathname.replace(/\/+$/, '');
-  if (NAVIGATION_KEYS.includes(normalized)) {
+  if (navigationKeys.includes(normalized)) {
     return normalized;
   }
-  const nestedMatch = NAVIGATION_KEYS.find((key) => key !== '/' && normalized.startsWith(`${key}/`));
+  const nestedMatch = navigationKeys.find((key) => key !== '/' && normalized.startsWith(`${key}/`));
   return nestedMatch ?? '/';
 };
 
 const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenVeles }: AppLayoutProps) => {
+  const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const selectedKey = useMemo(() => resolveSelectedKey(location.pathname), [location.pathname]);
+  const navigationItems = [
+    {
+      key: '/',
+      label: 'Главная',
+      icon: <HomeOutlined />,
+    },
+    {
+      key: '/active-deals',
+      label: 'Активные сделки',
+      icon: <ThunderboltOutlined />,
+    },
+    {
+      key: '/bots',
+      label: 'Мои боты',
+      icon: <RobotOutlined />,
+    },
+    {
+      key: '/dynamic-blocks',
+      label: 'Динамич. блок.',
+      icon: <ControlOutlined />,
+    },
+    {
+      key: '/import',
+      label: 'Импорт ботов',
+      icon: <CloudUploadOutlined />,
+    },
+    {
+      key: '/backtests',
+      label: 'Бэктесты',
+      icon: <ExperimentOutlined />,
+    },
+    {
+      key: '/backtest-groups',
+      label: 'Группы бэктестов',
+      icon: <AppstoreOutlined />,
+    },
+    {
+      key: '/settings',
+      label: 'Настройки',
+      icon: <SettingOutlined />,
+    },
+  ];
+
+  const navigationKeys = (navigationItems ?? [])
+    .map((item) => (item && 'key' in item ? (item.key as string | undefined) : undefined))
+    .filter((key): key is string => Boolean(key));
+
+  const selectedKey = useMemo(
+    () => resolveSelectedKey(location.pathname, navigationKeys),
+    [location.pathname, navigationKeys],
+  );
   const lastCheckedLabel = formatTimestamp(connectionStatus.lastChecked);
 
   const brand = (
@@ -128,8 +141,10 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
     </Tag>
   );
 
+  const velesOriginLabel = (connectionStatus.origin ?? 'https://veles.finance').replace(/^https?:\/\//, '');
+
   const connectionPopover = (
-    <Space direction="vertical" size={8} style={{ minWidth: 220 }}>
+    <Space direction="vertical" size={8} className="app-layout__popover">
       <Typography.Text type="secondary">Обновлено: {lastCheckedLabel}</Typography.Text>
       <Typography.Text type={connectionStatus.ok ? 'secondary' : 'danger'}>
         {connectionStatus.ok
@@ -150,11 +165,11 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
   };
 
   return (
-    <Layout className="app-layout" style={{ minHeight: '100vh' }}>
+    <Layout className="app-layout">
       <Sider theme="light" width={240} className="app-layout__sider">
         {brand}
         <nav className="app-layout__nav">
-          <Menu mode="inline" items={NAVIGATION_ITEMS} selectedKeys={[selectedKey]} onClick={handleMenuClick} />
+          <Menu mode="inline" items={navigationItems} selectedKeys={[selectedKey]} onClick={handleMenuClick} />
         </nav>
         {!extensionReady && (
           <Alert
@@ -191,12 +206,21 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
           <Space size="middle" wrap>
             {!connectionStatus.ok && (
               <Button type="primary" onClick={onOpenVeles}>
-                Открыть veles.finance
+                Открыть {velesOriginLabel}
               </Button>
             )}
+            <Segmented
+              size="middle"
+              options={[
+                { label: 'Светлая', value: 'light', icon: <SunOutlined /> },
+                { label: 'Тёмная', value: 'dark', icon: <MoonOutlined /> },
+              ]}
+              value={themeMode}
+              onChange={(value) => setThemeMode(value as 'light' | 'dark')}
+            />
             <Button
               type="primary"
-              icon={<HeartFilled style={{ color: '#fff' }} />}
+              icon={<HeartFilled className="support-button__icon" />}
               className="support-button support-button--wave"
               onClick={() => setSupportModalOpen(true)}
             >

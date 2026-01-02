@@ -16,17 +16,15 @@ This directory contains shared utilities used across the UI. Every exported help
 - `calculateMaxDrawdown(values)` – scans an equity series and returns the maximum peak-to-trough drop before a new high.
 
 ## `activeDealsHistory.ts`
-- `DEAL_HISTORY_LIMIT`, `DEAL_HISTORY_WINDOW_MS`, `PORTFOLIO_EQUITY_POINT_LIMIT` – retention/size constants (currently unbounded).
-- `filterDealHistoryByTimeWindow(points, windowMs, now)` – keeps only history points newer than `now - windowMs`.
-- `clampDealHistory(points, limit?)` – returns a shallow copy of history; limit parameter is accepted for API compatibility.
-- `mapHistoryToSnapshot(history, limit?)` / `snapshotHistoryToMap(snapshot)` – convert history maps to storage-friendly records and back with validation.
-- `isDealHistorySnapshot(value)` – runtime guard that ensures a parsed snapshot matches the expected schema.
-- `sortDealHistoryPoints(points)` – sorts deal history entries by timestamp without mutating the input.
-- `createEmptyPortfolioEquitySeries()` – returns an empty portfolio series scaffold.
+- `ACTIVE_DEALS_HISTORY_POINT_LIMIT`, `DEAL_HISTORY_WINDOW_MS` – retention constants for stored history (currently only the point cap is enforced).
+- `filterDealHistoryByTimeWindow(points, windowMs, now)` – keeps only deal history points newer than `now - windowMs`.
+- `isDealHistorySnapshot(value)` / `snapshotHistoryToMap(snapshot)` – runtime validation and conversion helpers for deal history snapshots.
+- `mapExecutedOrdersToSnapshot(history)` / `snapshotExecutedOrdersToMap(snapshot)` / `mergeExecutedOrdersHistory(current, incoming, startTimestamp, limit?)` – utilities for validating, storing and deduplicating executed order history with trimming by the earliest chart timestamp.
+- `getSeriesStartTimestamp(series)` – returns the earliest timestamp in a portfolio equity series or `null` when empty.
+- `createEmptyPortfolioEquitySeries()` / `buildPortfolioEquitySeries(points)` – normalise portfolio equity series with recomputed min/max values.
 - `sortPortfolioEquityPoints(points)` – sorts equity points chronologically without mutating the original array.
+- `compressTimedPoints(points)` – sorts timed points and removes every other entry to halve the history size.
 - `thinTimedPointsFromEnd(points, limit)` – sorts timed points then removes every other entry from the end until the series fits the limit.
-- `buildPortfolioEquitySeries(points)` – normalises a set of equity points into a series with recomputed min/max values.
-- `trimPortfolioEquitySeries(series, retentionMs)` – rebuilds a portfolio equity series after sorting and thinning it to the specified limit.
 
 ## `activeDeals.ts`
 - `computeDealMetrics(deal)` – derives exposure, P&L, average/mark prices, executed order counts, and the nearest open averaging order price (BUY for long, SELL for short) for a deal snapshot.
@@ -39,3 +37,21 @@ This directory contains shared utilities used across the UI. Every exported help
 - `areZoomRangesEqual(left?, right?)` – compares two zoom ranges by `start`/`end` values.
 - `ACTIVE_DEALS_ZOOM_PRESET_OPTIONS` – available preset definitions for the zoom segmented control.
 - `isActiveDealsZoomPreset(value)` – runtime guard for persisted preset keys.
+
+## `chartOptions.ts`
+- `DataZoomRange` – shape describing optional zoom bounds for ECharts data zoom components.
+- `createPortfolioEquityChartOptions(series, range?, groupedSeries?, executedOrders?, legendSelection?, filterMode?, themeMode?)` – builds ECharts options for portfolio equity charts with optional grouped series, executed orders, zoom range handling, and theme mode.
+- `createAggregateRiskChartOptions(series, range?, filterMode?, themeMode?)` – builds ECharts options for aggregated risk charts with optional zoom range handling and theme mode.
+- `LimitImpactPoint` – shape describing points used in limit impact/efficiency charts.
+- `createLimitImpactChartOptions(points, themeMode?)` – builds ECharts options for limit impact charts with optional theme mode.
+- `createLimitEfficiencyChartOptions(points, themeMode?)` – builds ECharts options for limit efficiency charts with optional theme mode.
+- `createDailyConcurrencyChartOptions(records, stats?, range?, filterMode?, themeMode?)` – builds ECharts options for daily concurrency charts with optional summary stats, zoom range handling, and theme mode.
+
+## `botUpdatePayload.ts`
+- `buildBotUpdatePayload(bot, overrides)` – creates a DTO payload for updating an existing bot while applying deposit/leverage overrides and keeping other config fields intact.
+
+## `cabinetUrls.ts`
+- `buildVelesUrl(path?)` – builds an absolute URL to the active veles.* origin derived from the stored connection or current location, normalising slashes.
+- `buildCabinetUrl(path?)` – constructs a `cabinet` URL on the active origin; defaults to the cabinet root when the path is empty.
+- `buildBotDetailsUrl(botId)` – produces a cabinet URL pointing to a bot details page using a validated numeric ID (number or numeric string).
+- `buildDealStatisticsUrl(dealId)` – produces a cabinet URL for a deal statistics page using a validated numeric ID.

@@ -7,6 +7,7 @@ import BacktestModal, { type BacktestVariant } from '../components/BacktestModal
 import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { type ImportedBotEntry, useImportedBots } from '../context/ImportedBotsContext';
+import { buildVelesUrl } from '../lib/cabinetUrls';
 import { resolveBotStatusColor } from '../lib/statusColors';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import { BOT_STATUS_VALUES, type BotStatus, type BotSummary } from '../types/bots';
@@ -169,7 +170,7 @@ const buildImportedEntry = (alias: string, strategy: BotStrategy): ImportedBotEn
   return {
     id: alias,
     alias,
-    sourceUrl: `https://veles.finance/share/${alias}`,
+    sourceUrl: buildVelesUrl(`share/${alias}`),
     summary,
     strategy,
     savedAt: Date.now(),
@@ -185,6 +186,8 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
   const [activeModal, setActiveModal] = useState<BacktestVariant | null>(null);
   const [selection, setSelection] = useState<SelectionMap>(new Map());
   const [selectionDetailsOpen, setSelectionDetailsOpen] = useState(false);
+
+  const shareBaseUrl = buildVelesUrl('share');
 
   const importedIds = useMemo(() => new Set(importedBots.map((entry) => entry.id)), [importedBots]);
   const lastSelectedKeyRef = useRef<string | null>(null);
@@ -378,7 +381,7 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
           <div>
             <Tag
               color={resolveBotStatusColor(entry.summary.status)}
-              style={{ marginBottom: entry.summary.substatus ? 4 : 0 }}
+              className={entry.summary.substatus ? 'tag--with-substatus' : undefined}
             >
               {entry.summary.status}
             </Tag>
@@ -469,19 +472,18 @@ const ImportBotsPage = ({ extensionReady }: ImportBotsPageProps) => {
 
       <Card title="Добавление новых ботов">
         <p className="panel__description">
-          Поддерживаются ссылки вида https://veles.finance/share/&lt;код&gt;, разделённые запятой или с новой строки.
-          Можно вставлять сами коды.
+          Поддерживаются ссылки вида {`${shareBaseUrl}/<код>`}, разделённые запятой или с новой строки. Можно вставлять
+          сами коды.
         </p>
         <textarea
-          className="input"
+          className="input u-full-width"
           value={inputValue}
-          style={{ width: '100%' }}
           onChange={(event) => setInputValue(event.target.value)}
-          placeholder={`https://veles.finance/share/pvXzq
-https://veles.finance/share/q1w2e`}
+          placeholder={`${shareBaseUrl}/pvXzq
+${shareBaseUrl}/q1w2e`}
           rows={4}
         />
-        <Space className="panel__actions" style={{ marginTop: 12 }} wrap>
+        <Space className="panel__actions u-mt-12" wrap>
           <Button type="primary" onClick={handleImport} loading={isImporting} disabled={!extensionReady}>
             Импортировать
           </Button>
@@ -490,14 +492,9 @@ https://veles.finance/share/q1w2e`}
           </Button>
         </Space>
         {logs.length > 0 && (
-          <ul className="panel__list" style={{ marginTop: 16 }}>
+          <ul className="panel__list u-mt-16">
             {logs.map((log) => (
-              <li
-                key={log.id}
-                style={{
-                  color: log.kind === 'error' ? '#ef4444' : log.kind === 'success' ? '#10b981' : '#94a3b8',
-                }}
-              >
+              <li key={log.id} className={`panel__list-item panel__list-item--${log.kind}`}>
                 {log.message}
               </li>
             ))}
@@ -576,7 +573,7 @@ https://veles.finance/share/q1w2e`}
         {selectedBotsList.length === 0 ? (
           <Typography.Text type="secondary">Список пуст — выберите ботов в таблице.</Typography.Text>
         ) : (
-          <ul className="panel__list--compact" style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <ul className="panel__list--compact panel__list--scroll">
             {selectedBotsList.map((bot) => (
               <li key={bot.id}>
                 <span className="chip">
@@ -585,7 +582,7 @@ https://veles.finance/share/q1w2e`}
                     {bot.exchange} · {bot.algorithm}
                   </span>
                 </span>
-                <span style={{ marginLeft: 8, color: '#94a3b8' }}>ID: {bot.id}</span>
+                <span className="u-ml-8 text-muted">ID: {bot.id}</span>
               </li>
             ))}
           </ul>

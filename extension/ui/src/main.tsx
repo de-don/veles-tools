@@ -1,5 +1,3 @@
-import { ConfigProvider } from 'antd';
-import ruRU from 'antd/locale/ru_RU';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -17,8 +15,6 @@ if (!(container instanceof HTMLElement)) {
 
 ReactDOM.createRoot(container).render(
   <React.StrictMode>
-    <ConfigProvider locale={ruRU} theme={{ token: { fontFamily: '"Inter", sans-serif' } }}>
-      <App />
-    </ConfigProvider>
+    <App />
   </React.StrictMode>,
 );

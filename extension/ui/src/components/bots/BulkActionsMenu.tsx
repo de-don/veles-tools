@@ -1,4 +1,11 @@
-import { CopyOutlined, DeleteOutlined, DownOutlined, PlayCircleOutlined, StopOutlined } from '@ant-design/icons';
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  EditOutlined,
+  PlayCircleOutlined,
+  StopOutlined,
+} from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { Button, Dropdown, message } from 'antd';
 import type { ButtonProps } from 'antd/es/button';
@@ -8,10 +15,11 @@ import { deleteBot, startBot, stopBot } from '../../api/bots';
 import type { ApiKey } from '../../types/apiKeys';
 import type { TradingBot } from '../../types/bots';
 import BulkActionModal, { type BulkActionCopy, type BulkActionResult } from './BulkActionModal';
+import BulkEditBotsModal from './BulkEditBotsModal';
 import CloneBotsModal from './CloneBotsModal';
 
 type BulkActionKey = 'delete' | 'stop' | 'start';
-type BulkMenuKey = BulkActionKey | 'clone';
+type BulkMenuKey = BulkActionKey | 'clone' | 'edit' | 'copy-currencies';
 
 interface BulkActionConfig {
   key: BulkActionKey;
@@ -128,8 +136,18 @@ const buildMenuItems = (configs: Record<BulkActionKey, BulkActionConfig>): MenuP
     icon: configs.stop.menuIcon,
   },
   {
+    key: 'edit',
+    label: 'Редактировать',
+    icon: <EditOutlined />,
+  },
+  {
     key: 'clone',
     label: 'Клонировать',
+    icon: <CopyOutlined />,
+  },
+  {
+    key: 'copy-currencies',
+    label: 'Скопировать список валют',
     icon: <CopyOutlined />,
   },
   { type: 'divider' },
@@ -147,8 +165,38 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
   const [botsSnapshot, setBotsSnapshot] = useState<TradingBot[]>([]);
   const [isCloneModalOpen, setCloneModalOpen] = useState(false);
   const [cloneBotsSnapshot, setCloneBotsSnapshot] = useState<TradingBot[]>([]);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [editBotsSnapshot, setEditBotsSnapshot] = useState<TradingBot[]>([]);
 
   const menuItems = useMemo(() => buildMenuItems(ACTION_CONFIGS), []);
+
+  const handleCopyCurrencies = useCallback(async () => {
+    if (navigator.clipboard?.writeText == null) {
+      messageApi.error('Буфер обмена недоступен');
+      return;
+    }
+    const uniqueSymbols = new Set<string>();
+    bots.forEach((bot) => {
+      bot.symbols.forEach((symbol) => {
+        const trimmed = symbol.trim();
+        if (trimmed) {
+          const [base] = trimmed.split('/');
+          uniqueSymbols.add(base);
+        }
+      });
+    });
+    const payload = Array.from(uniqueSymbols).join(' ');
+    if (!payload) {
+      messageApi.warning('Нет валют для копирования.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+      messageApi.success('Список валют скопирован.');
+    } catch {
+      messageApi.error('Не удалось скопировать в буфер обмена');
+    }
+  }, [bots, messageApi]);
 
   const handleMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
     (info) => {
@@ -161,11 +209,20 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
         setCloneModalOpen(true);
         return;
       }
+      if (menuKey === 'edit') {
+        setEditBotsSnapshot([...bots]);
+        setEditModalOpen(true);
+        return;
+      }
+      if (menuKey === 'copy-currencies') {
+        void handleCopyCurrencies();
+        return;
+      }
       const actionKey = menuKey as BulkActionKey;
       setBotsSnapshot([...bots]);
       setActiveAction(actionKey);
     },
-    [bots],
+    [bots, handleCopyCurrencies],
   );
 
   const handleModalClose = useCallback(() => {
@@ -176,6 +233,11 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
   const handleCloneClose = useCallback(() => {
     setCloneModalOpen(false);
     setCloneBotsSnapshot([]);
+  }, []);
+
+  const handleEditClose = useCallback(() => {
+    setEditModalOpen(false);
+    setEditBotsSnapshot([]);
   }, []);
 
   const handleCloneCompleted = useCallback(
@@ -190,6 +252,29 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
       }
 
       if (succeeded > 0) {
+        onReloadRequested();
+      }
+    },
+    [messageApi, onReloadRequested],
+  );
+
+  const handleEditCompleted = useCallback(
+    (result: BulkActionResult) => {
+      const processedTotal = result.succeeded.length + result.failed.length;
+
+      if (processedTotal > 0) {
+        if (result.failed.length === 0) {
+          messageApi.success(`Обновлено ботов: ${result.succeeded.length}.`);
+        } else if (result.succeeded.length === 0) {
+          messageApi.error('Не удалось обновить выбранных ботов.');
+        } else {
+          messageApi.warning(
+            `Обновлено ${result.succeeded.length} из ${processedTotal}. Ошибок: ${result.failed.length}.`,
+          );
+        }
+      }
+
+      if (result.succeeded.length > 0) {
         onReloadRequested();
       }
     },
@@ -226,6 +311,7 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
   const currentAction = activeAction ? ACTION_CONFIGS[activeAction] : null;
   const currentBots = activeAction ? botsSnapshot : [];
   const cloneBots = isCloneModalOpen ? cloneBotsSnapshot : [];
+  const editBots = isEditModalOpen ? editBotsSnapshot : [];
 
   return (
     <>
@@ -245,6 +331,10 @@ const BulkActionsMenu = ({ bots, apiKeys, onReloadRequested, onSelectionUpdate }
           onClose={handleModalClose}
           onCompleted={(result) => handleCompleted(activeAction, result)}
         />
+      )}
+
+      {isEditModalOpen && (
+        <BulkEditBotsModal open bots={editBots} onClose={handleEditClose} onCompleted={handleEditCompleted} />
       )}
 
       {isCloneModalOpen && (

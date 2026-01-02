@@ -1,16 +1,23 @@
+import { theme as antdTheme, ConfigProvider } from 'antd';
+import ruRU from 'antd/locale/ru_RU';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import AppLayout, { type ConnectionStatus } from './components/AppLayout';
 import { ActiveDealsProvider } from './context/ActiveDealsContext';
 import { BacktestGroupsProvider } from './context/BacktestGroupsContext';
+import { DealsRefreshProvider } from './context/DealsRefreshContext';
+import { DynamicBlocksProvider } from './context/DynamicBlocksContext';
 import { ImportedBotsProvider } from './context/ImportedBotsContext';
 import { RequestDelayProvider } from './context/RequestDelayContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { buildCabinetUrl } from './lib/cabinetUrls';
 import { isExtensionRuntime, pingConnection, readConnectionStatus, updateRequestDelay } from './lib/extensionMessaging';
 import ActiveDealsPage from './pages/ActiveDealsPage';
 import BacktestGroupDetailsPage from './pages/BacktestGroupDetailsPage';
 import BacktestGroupsPage from './pages/BacktestGroupsPage';
 import BacktestsPage from './pages/BacktestsPage';
 import BotsPage from './pages/BotsPage';
+import DynamicBlocksPage from './pages/DynamicBlocksPage';
 import HomePage from './pages/HomePage';
 import ImportBotsPage from './pages/ImportBotsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -20,6 +27,7 @@ import {
   readRequestDelay,
   writeRequestDelay,
 } from './storage/requestDelayStore';
+import { readThemeMode, type ThemeMode, writeThemeMode } from './storage/themePreferences';
 
 const App = () => {
   const extensionReady = useMemo(isExtensionRuntime, []);
@@ -27,6 +35,7 @@ const App = () => {
     const stored = readRequestDelay();
     return stored ?? DEFAULT_REQUEST_DELAY_MS;
   });
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode());
 
   useEffect(() => {
     if (!extensionReady) {
@@ -41,6 +50,21 @@ const App = () => {
   useEffect(() => {
     writeRequestDelay(requestDelay);
   }, [requestDelay]);
+
+  useEffect(() => {
+    writeThemeMode(themeMode);
+  }, [themeMode]);
+
+  const handleThemeModeChange = useCallback((nextMode: ThemeMode) => {
+    setThemeMode(nextMode);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    document.documentElement.dataset.theme = themeMode;
+  }, [themeMode]);
 
   const setDelayMs = useCallback((value: number) => {
     setRequestDelay((prev) => {
@@ -91,7 +115,7 @@ const App = () => {
   }, [refreshConnectionStatus]);
 
   const openVelesTab = useCallback(() => {
-    const targetUrl = 'https://veles.finance/cabinet';
+    const targetUrl = buildCabinetUrl();
 
     if (!extensionReady || typeof chrome === 'undefined' || !chrome.tabs?.create) {
       window.open(targetUrl, '_blank', 'noopener');
@@ -177,38 +201,57 @@ const App = () => {
   }, [connectionStatus.origin]);
 
   return (
-    <HashRouter>
-      <ImportedBotsProvider>
-        <ActiveDealsProvider extensionReady={extensionReady}>
-          <BacktestGroupsProvider>
-            <RequestDelayProvider
-              value={{ delayMs: requestDelay, setDelayMs, defaultDelayMs: DEFAULT_REQUEST_DELAY_MS }}
-            >
-              <AppLayout
-                extensionReady={extensionReady}
-                connectionStatus={connectionStatus}
-                onPing={triggerPing}
-                onOpenVeles={openVelesTab}
-              >
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
-                  <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
-                  <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
-                  <Route path="/backtest-groups" element={<BacktestGroupsPage />} />
-                  <Route
-                    path="/backtest-groups/:groupId"
-                    element={<BacktestGroupDetailsPage extensionReady={extensionReady} />}
-                  />
-                  <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                </Routes>
-              </AppLayout>
-            </RequestDelayProvider>
-          </BacktestGroupsProvider>
-        </ActiveDealsProvider>
-      </ImportedBotsProvider>
-    </HashRouter>
+    <ConfigProvider
+      locale={ruRU}
+      theme={{
+        cssVar: true,
+        algorithm: themeMode === 'dark' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        token: { fontFamily: '"Inter", sans-serif' },
+      }}
+    >
+      <ThemeProvider value={{ mode: themeMode, setMode: handleThemeModeChange }}>
+        <HashRouter>
+          <DealsRefreshProvider>
+            <DynamicBlocksProvider extensionReady={extensionReady}>
+              <ImportedBotsProvider>
+                <ActiveDealsProvider extensionReady={extensionReady}>
+                  <BacktestGroupsProvider>
+                    <RequestDelayProvider
+                      value={{ delayMs: requestDelay, setDelayMs, defaultDelayMs: DEFAULT_REQUEST_DELAY_MS }}
+                    >
+                      <AppLayout
+                        extensionReady={extensionReady}
+                        connectionStatus={connectionStatus}
+                        onPing={triggerPing}
+                        onOpenVeles={openVelesTab}
+                      >
+                        <Routes>
+                          <Route path="/" element={<HomePage />} />
+                          <Route path="/active-deals" element={<ActiveDealsPage extensionReady={extensionReady} />} />
+                          <Route path="/bots" element={<BotsPage extensionReady={extensionReady} />} />
+                          <Route path="/backtests" element={<BacktestsPage extensionReady={extensionReady} />} />
+                          <Route path="/backtest-groups" element={<BacktestGroupsPage />} />
+                          <Route
+                            path="/backtest-groups/:groupId"
+                            element={<BacktestGroupDetailsPage extensionReady={extensionReady} />}
+                          />
+                          <Route path="/import" element={<ImportBotsPage extensionReady={extensionReady} />} />
+                          <Route path="/settings" element={<SettingsPage />} />
+                          <Route
+                            path="/dynamic-blocks"
+                            element={<DynamicBlocksPage extensionReady={extensionReady} />}
+                          />
+                        </Routes>
+                      </AppLayout>
+                    </RequestDelayProvider>
+                  </BacktestGroupsProvider>
+                </ActiveDealsProvider>
+              </ImportedBotsProvider>
+            </DynamicBlocksProvider>
+          </DealsRefreshProvider>
+        </HashRouter>
+      </ThemeProvider>
+    </ConfigProvider>
   );
 };
 

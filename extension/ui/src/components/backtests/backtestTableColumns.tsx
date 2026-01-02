@@ -7,6 +7,7 @@ import {
   resolveDealCount,
 } from '../../lib/backtestFormatting';
 import { resolveSortableNumber } from '../../lib/backtestSorting';
+import { buildCabinetUrl } from '../../lib/cabinetUrls';
 import type { BacktestStatistics } from '../../types/backtests';
 
 const buildStringSorter = (selector: (item: BacktestStatistics) => string | null | undefined) => {
@@ -50,7 +51,7 @@ const buildColumns = (): ColumnsType<BacktestStatistics> => [
         <div>{item.name}</div>
         <div className="panel__description">
           ID:{' '}
-          <a href={`https://veles.finance/cabinet/backtests/${item.id}`} target="_blank" rel="noreferrer noopener">
+          <a href={buildCabinetUrl(`backtests/${item.id}`)} target="_blank" rel="noreferrer noopener">
             {item.id}
           </a>
         </div>

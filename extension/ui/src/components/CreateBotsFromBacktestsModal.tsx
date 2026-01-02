@@ -1,5 +1,5 @@
 import type { SelectProps } from 'antd';
-import { Button, Checkbox, Input, Modal, Select } from 'antd';
+import { Button, Checkbox, Flex, Input, Modal, Progress, Select } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { fetchApiKeys } from '../api/apiKeys';
 import type { CreateBotResponse } from '../api/bots';
@@ -246,18 +246,11 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
             value: key.id,
           }))}
           disabled={isRunning || apiKeys.length === 0}
-          style={{ width: '100%' }}
+          className="u-full-width"
         />
       </div>
 
-      <div
-        className="form-grid"
-        style={{
-          display: 'grid',
-          gap: 12,
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        }}
-      >
+      <div className="form-grid form-grid--compact">
         <div className="form-field">
           <label className="form-label" htmlFor="create-bots-deposit">
             Депозит
@@ -300,52 +293,29 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         checked={autoStart}
         disabled={isRunning}
         onChange={(event) => setAutoStart(event.target.checked)}
-        style={{ marginTop: 16 }}
+        className="u-mt-16"
       >
         Запустить после создания
       </Checkbox>
 
-      {error && (
-        <div className="form-error" style={{ marginTop: 12 }}>
-          {error}
-        </div>
-      )}
+      {error && <div className="form-error u-mt-12">{error}</div>}
 
       {isRunning && (
-        <div className="run-log" style={{ marginTop: 16 }}>
-          <div className="run-log__progress">
+        <div className="run-log u-mt-16">
+          <Flex className="run-log__progress" vertical gap={8}>
             <span>
               Выполнено {processed} из {totalTargets}
             </span>
-            <div className="progress-bar">
-              <div className="progress-bar__fill" style={{ width: `${percent}%` }} />
-            </div>
-          </div>
+            <Progress percent={percent} size="small" showInfo={false} />
+          </Flex>
         </div>
       )}
 
       {logs.length > 0 && (
-        <div
-          style={{
-            marginTop: 16,
-            maxHeight: 200,
-            overflowY: 'auto',
-            border: '1px solid #1f2937',
-            borderRadius: 6,
-            padding: 12,
-          }}
-        >
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <div className="modal-log u-mt-16">
+          <ul className="modal-log__list">
             {logs.map((entry) => (
-              <li
-                key={entry.id}
-                style={{
-                  color: entry.level === 'error' ? '#f87171' : entry.level === 'success' ? '#34d399' : '#cbd5f5',
-                  marginBottom: 6,
-                  fontFamily: 'monospace',
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
+              <li key={entry.id} className={`modal-log__entry modal-log__entry--${entry.level}`}>
                 {entry.message}
               </li>
             ))}
@@ -353,14 +323,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         </div>
       )}
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 8,
-          marginTop: 20,
-        }}
-      >
+      <Flex justify="flex-end" gap={8} className="u-mt-20">
         <Button onClick={handleCancel} disabled={isRunning}>
           Отменить
         </Button>
@@ -372,7 +335,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
         >
           {isRunning ? 'Создаём…' : `Создать ботов (${totalTargets})`}
         </Button>
-      </div>
+      </Flex>
     </Modal>
   );
 };

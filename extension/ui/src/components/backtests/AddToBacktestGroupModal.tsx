@@ -52,7 +52,7 @@ const AddToBacktestGroupModal = ({
     >
       {hasGroups ? (
         <>
-          <p style={{ marginBottom: 16 }}>
+          <p className="u-mb-16">
             Выберите группу, в которую будет добавлено {totalSelected} выбранных бэктестов. Повторяющиеся записи будут
             проигнорированы.
           </p>

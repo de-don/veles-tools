@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Button, Card, Modal, Space, Table, Tag, Typography } from 'antd';
+import { Button, Card, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -9,6 +9,7 @@ import BacktestModal, { type BacktestVariant } from '../components/BacktestModal
 import BulkActionsMenu from '../components/bots/BulkActionsMenu';
 import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
+import { buildBotDetailsUrl } from '../lib/cabinetUrls';
 import { resolveBotStatusColor } from '../lib/statusColors';
 import { parseSortDescriptor, serializeSortDescriptor } from '../lib/tableSort';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
@@ -90,9 +91,9 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const [selection, setSelection] = useState<TradingBot[]>([]);
   const [activeModal, setActiveModal] = useState<BacktestVariant | null>(null);
   const [nameFilter, setNameFilter] = useState('');
-  const [apiKeyFilter, setApiKeyFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<BotStatus | ''>('');
-  const [algorithmFilter, setAlgorithmFilter] = useState<BotAlgorithm | ''>('');
+  const [apiKeyFilter, setApiKeyFilter] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<BotStatus[]>([]);
+  const [algorithmFilter, setAlgorithmFilter] = useState<BotAlgorithm | null>(null);
   const [appliedFilters, setAppliedFilters] = useState<BotsListFilters>({});
   const [filtersError, setFiltersError] = useState<string | null>(null);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
@@ -192,7 +193,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
   const apiKeyOptions = useMemo(
     () =>
       apiKeys.map((key) => ({
-        value: String(key.id),
+        value: key.id,
         label: key.name ? `${key.name} · ${formatExchangeLabel(key.exchange)}` : `#${key.id}`,
       })),
     [apiKeys],
@@ -209,7 +210,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
     );
   }, [appliedFilters]);
   const hasFilterDraft =
-    nameFilter.trim().length > 0 || apiKeyFilter !== '' || Boolean(statusFilter) || Boolean(algorithmFilter);
+    nameFilter.trim().length > 0 || apiKeyFilter !== null || statusFilter.length > 0 || Boolean(algorithmFilter);
   const isResetDisabled = !(hasActiveFilters || hasFilterDraft);
 
   const selectedRowKeys = useMemo(() => selection.map((s) => s.id), [selection]);
@@ -270,7 +271,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
             <div>{botRecord.name}</div>
             <div className="panel__description">
               ID:{' '}
-              <a href={`https://veles.finance/cabinet/bot/${botRecord.id}`} target="_blank" rel="noreferrer noopener">
+              <a href={buildBotDetailsUrl(botRecord.id)} target="_blank" rel="noreferrer noopener">
                 {botRecord.id}
               </a>
             </div>
@@ -295,7 +296,10 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         key: 'status',
         render: (_value, botRecord) => (
           <div>
-            <Tag color={resolveBotStatusColor(botRecord.status)} style={{ marginBottom: botRecord.substatus ? 4 : 0 }}>
+            <Tag
+              color={resolveBotStatusColor(botRecord.status)}
+              className={botRecord.substatus ? 'tag--with-substatus' : undefined}
+            >
               {formatStatusLabel(botRecord.status)}
             </Tag>
             {botRecord.substatus && <div className="panel__description">{botRecord.substatus}</div>}
@@ -363,19 +367,18 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
       nextFilters.name = normalizedName;
     }
 
-    if (apiKeyFilter) {
-      const apiKeyValue = Number.parseInt(apiKeyFilter, 10);
-      if (!Number.isSafeInteger(apiKeyValue) || apiKeyValue <= 0) {
+    if (apiKeyFilter !== null) {
+      if (!Number.isSafeInteger(apiKeyFilter) || apiKeyFilter <= 0) {
         setFiltersError('Некорректный выбор API-ключа.');
         return;
       }
 
-      nextFilters.apiKey = apiKeyValue;
+      nextFilters.apiKey = apiKeyFilter;
     }
 
     setFiltersError(null);
-    if (statusFilter) {
-      nextFilters.statuses = [statusFilter];
+    if (statusFilter.length > 0) {
+      nextFilters.statuses = statusFilter;
     }
 
     if (algorithmFilter) {
@@ -389,9 +392,9 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
 
   const handleFiltersReset = () => {
     setNameFilter('');
-    setApiKeyFilter('');
-    setStatusFilter('');
-    setAlgorithmFilter('');
+    setApiKeyFilter(null);
+    setStatusFilter([]);
+    setAlgorithmFilter(null);
     setAppliedFilters({});
     setFiltersError(null);
     setError(null);
@@ -445,9 +448,9 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         <form className="panel__filters" onSubmit={handleFiltersApply}>
           <div className="filter-field">
             <label htmlFor="bots-filter-name">Название</label>
-            <input
+            <Input
               id="bots-filter-name"
-              className="input"
+              className="u-full-width"
               type="text"
               placeholder="Например, BTC"
               value={nameFilter}
@@ -460,63 +463,57 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
           </div>
           <div className="filter-field">
             <label htmlFor="bots-filter-api-key">API-ключ</label>
-            <select
+            <Select<number>
               id="bots-filter-api-key"
-              className="select"
-              value={apiKeyFilter}
-              onChange={(event) => {
-                setApiKeyFilter(event.target.value);
+              allowClear
+              placeholder="Все ключи"
+              className="u-full-width"
+              value={apiKeyFilter ?? undefined}
+              options={apiKeyOptions}
+              onChange={(value) => {
+                setApiKeyFilter(value ?? null);
                 setFiltersError(null);
               }}
-              disabled={apiKeysLoading}
-            >
-              <option value="">Все ключи</option>
-              {apiKeyOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {apiKeysLoading && <span className="form-hint">Загружаем ключи…</span>}
+              loading={apiKeysLoading}
+            />
             {apiKeysError && <span className="form-error">{apiKeysError}</span>}
           </div>
           <div className="filter-field">
             <label htmlFor="bots-filter-status">Статус</label>
-            <select
+            <Select<BotStatus[]>
               id="bots-filter-status"
-              className="select"
+              mode="multiple"
+              allowClear
+              placeholder="Все статусы"
+              className="u-min-w-160"
               value={statusFilter}
-              onChange={(event) => {
-                setStatusFilter(event.target.value as BotStatus | '');
+              options={STATUS_OPTIONS.map((status) => ({
+                value: status,
+                label: formatStatusLabel(status),
+              }))}
+              onChange={(values) => {
+                setStatusFilter(values ?? []);
                 setFiltersError(null);
               }}
-            >
-              <option value="">Все статусы</option>
-              {STATUS_OPTIONS.map((status) => (
-                <option key={status} value={status}>
-                  {formatStatusLabel(status)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div className="filter-field">
             <label htmlFor="bots-filter-algorithm">Тип</label>
-            <select
+            <Select<BotAlgorithm>
               id="bots-filter-algorithm"
-              className="select"
-              value={algorithmFilter}
-              onChange={(event) => {
-                setAlgorithmFilter(event.target.value as BotAlgorithm | '');
+              allowClear
+              placeholder="Все"
+              className="u-full-width"
+              value={algorithmFilter ?? undefined}
+              options={ALGORITHM_OPTIONS.map((algorithm) => ({
+                value: algorithm,
+                label: formatAlgorithmLabel(algorithm),
+              }))}
+              onChange={(value) => {
+                setAlgorithmFilter(value ?? null);
                 setFiltersError(null);
               }}
-            >
-              <option value="">Все</option>
-              {ALGORITHM_OPTIONS.map((algorithm) => (
-                <option key={algorithm} value={algorithm}>
-                  {formatAlgorithmLabel(algorithm)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <Space className="panel__filters-actions">
             <Button type="primary" htmlType="submit">
@@ -526,7 +523,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
               Сбросить фильтры
             </Button>
           </Space>
-          <div className="panel__filters-actions" style={{ marginLeft: 'auto' }}>
+          <div className="panel__filters-actions panel__filters-actions--right">
             <TableColumnSettingsButton
               settings={columnSettings}
               moveColumn={moveColumn}
@@ -536,11 +533,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
             />
           </div>
         </form>
-        {filtersError && (
-          <div className="form-error" style={{ marginTop: 8 }}>
-            {filtersError}
-          </div>
-        )}
+        {filtersError && <div className="form-error u-mt-8">{filtersError}</div>}
 
         {totalSelected > 0 ? (
           <SelectionSummaryBar
@@ -601,7 +594,7 @@ const BotsPage = ({ extensionReady }: BotsPageProps) => {
         {selection.length === 0 ? (
           <Typography.Text type="secondary">Список пуст — выберите ботов в таблице.</Typography.Text>
         ) : (
-          <ul className="panel__list--compact" style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <ul className="panel__list--compact panel__list--scroll">
             {selection.map((bot) => (
               <li key={bot.id}>
                 <span className="chip">

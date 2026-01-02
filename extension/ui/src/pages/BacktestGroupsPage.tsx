@@ -1,4 +1,4 @@
-import { Button, Card, Empty, message, Popconfirm, Table } from 'antd';
+import { Button, Card, Empty, Flex, message, Popconfirm, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -43,7 +43,7 @@ const BacktestGroupsPage = () => {
         key: 'name',
         render: (_value, record) => (
           <div>
-            <Link to={`/backtest-groups/${record.id}`} style={{ fontWeight: 600 }}>
+            <Link to={`/backtest-groups/${record.id}`} className="link--emphasis">
               {record.name}
             </Link>
             <div className="panel__description">ID: {record.id}</div>
@@ -79,7 +79,7 @@ const BacktestGroupsPage = () => {
         title: 'Действия',
         key: 'actions',
         render: (_value, record) => (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <Flex gap={8} wrap>
             <Button size="small" type="primary" onClick={() => navigate(`/backtest-groups/${record.id}`)}>
               Открыть
             </Button>
@@ -100,7 +100,7 @@ const BacktestGroupsPage = () => {
                 Удалить
               </Button>
             </Popconfirm>
-          </div>
+          </Flex>
         ),
         width: 280,
       },
@@ -134,7 +134,7 @@ const BacktestGroupsPage = () => {
           <p className="panel__description">Всего групп: {groups.length}</p>
         </div>
         {groups.length === 0 ? (
-          <Empty description="Группы пока не сохранены." style={{ padding: '48px 0' }} />
+          <Empty description="Группы пока не сохранены." className="empty-state--padded-lg" />
         ) : (
           <Table<BacktestGroup>
             rowKey={(record) => record.id}

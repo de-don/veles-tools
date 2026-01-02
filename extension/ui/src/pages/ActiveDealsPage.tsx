@@ -1,6 +1,8 @@
-import { Button, Card, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
+import { DownOutlined } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
+import { Button, Card, Dropdown, Flex, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
 import { PortfolioEquityChart } from '../components/charts/PortfolioEquityChart';
 import { Sparkline, type SparklineMarker, type SparklinePoint } from '../components/charts/Sparkline';
@@ -9,9 +11,8 @@ import PageHeader from '../components/ui/PageHeader';
 import { StatisticCard } from '../components/ui/StatisticCard';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
-import { type ActiveDealMetrics, buildExecutedOrdersIndex, getDealBaseAsset } from '../lib/activeDeals';
+import { type ActiveDealMetrics, getDealBaseAsset } from '../lib/activeDeals';
 import type { DealHistoryPoint } from '../lib/activeDealsHistory';
-import { ACTIVE_DEALS_REFRESH_INTERVALS, isActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import {
   ACTIVE_DEALS_ZOOM_PRESET_OPTIONS,
   type ActiveDealsZoomPresetKey,
@@ -23,7 +24,7 @@ import type { DataZoomRange } from '../lib/chartOptions';
 import type { ExecutedOrderPoint, PortfolioEquitySeries } from '../lib/deprecatedFile';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
-import type { ActiveDeal } from '../types/activeDeals';
+import type { ActiveDeal, ActiveDealAlgorithm } from '../types/activeDeals';
 
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
@@ -68,6 +69,16 @@ const formatPercent = (value: number): string => {
   }
   const sign = value > 0 ? '+' : value < 0 ? '' : '';
   return `${sign}${percentFormatter.format(value)}%`;
+};
+
+const resolvePnlClassName = (value: number): string => {
+  if (value > 0) {
+    return 'pnl-value pnl-value--positive';
+  }
+  if (value < 0) {
+    return 'pnl-value pnl-value--negative';
+  }
+  return 'pnl-value pnl-value--neutral';
 };
 
 const MAX_PRICE_DECIMALS = 6;
@@ -336,21 +347,23 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     apiKeysById,
     loading,
     error,
-    refreshInterval,
-    setRefreshInterval,
     resetHistory,
+    compressHistory,
     fetchDeals,
     zoomRange,
     setZoomRange,
     zoomPreset,
     setZoomPreset,
     positionHistory,
+    executedOrders,
+    executedOrdersByDeal,
   } = useActiveDeals();
 
   const zoomTimeWindow = useMemo(() => calculateZoomTimeWindow(pnlSeries, zoomRange), [pnlSeries, zoomRange]);
 
   const [closingDealId, setClosingDealId] = useState<number | null>(null);
   const [apiKeyFilter, setApiKeyFilter] = useState<number[]>([]);
+  const [algorithmFilter, setAlgorithmFilter] = useState<ActiveDealAlgorithm[]>([]);
   const [messageApi, messageContextHolder] = message.useMessage();
 
   const seriesRef = useRef<PortfolioEquitySeries>(pnlSeries);
@@ -359,13 +372,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   useEffect(() => {
     seriesRef.current = pnlSeries;
   }, [pnlSeries]);
-
-  const onRefreshIntervalChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const nextValue = Number(event.target.value);
-    if (isActiveDealsRefreshInterval(nextValue)) {
-      setRefreshInterval(nextValue);
-    }
-  };
 
   const handleZoomChange = useCallback(
     (range: DataZoomRange) => {
@@ -403,6 +409,41 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   const handleResetHistory = useCallback(() => {
     resetHistory();
   }, [resetHistory]);
+
+  const handleCompressHistory = useCallback(() => {
+    compressHistory();
+    messageApi.success('Данные сжаты.');
+  }, [compressHistory, messageApi]);
+
+  const historyMenuItems = useMemo<MenuProps['items']>(
+    () => [
+      {
+        key: 'reset',
+        label: 'Сбросить данные',
+      },
+      {
+        key: 'compress',
+        label: 'Сжать данные',
+      },
+    ],
+    [],
+  );
+
+  const handleHistoryMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
+    ({ key }) => {
+      switch (key) {
+        case 'reset':
+          handleResetHistory();
+          break;
+        case 'compress':
+          handleCompressHistory();
+          break;
+        default:
+          break;
+      }
+    },
+    [handleCompressHistory, handleResetHistory],
+  );
 
   const handleCloseDeal = useCallback(
     async (deal: ActiveDeal) => {
@@ -501,20 +542,26 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
       });
   }, [apiKeysById, uniqueApiKeyIds]);
 
-  const filteredPositions = useMemo(() => {
-    if (apiKeyFilter.length === 0) {
-      return positions;
-    }
-    const allow = new Set(apiKeyFilter);
-    return positions.filter((position) => allow.has(position.deal.apiKeyId));
-  }, [apiKeyFilter, positions]);
-
-  const executedOrdersIndex = useMemo(
-    () => buildExecutedOrdersIndex(positions.map((position) => position.deal)),
-    [positions],
+  const algorithmOptions = useMemo(
+    () => [
+      { value: 'LONG', label: 'Лонг' },
+      { value: 'SHORT', label: 'Шорт' },
+    ],
+    [],
   );
-  const executedOrders = executedOrdersIndex.all;
-  const executedOrdersByDeal = executedOrdersIndex.byDeal;
+
+  const filteredPositions = useMemo(() => {
+    let filtered = positions;
+    if (apiKeyFilter.length > 0) {
+      const allow = new Set(apiKeyFilter);
+      filtered = filtered.filter((position) => allow.has(position.deal.apiKeyId));
+    }
+    if (algorithmFilter.length > 0) {
+      const allow = new Set(algorithmFilter);
+      filtered = filtered.filter((position) => allow.has(position.deal.algorithm));
+    }
+    return filtered;
+  }, [algorithmFilter, apiKeyFilter, positions]);
 
   const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
   const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
@@ -599,13 +646,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         sorter: (a, b) => a.pnl - b.pnl,
         defaultSortOrder: 'descend',
         render: (_value, record) => (
-          <span
-            style={{
-              color: record.pnl > 0 ? '#047857' : record.pnl < 0 ? '#b91c1c' : '#334155',
-            }}
-          >
-            {formatSignedCurrency(record.pnl)}
-          </span>
+          <span className={resolvePnlClassName(record.pnl)}>{formatSignedCurrency(record.pnl)}</span>
         ),
       },
       {
@@ -615,13 +656,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         align: 'right',
         sorter: (a, b) => a.pnlPercent - b.pnlPercent,
         render: (_value, record) => (
-          <span
-            style={{
-              color: record.pnlPercent > 0 ? '#047857' : record.pnlPercent < 0 ? '#b91c1c' : '#334155',
-            }}
-          >
-            {formatPercent(record.pnlPercent)}
-          </span>
+          <span className={resolvePnlClassName(record.pnlPercent)}>{formatPercent(record.pnlPercent)}</span>
         ),
       },
       {
@@ -820,20 +855,6 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         <PageHeader
           title="Активные сделки"
           description="Сводка открытых позиций с автоматическим обновлением и агрегированным P&amp;L."
-          extra={
-            <select
-              className="select"
-              value={refreshInterval}
-              onChange={onRefreshIntervalChange}
-              aria-label="Интервал обновления"
-            >
-              {ACTIVE_DEALS_REFRESH_INTERVALS.map((interval) => (
-                <option key={interval} value={interval}>
-                  {interval} сек
-                </option>
-              ))}
-            </select>
-          }
           className="page__header"
         ></PageHeader>
 
@@ -901,15 +922,12 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         </Card>
 
         <Card title="Динамика агрегированного P&amp;L" bordered>
-          <div className="panel__header" style={{ paddingBottom: 12 }}>
+          <div className="panel__header panel__header--padded">
             <p className="panel__description">
               На графике отображается история суммарного результата портфеля с выбранным интервалом обновления. История
               накапливается только когда вкладка с расширением открыта.
             </p>
-            <div
-              className="panel__actions"
-              style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', width: '100%' }}
-            >
+            <Flex className="panel__actions panel__actions--spread u-full-width" gap={8} wrap>
               <Space className="chart-zoom-presets" align="center" size="middle" wrap>
                 <Segmented
                   options={ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => ({
@@ -920,7 +938,11 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                   size="middle"
                   onChange={(value) => applyZoomPreset(value as ActiveDealsZoomPresetKey)}
                 />
-                <Button onClick={handleResetHistory}>Сбросить данные</Button>
+                <Dropdown menu={{ items: historyMenuItems, onClick: handleHistoryMenuClick }} trigger={['click']}>
+                  <Button>
+                    Данные <DownOutlined />
+                  </Button>
+                </Dropdown>
               </Space>
               <Space align="center" size="middle">
                 <Switch
@@ -930,7 +952,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 />
                 <span>Группировка по ключу</span>
               </Space>
-            </div>
+            </Flex>
           </div>
           <div className="aggregation-equity__chart">
             {pnlSeries.points.length === 0 ? (
@@ -952,28 +974,30 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         </Card>
 
         <Card title="Список сделок">
-          <div className="panel__header" style={{ paddingBottom: 12 }}>
-            <div
-              className="panel__actions"
-              style={{
-                display: 'flex',
-                gap: 12,
-                width: '100%',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <Select
-                mode="multiple"
-                allowClear
-                placeholder="Все API ключи"
-                style={{ minWidth: 240 }}
-                options={apiKeyOptions}
-                value={apiKeyFilter}
-                onChange={(values) => setApiKeyFilter((values as number[]) ?? [])}
-                maxTagCount="responsive"
-              />
+          <div className="panel__header panel__header--padded">
+            <Flex className="panel__actions panel__actions--spread u-full-width" gap={12} align="center" wrap>
+              <Flex gap={12} wrap>
+                <Select
+                  mode="multiple"
+                  allowClear
+                  placeholder="Все API ключи"
+                  className="u-min-w-240"
+                  options={apiKeyOptions}
+                  value={apiKeyFilter}
+                  onChange={(values) => setApiKeyFilter((values as number[]) ?? [])}
+                  maxTagCount="responsive"
+                />
+                <Select<ActiveDealAlgorithm[]>
+                  mode="multiple"
+                  allowClear
+                  placeholder="Все направления"
+                  className="u-min-w-240"
+                  options={algorithmOptions}
+                  value={algorithmFilter}
+                  onChange={(values) => setAlgorithmFilter(values ?? [])}
+                  maxTagCount="responsive"
+                />
+              </Flex>
               <TableColumnSettingsButton
                 settings={dealsColumnSettings}
                 moveColumn={moveDealsColumn}
@@ -981,13 +1005,9 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 reset={resetDealsColumns}
                 hasCustomSettings={dealsHasCustomSettings}
               />
-            </div>
+            </Flex>
           </div>
-          {error && (
-            <div className="form-error" style={{ marginBottom: 16 }}>
-              {error}
-            </div>
-          )}
+          {error && <div className="form-error u-mb-16">{error}</div>}
           <div className="table-container">
             <Table<ActiveDealMetrics>
               columns={visibleDealsColumns}

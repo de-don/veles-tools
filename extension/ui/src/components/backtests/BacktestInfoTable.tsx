@@ -1,10 +1,17 @@
 import type { TableProps } from 'antd';
-import { Table } from 'antd';
+import { Flex, Table } from 'antd';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { Key, ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { formatAmount, formatDateRu, formatLeverage, formatPercent } from '../../lib/backtestFormatting';
+import {
+  formatAmount,
+  formatDateRu,
+  formatDurationMinutes,
+  formatLeverage,
+  formatPercent,
+} from '../../lib/backtestFormatting';
+import { buildCabinetUrl } from '../../lib/cabinetUrls';
 import { resolvePeriodDays } from '../../lib/dateTime';
 import { buildNumberSorter, formatDurationDays } from '../../lib/tableHelpers';
 import { useTableColumnSettings } from '../../lib/useTableColumnSettings';
@@ -20,13 +27,11 @@ interface BacktestInfoTableProps {
 }
 
 const COLUMN_WIDTH = 200;
-const COLUMN_MIN_WIDTH = 150;
-
 const applyColumnSizing = (columns: ColumnsType<BacktestInfo>): ColumnsType<BacktestInfo> => {
   return columns.map((column) => ({
     ...column,
     width: COLUMN_WIDTH,
-    onCell: column.onCell ?? (() => ({ style: { minWidth: COLUMN_MIN_WIDTH } })),
+    onCell: column.onCell ?? (() => ({ className: 'backtest-info-table__cell' })),
   }));
 };
 
@@ -44,7 +49,7 @@ const buildColumns = (): ColumnsType<BacktestInfo> =>
           <div>{item.name}</div>
           <div className="panel__description">
             ID{' '}
-            <a href={`https://veles.finance/cabinet/backtests/${item.id}`} target="_blank" rel="noreferrer noopener">
+            <a href={buildCabinetUrl(`backtests/${item.id}`)} target="_blank" rel="noreferrer noopener">
               {item.id}
             </a>
           </div>
@@ -173,6 +178,14 @@ const buildColumns = (): ColumnsType<BacktestInfo> =>
       render: (_value, item) => formatDurationDays(item.averageDurationDays),
     },
     {
+      title: 'Макс. время в сделке',
+      dataIndex: 'maxDurationSeconds',
+      key: 'maxDurationSeconds',
+      width: 200,
+      sorter: buildNumberSorter((item) => item.maxDurationSeconds),
+      render: (_value, item) => formatDurationMinutes(item.maxDurationSeconds),
+    },
+    {
       title: 'Торговых дней',
       dataIndex: 'tradingDays',
       key: 'tradingDays',
@@ -274,15 +287,8 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
   }, [selectedIds, onSelectionChange]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 8,
-        }}
-      >
+    <Flex vertical gap={12} className="backtest-info-table u-mt-12">
+      <Flex justify="space-between" wrap gap={8}>
         <div>{actions}</div>
         <TableColumnSettingsButton
           settings={settings}
@@ -292,7 +298,7 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
           hasCustomSettings={hasCustomSettings}
           minimumVisibleColumns={3}
         />
-      </div>
+      </Flex>
       <Table
         rowKey={(item) => item.id}
         columns={columns}
@@ -304,7 +310,7 @@ const BacktestInfoTable = ({ data, loading, selectedIds, onSelectionChange, acti
         scroll={{ x: true }}
         size="small"
       />
-    </div>
+    </Flex>
   );
 };
 

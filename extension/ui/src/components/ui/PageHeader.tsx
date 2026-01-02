@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Flex } from 'antd';
 import type { ReactNode } from 'react';
 
 interface PageHeaderProps {
@@ -12,18 +12,14 @@ interface PageHeaderProps {
 }
 
 export const PageHeader = ({ title, description, tags, extra, onBack, className }: PageHeaderProps) => {
+  const descriptionClassName = ['page-header__description', tags ? 'page-header__description--with-tags' : null]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <header className={className ?? 'page__header'}>
-      <div
-        style={{
-          display: 'flex',
-          gap: 12,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: '1 1 auto' }}>
+      <Flex className="page-header__row" align="center" justify="space-between" wrap gap={12}>
+        <Flex className="page-header__title" align="center" gap={12} flex="1 1 auto">
           {onBack ? (
             <Button
               icon={<ArrowLeftOutlined />}
@@ -31,21 +27,19 @@ export const PageHeader = ({ title, description, tags, extra, onBack, className 
               type="text"
               shape="circle"
               aria-label="Назад"
-              style={{ minWidth: 32, width: 32, height: 32 }}
+              className="page-header__back-button"
             />
           ) : null}
           <div className="page__title">{title}</div>
-        </div>
+        </Flex>
         {extra ? (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{extra}</div>
+          <Flex className="page-header__extra" justify="flex-end" wrap gap={8}>
+            {extra}
+          </Flex>
         ) : null}
-      </div>
-      {tags ? <div style={{ marginTop: 8 }}>{tags}</div> : null}
-      {description ? (
-        <p className="page__subtitle" style={{ marginTop: tags ? 8 : 12 }}>
-          {description}
-        </p>
-      ) : null}
+      </Flex>
+      {tags ? <div className="page-header__tags">{tags}</div> : null}
+      {description ? <p className={descriptionClassName}>{description}</p> : null}
     </header>
   );
 };

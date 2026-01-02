@@ -11,6 +11,14 @@ const calculateAverageDurationDays = (deals: BacktestInfoDeal[]): number => {
   return totalMs / deals.length / MS_IN_DAY;
 };
 
+const calculateMaxDurationSeconds = (deals: BacktestInfoDeal[]): number => {
+  if (deals.length === 0) {
+    return 0;
+  }
+  const maxMs = deals.reduce((max, deal) => Math.max(max, deal.end - deal.start), 0);
+  return Math.max(0, Math.round(maxMs / 1000));
+};
+
 const collectTradingDays = (deals: BacktestInfoDeal[]): number => {
   if (deals.length === 0) {
     return 0;
@@ -119,6 +127,7 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
   });
 
   const averageDurationDays = calculateAverageDurationDays(deals);
+  const maxDurationSeconds = calculateMaxDurationSeconds(deals);
   const tradingDays = collectTradingDays(deals);
   const latestStartedCycle = getLatestStartedCycle(cycles);
   const maeStats = calculateExtremes(cycles.map((cycle) => Math.abs(cycle.maeAbsolute)));
@@ -148,6 +157,7 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
     netQuotePerDay: statistics.netQuotePerDay,
     activeMaeAbsolute: latestStartedCycle?.maeAbsolute ?? null,
     averageDurationDays,
+    maxDurationSeconds,
     tradingDays,
     maxMaeAbsolute: maeStats.max,
     maxMfeAbsolute: mfeStats.max,

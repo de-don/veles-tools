@@ -1,5 +1,5 @@
 import type { TableProps } from 'antd';
-import { Button, Card, Modal, message, Table, Typography } from 'antd';
+import { Button, Card, Flex, Modal, message, Table, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { TableRowSelection } from 'antd/es/table/interface';
 import type { ChangeEvent } from 'react';
@@ -12,6 +12,7 @@ import SelectionSummaryBar from '../components/ui/SelectionSummaryBar';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import { BacktestsSyncProvider, useBacktestsSync } from '../context/BacktestsSyncContext';
+import { buildCabinetUrl } from '../lib/cabinetUrls';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { BacktestStatistics } from '../types/backtests';
 
@@ -275,35 +276,22 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
         <>
           <Card>
             <div className="panel__section">
-              <div
-                className="panel__actions"
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                }}
-              >
+              <Flex className="panel__actions panel__actions--spread u-full-width" align="center" wrap gap={12}>
                 <input
                   type="search"
-                  className="input"
+                  className="input panel__search-input"
                   placeholder="Поиск по названию"
                   value={searchTerm}
                   onChange={handleSearchChange}
-                  style={{ flexGrow: 1, minWidth: 200, maxWidth: 360 }}
                 />
-                <div style={{ marginLeft: 'auto' }}>
-                  <TableColumnSettingsButton
-                    settings={backtestColumnSettings}
-                    moveColumn={moveBacktestColumn}
-                    setColumnVisibility={setBacktestColumnVisibility}
-                    reset={resetBacktestColumns}
-                    hasCustomSettings={backtestsHasCustomSettings}
-                  />
-                </div>
-              </div>
+                <TableColumnSettingsButton
+                  settings={backtestColumnSettings}
+                  moveColumn={moveBacktestColumn}
+                  setColumnVisibility={setBacktestColumnVisibility}
+                  reset={resetBacktestColumns}
+                  hasCustomSettings={backtestsHasCustomSettings}
+                />
+              </Flex>
               {totalSelected > 0 ? (
                 <SelectionSummaryBar
                   message={
@@ -373,17 +361,17 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
             {selectedBacktests.length === 0 ? (
               <Typography.Text type="secondary">Список пуст — выберите бэктесты в таблице.</Typography.Text>
             ) : (
-              <ul className="panel__list--compact" style={{ maxHeight: 320, overflowY: 'auto' }}>
+              <ul className="panel__list--compact panel__list--scroll">
                 {selectedBacktests.map((item) => (
                   <li key={item.id}>
                     <span className="chip">
                       <strong>{item.name}</strong>
                       <span>
                         <a
-                          href={`https://veles.finance/cabinet/backtests/${item.id}`}
+                          href={buildCabinetUrl(`backtests/${item.id}`)}
                           target="_blank"
                           rel="noreferrer noopener"
-                          style={{ color: 'inherit', textDecoration: 'none' }}
+                          className="link--inherit"
                         >
                           ID: {item.id}
                         </a>

@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button, Progress } from 'antd';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -20,6 +20,7 @@ import {
 } from '../api/backtestRunner';
 import { useImportedBots } from '../context/ImportedBotsContext';
 import { parseAssetList } from '../lib/assetList';
+import { buildCabinetUrl } from '../lib/cabinetUrls';
 import { applyBotNameTemplate } from '../lib/nameTemplate';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
@@ -518,7 +519,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 const response = await postBacktest(body);
                 const backtestId = typeof response.id === 'number' ? response.id : '—';
                 const backtestUrl =
-                  typeof response.id === 'number' ? `https://veles.finance/cabinet/backtests/${response.id}` : null;
+                  typeof response.id === 'number' ? buildCabinetUrl(`backtests/${response.id}`) : null;
                 const successNode = backtestUrl ? (
                   <>
                     ✅ «{backtestName}» в очереди (ID:{' '}
@@ -590,8 +591,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
               });
               const response = await postBacktest(body);
               const backtestId = typeof response.id === 'number' ? response.id : '—';
-              const backtestUrl =
-                typeof response.id === 'number' ? `https://veles.finance/cabinet/backtests/${response.id}` : null;
+              const backtestUrl = typeof response.id === 'number' ? buildCabinetUrl(`backtests/${response.id}`) : null;
               if (logId) {
                 replaceLog(
                   logId,
@@ -847,9 +847,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           {logs.length > 0 && (
             <div className="run-log">
               <div className="run-log__progress">
-                <div className="progress-bar">
-                  <div className="progress-bar__fill" style={{ width: `${progress}%` }} />
-                </div>
+                <Progress percent={progress} size="small" showInfo={false} />
                 <span className="progress-bar__label">{progress}%</span>
               </div>
               <div className="run-log__messages" role="log" aria-live="polite" ref={logContainerRef}>

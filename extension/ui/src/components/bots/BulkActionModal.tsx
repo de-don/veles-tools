@@ -1,4 +1,4 @@
-import { Alert, Button, Checkbox, Modal, Progress, Typography } from 'antd';
+import { Alert, Button, Checkbox, Flex, Modal, Progress, Space, Typography } from 'antd';
 import type { ButtonProps } from 'antd/es/button';
 import type { ProgressProps } from 'antd/es/progress';
 import { useEffect, useMemo, useState } from 'react';
@@ -200,14 +200,14 @@ const BulkActionModal = ({
         {copy.checkboxLabel}
       </Checkbox>
 
-      <div style={{ marginTop: 16 }}>
+      <Space direction="vertical" size={8} className="u-mt-16">
         <Text type="secondary">
           {progressLabel}: {processedCount} из {totalBots}
         </Text>
-        <Progress percent={percent} status={progressStatus} style={{ marginTop: 8 }} />
-      </div>
+        <Progress percent={percent} status={progressStatus} />
+      </Space>
 
-      <div style={{ marginTop: 16 }}>
+      <Flex vertical className="u-mt-16">
         {isRunning && <Text>{copy.runningMessage}</Text>}
         {isCompleted && !hasFailures && <Alert type="success" message={copy.successMessage} showIcon />}
         {isCompleted && hasFailures && (
@@ -215,7 +215,7 @@ const BulkActionModal = ({
             type="error"
             message={copy.failureMessage}
             description={
-              <ul style={{ paddingLeft: 18, margin: 0 }}>
+              <ul className="alert-list">
                 {result?.failed.map((entry) => (
                   <li key={entry.botId}>
                     <Text>
@@ -228,7 +228,7 @@ const BulkActionModal = ({
             showIcon
           />
         )}
-      </div>
+      </Flex>
     </Modal>
   );
 };

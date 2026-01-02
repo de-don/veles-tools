@@ -84,7 +84,60 @@ const resolveGroupColor = (group: PortfolioEquityGroupedSeriesItem, fallbackInde
   return GROUPED_SERIES_COLOR_PALETTE[paletteIndex];
 };
 
-const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLine'] => {
+type ChartThemeMode = 'light' | 'dark';
+
+interface ChartPalette {
+  axisLabel: string;
+  axisLine: string;
+  splitLine: string;
+  tooltipBackground: string;
+  tooltipBorder: string;
+  tooltipText: string;
+  zeroLine: string;
+  zeroLabel: string;
+  zeroLabelBackground: string;
+  concurrencyMarkLine: string;
+  concurrencyMarkLabel: string;
+  concurrencyMarkBackground: string;
+  legendInactive: string;
+}
+
+const resolveChartPalette = (mode?: ChartThemeMode): ChartPalette => {
+  if (mode === 'dark') {
+    return {
+      axisLabel: '#cbd5e1',
+      axisLine: 'rgba(148, 163, 184, 0.4)',
+      splitLine: 'rgba(148, 163, 184, 0.2)',
+      tooltipBackground: 'rgba(15, 23, 42, 0.92)',
+      tooltipBorder: 'rgba(148, 163, 184, 0.25)',
+      tooltipText: '#e2e8f0',
+      zeroLine: 'rgba(148, 163, 184, 0.6)',
+      zeroLabel: '#e2e8f0',
+      zeroLabelBackground: 'rgba(30, 41, 59, 0.85)',
+      concurrencyMarkLine: 'rgba(129, 140, 248, 0.8)',
+      concurrencyMarkLabel: '#e2e8f0',
+      concurrencyMarkBackground: 'rgba(30, 41, 59, 0.8)',
+      legendInactive: 'rgba(226, 232, 240, 0.45)',
+    };
+  }
+  return {
+    axisLabel: '#475569',
+    axisLine: '#cbd5f5',
+    splitLine: '#e2e8f0',
+    tooltipBackground: 'rgba(255, 255, 255, 0.95)',
+    tooltipBorder: '#e2e8f0',
+    tooltipText: '#1e293b',
+    zeroLine: '#94a3b8',
+    zeroLabel: '#475569',
+    zeroLabelBackground: 'rgba(241, 245, 249, 0.8)',
+    concurrencyMarkLine: '#6366f1',
+    concurrencyMarkLabel: '#4338ca',
+    concurrencyMarkBackground: 'rgba(224, 231, 255, 0.9)',
+    legendInactive: 'rgba(71, 85, 105, 0.6)',
+  };
+};
+
+const buildZeroLine = (series: PortfolioEquitySeries, palette: ChartPalette): LineSeriesOption['markLine'] => {
   const hasPositive = series.points.some((point) => point.value >= 0);
   const hasNegative = series.points.some((point) => point.value <= 0);
   if (!(hasPositive && hasNegative)) {
@@ -93,14 +146,14 @@ const buildZeroLine = (series: PortfolioEquitySeries): LineSeriesOption['markLin
   return {
     symbol: 'none',
     lineStyle: {
-      color: '#94a3b8',
+      color: palette.zeroLine,
       type: 'dashed',
       width: 1,
     },
     label: {
       formatter: '0',
-      color: '#475569',
-      backgroundColor: 'rgba(241, 245, 249, 0.8)',
+      color: palette.zeroLabel,
+      backgroundColor: palette.zeroLabelBackground,
       padding: [2, 4],
       borderRadius: 4,
     },
@@ -117,6 +170,7 @@ export interface DataZoomRange {
 
 const buildZeroLineForGroups = (
   groups: PortfolioEquityGroupedSeriesItem[],
+  palette: ChartPalette,
 ): LineSeriesOption['markLine'] | undefined => {
   let hasPositive = false;
   let hasNegative = false;
@@ -139,14 +193,14 @@ const buildZeroLineForGroups = (
   return {
     symbol: 'none',
     lineStyle: {
-      color: '#94a3b8',
+      color: palette.zeroLine,
       type: 'dashed',
       width: 1,
     },
     label: {
       formatter: '0',
-      color: '#475569',
-      backgroundColor: 'rgba(241, 245, 249, 0.8)',
+      color: palette.zeroLabel,
+      backgroundColor: palette.zeroLabelBackground,
       padding: [2, 4],
       borderRadius: 4,
     },
@@ -290,7 +344,9 @@ export const createPortfolioEquityChartOptions = (
   executedOrders?: ExecutedOrderPoint[],
   legendSelection?: Record<string, boolean>,
   filterMode: DataZoomComponentOption['filterMode'] = 'none',
+  themeMode?: ChartThemeMode,
 ): EChartsOption => {
+  const palette = resolveChartPalette(themeMode);
   if (groupedSeries && groupedSeries.length > 0) {
     const lineSeries: LineSeriesOption[] = groupedSeries.map((group, index) => {
       const color = resolveGroupColor(group, index);
@@ -314,7 +370,7 @@ export const createPortfolioEquityChartOptions = (
       };
     });
 
-    const zeroLine = buildZeroLineForGroups(groupedSeries);
+    const zeroLine = buildZeroLineForGroups(groupedSeries, palette);
     if (zeroLine && lineSeries.length > 0) {
       lineSeries[0].markLine = zeroLine;
     }
@@ -336,9 +392,9 @@ export const createPortfolioEquityChartOptions = (
         trigger: 'axis',
         axisPointer: { type: 'cross' },
         order: 'valueDesc',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderColor: '#e2e8f0',
-        textStyle: { color: '#1e293b', fontSize: 12 },
+        backgroundColor: palette.tooltipBackground,
+        borderColor: palette.tooltipBorder,
+        textStyle: { color: palette.tooltipText, fontSize: 12 },
         padding: [8, 12],
         formatter: (params: any) => {
           const items = Array.isArray(params) ? params : [params];
@@ -352,27 +408,27 @@ export const createPortfolioEquityChartOptions = (
             const totalValue = order.price * order.quantity;
 
             return `
-              <div style="font-family: sans-serif;">
-                <div style="font-weight: 600; margin-bottom: 4px;">${order.pair}</div>
-                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                  <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></span>
-                  <span style="font-weight: 500; color: ${color}">${typeLabel}</span>
+              <div class="chart-tooltip" style="--tooltip-accent: ${color};">
+                <div class="chart-tooltip__title">${order.pair}</div>
+                <div class="chart-tooltip__row">
+                  <span class="chart-tooltip__dot"></span>
+                  <span class="chart-tooltip__accent">${typeLabel}</span>
                 </div>
-                <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
-                  <span style="color: #64748b;">Цена:</span>
-                  <span style="text-align: right; font-weight: 500;">${formatNumber(order.price)}</span>
+                <div class="chart-tooltip__grid">
+                  <span class="chart-tooltip__label">Цена:</span>
+                  <span class="chart-tooltip__value">${formatNumber(order.price)}</span>
                   
-                  <span style="color: #64748b;">Кол-во:</span>
-                  <span style="text-align: right; font-weight: 500;">${order.quantity}</span>
+                  <span class="chart-tooltip__label">Кол-во:</span>
+                  <span class="chart-tooltip__value">${order.quantity}</span>
                   
-                  <span style="color: #64748b;">Сумма:</span>
-                  <span style="text-align: right; font-weight: 500;">${formatNumber(totalValue)}</span>
+                  <span class="chart-tooltip__label">Сумма:</span>
+                  <span class="chart-tooltip__value">${formatNumber(totalValue)}</span>
 
-                  <span style="color: #64748b;">Позиция:</span>
-                  <span style="text-align: right; font-weight: 500;">${formatNumber(order.positionVolume)}</span>
+                  <span class="chart-tooltip__label">Позиция:</span>
+                  <span class="chart-tooltip__value">${formatNumber(order.positionVolume)}</span>
                 </div>
-                <div style="color: #94a3b8; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f1f5f9;">
-                  ${order.botName} <span style="margin: 0 4px;">·</span> ID ${order.dealId}
+                <div class="chart-tooltip__footer">
+                  ${order.botName} <span class="chart-tooltip__divider">·</span> ID ${order.dealId}
                 </div>
               </div>
             `;
@@ -385,20 +441,20 @@ export const createPortfolioEquityChartOptions = (
               const value = item.value?.[1] ?? item.value;
               if (value === null || value === undefined) return '';
               return `
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px;">
-                  <div style="display: flex; align-items: center; gap: 6px;">
+                <div class="chart-tooltip__item">
+                  <div class="chart-tooltip__item-meta">
                     ${item.marker}
-                    <span style="color: #64748b;">${item.seriesName}</span>
+                    <span class="chart-tooltip__label">${item.seriesName}</span>
                   </div>
-                  <span style="font-weight: 500;">${formatNumber(Number(value))}</span>
+                  <span class="chart-tooltip__value">${formatNumber(Number(value))}</span>
                 </div>
               `;
             })
             .join('');
 
           return `
-            <div style="font-family: sans-serif;">
-              <div style="margin-bottom: 8px; font-weight: 500; color: #64748b;">${dateLabel}</div>
+            <div class="chart-tooltip">
+              <div class="chart-tooltip__date">${dateLabel}</div>
               ${list}
             </div>
           `;
@@ -409,21 +465,31 @@ export const createPortfolioEquityChartOptions = (
         icon: 'roundRect',
         data: groupedSeries.map((group) => group.label),
         selected: legendSelection,
+        inactiveColor: palette.legendInactive,
       },
       xAxis: {
         type: 'time',
         axisLabel: {
           formatter: (value: number) => dateTimeFormatter.format(new Date(value)),
+          color: palette.axisLabel,
+        },
+        axisLine: {
+          lineStyle: { color: palette.axisLine },
         },
       },
       yAxis: {
         type: 'value',
         axisLabel: {
           formatter: (value: number) => formatNumber(value),
+          color: palette.axisLabel,
+        },
+        axisLine: {
+          lineStyle: { color: palette.axisLine },
         },
         splitLine: {
           lineStyle: {
             type: 'dashed',
+            color: palette.splitLine,
           },
         },
       },
@@ -440,7 +506,7 @@ export const createPortfolioEquityChartOptions = (
     point.value < 0 ? [point.time, point.value] : [point.time, null],
   );
 
-  const markLine = buildZeroLine(series);
+  const markLine = buildZeroLine(series, palette);
 
   const positiveAreaSeries: LineSeriesOption = {
     id: 'active-deals-positive-area',
@@ -516,9 +582,9 @@ export const createPortfolioEquityChartOptions = (
       trigger: 'axis',
       axisPointer: { type: 'cross' },
       order: 'valueDesc',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e2e8f0',
-      textStyle: { color: '#1e293b', fontSize: 12 },
+      backgroundColor: palette.tooltipBackground,
+      borderColor: palette.tooltipBorder,
+      textStyle: { color: palette.tooltipText, fontSize: 12 },
       padding: [8, 12],
       formatter: (params: any) => {
         const items = Array.isArray(params) ? params : [params];
@@ -532,27 +598,27 @@ export const createPortfolioEquityChartOptions = (
           const totalValue = order.price * order.quantity;
 
           return `
-            <div style="font-family: sans-serif;">
-              <div style="font-weight: 600; margin-bottom: 4px;">${order.pair}</div>
-              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></span>
-                <span style="font-weight: 500; color: ${color}">${typeLabel}</span>
+            <div class="chart-tooltip" style="--tooltip-accent: ${color};">
+              <div class="chart-tooltip__title">${order.pair}</div>
+              <div class="chart-tooltip__row">
+                <span class="chart-tooltip__dot"></span>
+                <span class="chart-tooltip__accent">${typeLabel}</span>
               </div>
-              <div style="display: grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
-                <span style="color: #64748b;">Цена:</span>
-                <span style="text-align: right; font-weight: 500;">${formatNumber(order.price)}</span>
+              <div class="chart-tooltip__grid">
+                <span class="chart-tooltip__label">Цена:</span>
+                <span class="chart-tooltip__value">${formatNumber(order.price)}</span>
                 
-                <span style="color: #64748b;">Кол-во:</span>
-                <span style="text-align: right; font-weight: 500;">${order.quantity}</span>
+                <span class="chart-tooltip__label">Кол-во:</span>
+                <span class="chart-tooltip__value">${order.quantity}</span>
                 
-                <span style="color: #64748b;">Сумма:</span>
-                <span style="text-align: right; font-weight: 500;">${formatNumber(totalValue)}</span>
+                <span class="chart-tooltip__label">Сумма:</span>
+                <span class="chart-tooltip__value">${formatNumber(totalValue)}</span>
 
-                <span style="color: #64748b;">Позиция:</span>
-                <span style="text-align: right; font-weight: 500;">${formatNumber(order.positionVolume)}</span>
+                <span class="chart-tooltip__label">Позиция:</span>
+                <span class="chart-tooltip__value">${formatNumber(order.positionVolume)}</span>
               </div>
-              <div style="color: #94a3b8; font-size: 11px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f1f5f9;">
-                ${order.botName} <span style="margin: 0 4px;">·</span> ID ${order.dealId}
+              <div class="chart-tooltip__footer">
+                ${order.botName} <span class="chart-tooltip__divider">·</span> ID ${order.dealId}
               </div>
             </div>
           `;
@@ -565,20 +631,20 @@ export const createPortfolioEquityChartOptions = (
             const value = item.value?.[1] ?? item.value;
             if (value === null || value === undefined) return '';
             return `
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 4px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
+              <div class="chart-tooltip__item">
+                <div class="chart-tooltip__item-meta">
                   ${item.marker}
-                  <span style="color: #64748b;">${item.seriesName}</span>
+                  <span class="chart-tooltip__label">${item.seriesName}</span>
                 </div>
-                <span style="font-weight: 500;">${formatNumber(Number(value))}</span>
+                <span class="chart-tooltip__value">${formatNumber(Number(value))}</span>
               </div>
             `;
           })
           .join('');
 
         return `
-          <div style="font-family: sans-serif;">
-            <div style="margin-bottom: 8px; font-weight: 500; color: #64748b;">${dateLabel}</div>
+          <div class="chart-tooltip">
+            <div class="chart-tooltip__date">${dateLabel}</div>
             ${list}
           </div>
         `;
@@ -589,21 +655,31 @@ export const createPortfolioEquityChartOptions = (
       icon: 'roundRect',
       data: ['Суммарный P&L'],
       selected: legendSelection,
+      inactiveColor: palette.legendInactive,
     },
     xAxis: {
       type: 'time',
       axisLabel: {
         formatter: (value: number) => dateTimeFormatter.format(new Date(value)),
+        color: palette.axisLabel,
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
     },
     yAxis: {
       type: 'value',
       axisLabel: {
         formatter: (value: number) => formatNumber(value),
+        color: palette.axisLabel,
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
       splitLine: {
         lineStyle: {
           type: 'dashed',
+          color: palette.splitLine,
         },
       },
     },
@@ -616,7 +692,9 @@ export const createAggregateRiskChartOptions = (
   series: AggregateRiskSeries,
   range?: DataZoomRange,
   filterMode: DataZoomComponentOption['filterMode'] = 'none',
+  themeMode?: ChartThemeMode,
 ): EChartsOption => {
+  const palette = resolveChartPalette(themeMode);
   const riskData = series.points.map((point) => [point.time, point.value]);
 
   const riskSeries: LineSeriesOption = {
@@ -637,14 +715,14 @@ export const createAggregateRiskChartOptions = (
     markLine: {
       symbol: 'none',
       lineStyle: {
-        color: '#94a3b8',
+        color: palette.zeroLine,
         type: 'dashed',
         width: 1,
       },
       label: {
         formatter: '0',
-        color: '#475569',
-        backgroundColor: 'rgba(241, 245, 249, 0.8)',
+        color: palette.zeroLabel,
+        backgroundColor: palette.zeroLabelBackground,
         padding: [2, 4],
         borderRadius: 4,
       },
@@ -667,15 +745,20 @@ export const createAggregateRiskChartOptions = (
       bottom: 0,
       icon: 'roundRect',
       data: ['Суммарное МПУ'],
+      inactiveColor: palette.legendInactive,
     },
     xAxis: {
       type: 'time',
       axisLabel: {
         formatter: (value) => dateTimeFormatter.format(new Date(value)),
+        color: palette.axisLabel,
       },
       splitLine: {
         show: true,
-        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+        lineStyle: { color: palette.splitLine },
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
     },
     yAxis: {
@@ -683,10 +766,14 @@ export const createAggregateRiskChartOptions = (
       min: 0,
       axisLabel: {
         formatter: (value) => formatNumber(Number(value)),
+        color: palette.axisLabel,
       },
       splitLine: {
         show: true,
-        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+        lineStyle: { color: palette.splitLine },
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
     },
     dataZoom: buildDataZoomComponents(range, filterMode),
@@ -703,7 +790,11 @@ export interface LimitImpactPoint {
   aggregateRiskEfficiency: number | null;
 }
 
-export const createLimitImpactChartOptions = (points: LimitImpactPoint[]): EChartsOption => {
+export const createLimitImpactChartOptions = (
+  points: LimitImpactPoint[],
+  themeMode?: ChartThemeMode,
+): EChartsOption => {
+  const palette = resolveChartPalette(themeMode);
   const categories = points.map((point) => point.label);
 
   const pnlSeries: LineSeriesOption = {
@@ -770,29 +861,42 @@ export const createLimitImpactChartOptions = (points: LimitImpactPoint[]): EChar
       bottom: 0,
       icon: 'roundRect',
       data: ['Суммарный P&L', 'Макс. суммарная просадка', 'Макс. суммарное МПУ'],
+      inactiveColor: palette.legendInactive,
     },
     xAxis: {
       type: 'category',
       data: categories,
       axisLabel: {
         formatter: (value) => `≤ ${value}`,
+        color: palette.axisLabel,
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
     },
     yAxis: {
       type: 'value',
       axisLabel: {
         formatter: (value) => formatNumber(Number(value)),
+        color: palette.axisLabel,
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
       splitLine: {
         show: true,
-        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+        lineStyle: { color: palette.splitLine },
       },
     },
     series: [pnlSeries, drawdownSeries, riskSeries],
   } satisfies EChartsOption;
 };
 
-export const createLimitEfficiencyChartOptions = (points: LimitImpactPoint[]): EChartsOption => {
+export const createLimitEfficiencyChartOptions = (
+  points: LimitImpactPoint[],
+  themeMode?: ChartThemeMode,
+): EChartsOption => {
+  const palette = resolveChartPalette(themeMode);
   const categories = points.map((point) => point.label);
 
   const efficiencySeries: LineSeriesOption = {
@@ -827,22 +931,31 @@ export const createLimitEfficiencyChartOptions = (points: LimitImpactPoint[]): E
       bottom: 0,
       icon: 'roundRect',
       data: ['P&L / макс. риск'],
+      inactiveColor: palette.legendInactive,
     },
     xAxis: {
       type: 'category',
       data: categories,
       axisLabel: {
         formatter: (value) => `≤ ${value}`,
+        color: palette.axisLabel,
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
     },
     yAxis: {
       type: 'value',
       axisLabel: {
         formatter: (value) => formatNumber(Number(value)),
+        color: palette.axisLabel,
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
       splitLine: {
         show: true,
-        lineStyle: { color: 'rgba(148, 163, 184, 0.2)' },
+        lineStyle: { color: palette.splitLine },
       },
     },
     series: [efficiencySeries],
@@ -852,7 +965,10 @@ export const createLimitEfficiencyChartOptions = (points: LimitImpactPoint[]): E
 type BarMarkLine = NonNullable<BarSeriesOption['markLine']>;
 type BarMarkLineData = NonNullable<BarMarkLine['data']>;
 
-const buildConcurrencyMarkLine = (stats?: DailyConcurrencyStats): BarSeriesOption['markLine'] => {
+const buildConcurrencyMarkLine = (
+  stats: DailyConcurrencyStats | undefined,
+  palette: ChartPalette,
+): BarSeriesOption['markLine'] => {
   if (!stats) {
     return undefined;
   }
@@ -877,13 +993,13 @@ const buildConcurrencyMarkLine = (stats?: DailyConcurrencyStats): BarSeriesOptio
     symbol: 'none',
     lineStyle: {
       type: 'dashed',
-      color: '#6366f1',
+      color: palette.concurrencyMarkLine,
       width: 1,
     },
     label: {
-      color: '#4338ca',
+      color: palette.concurrencyMarkLabel,
       formatter: ({ value, name }) => `${name ?? ''}: ${formatNumber(Number(value))}`,
-      backgroundColor: 'rgba(224, 231, 255, 0.9)',
+      backgroundColor: palette.concurrencyMarkBackground,
       padding: [2, 6],
       borderRadius: 4,
     },
@@ -896,10 +1012,12 @@ export const createDailyConcurrencyChartOptions = (
   stats?: DailyConcurrencyStats,
   range?: DataZoomRange,
   filterMode: DataZoomComponentOption['filterMode'] = 'none',
+  themeMode?: ChartThemeMode,
 ): EChartsOption => {
+  const palette = resolveChartPalette(themeMode);
   const chartData = records.map((record) => [record.dayStartMs, record.maxCount]);
 
-  const markLine = buildConcurrencyMarkLine(stats);
+  const markLine = buildConcurrencyMarkLine(stats, palette);
 
   const barSeries: BarSeriesOption = {
     name: 'Максимум позиций',
@@ -929,11 +1047,16 @@ export const createDailyConcurrencyChartOptions = (
       bottom: 16,
       icon: 'roundRect',
       data: ['Максимум позиций'],
+      inactiveColor: palette.legendInactive,
     },
     xAxis: {
       type: 'time',
       axisLabel: {
         formatter: (value: number) => dateFormatter.format(new Date(value)),
+        color: palette.axisLabel,
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
     },
     yAxis: {
@@ -941,10 +1064,15 @@ export const createDailyConcurrencyChartOptions = (
       minInterval: 1,
       axisLabel: {
         formatter: (value: number) => formatNumber(value),
+        color: palette.axisLabel,
+      },
+      axisLine: {
+        lineStyle: { color: palette.axisLine },
       },
       splitLine: {
         lineStyle: {
           type: 'dashed',
+          color: palette.splitLine,
         },
       },
     },

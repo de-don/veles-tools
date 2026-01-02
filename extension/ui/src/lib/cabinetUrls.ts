@@ -1,21 +1,27 @@
 import { getApiBaseUrl } from '../api/baseUrl';
 
 const normalizePath = (path: string): string => {
-  const trimmed = path.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+  const trimmed = path.trim().replace(/\/+/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
   return trimmed.length > 0 ? trimmed : '';
 };
 
-export const buildCabinetUrl = (path: string): string => {
+export const buildVelesUrl = (path = ''): string => {
   const origin = getApiBaseUrl().replace(/\/$/, '');
   const sanitizedPath = normalizePath(path);
-  return sanitizedPath.length > 0 ? `${origin}/cabinet/${sanitizedPath}` : `${origin}/cabinet`;
+  return sanitizedPath.length > 0 ? `${origin}/${sanitizedPath}` : origin;
 };
 
-export const buildBotDetailsUrl = (botId: number): string => {
-  if (!Number.isFinite(botId)) {
+export const buildCabinetUrl = (path = ''): string => {
+  const sanitizedPath = normalizePath(path);
+  return buildVelesUrl(sanitizedPath.length > 0 ? `cabinet/${sanitizedPath}` : 'cabinet');
+};
+
+export const buildBotDetailsUrl = (botId: number | string): string => {
+  const numericId = typeof botId === 'string' ? Number(botId) : botId;
+  if (!Number.isFinite(numericId)) {
     throw new Error('Некорректный идентификатор бота.');
   }
-  const normalizedId = Math.trunc(botId);
+  const normalizedId = Math.trunc(numericId);
   return buildCabinetUrl(`bot/${normalizedId}`);
 };
 

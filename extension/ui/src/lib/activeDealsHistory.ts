@@ -1,4 +1,4 @@
-import type { PortfolioEquitySeries } from './deprecatedFile';
+import type { ExecutedOrderPoint, PortfolioEquitySeries } from './deprecatedFile';
 
 export interface DealHistoryPoint {
   time: number;
@@ -9,7 +9,11 @@ export interface DealHistoryPoint {
 export type DealHistorySnapshot = Record<string, DealHistoryPoint[]>;
 export type DealHistoryMap = Map<number, DealHistoryPoint[]>;
 
+export type ExecutedOrdersSnapshot = Record<string, ExecutedOrderPoint[]>;
+export type ExecutedOrdersHistoryMap = Map<number, ExecutedOrderPoint[]>;
+
 export const DEAL_HISTORY_WINDOW_MS = 0;
+export const ACTIVE_DEALS_HISTORY_POINT_LIMIT = 10_000;
 
 export const filterDealHistoryByTimeWindow = (
   points: readonly DealHistoryPoint[],
@@ -61,6 +65,127 @@ export const snapshotHistoryToMap = (snapshot: DealHistorySnapshot | undefined):
   return map;
 };
 
+const isExecutedOrderPoint = (value: unknown): value is ExecutedOrderPoint => {
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Partial<ExecutedOrderPoint>;
+  return (
+    isFiniteNumber(candidate.time) &&
+    isFiniteNumber(candidate.price) &&
+    isFiniteNumber(candidate.quantity) &&
+    isFiniteNumber(candidate.dealId) &&
+    isFiniteNumber(candidate.apiKeyId) &&
+    typeof candidate.side === 'string' &&
+    typeof candidate.pair === 'string' &&
+    typeof candidate.botName === 'string' &&
+    isFiniteNumber(candidate.botId) &&
+    typeof candidate.algorithm === 'string' &&
+    isFiniteNumber(candidate.positionVolume) &&
+    typeof candidate.type === 'string'
+  );
+};
+
+export const isExecutedOrdersSnapshot = (value: unknown): value is ExecutedOrdersSnapshot => {
+  if (value === null || typeof value !== 'object') {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  return Object.values(record).every((entry) => Array.isArray(entry) && entry.every(isExecutedOrderPoint));
+};
+
+export const snapshotExecutedOrdersToMap = (snapshot: ExecutedOrdersSnapshot | undefined): ExecutedOrdersHistoryMap => {
+  const map: ExecutedOrdersHistoryMap = new Map();
+  if (!snapshot) {
+    return map;
+  }
+  Object.entries(snapshot).forEach(([key, rawOrders]) => {
+    const dealId = Number(key);
+    if (!(Number.isInteger(dealId) && Array.isArray(rawOrders))) {
+      return;
+    }
+    const orders = rawOrders.filter(isExecutedOrderPoint);
+    if (orders.length > 0) {
+      map.set(dealId, [...orders]);
+    }
+  });
+  return map;
+};
+
+export const mapExecutedOrdersToSnapshot = (history: ExecutedOrdersHistoryMap): ExecutedOrdersSnapshot => {
+  const snapshot: ExecutedOrdersSnapshot = {};
+  history.forEach((orders, dealId) => {
+    snapshot[String(dealId)] = [...orders];
+  });
+  return snapshot;
+};
+
+const buildExecutedOrderKey = (order: ExecutedOrderPoint): string => {
+  return [
+    order.time,
+    order.price,
+    order.quantity,
+    order.side,
+    order.type,
+    order.positionVolume,
+    order.apiKeyId,
+    order.dealId,
+  ].join('|');
+};
+
+const trimExecutedOrders = (
+  orders: readonly ExecutedOrderPoint[],
+  startTimestamp: number | null,
+  limit: number,
+): ExecutedOrderPoint[] => {
+  const filtered = typeof startTimestamp === 'number' ? orders.filter((order) => order.time >= startTimestamp) : orders;
+  return thinTimedPointsFromEnd(filtered, limit);
+};
+
+export const mergeExecutedOrdersHistory = (
+  current: ExecutedOrdersHistoryMap,
+  incoming: ExecutedOrdersHistoryMap,
+  startTimestamp: number | null,
+  limit: number = ACTIVE_DEALS_HISTORY_POINT_LIMIT,
+): ExecutedOrdersHistoryMap => {
+  const next: ExecutedOrdersHistoryMap = new Map();
+
+  const appendOrders = (dealId: number, orders: readonly ExecutedOrderPoint[]) => {
+    const existing = next.get(dealId) ?? [];
+    const keys = new Set(existing.map(buildExecutedOrderKey));
+
+    orders.forEach((order) => {
+      if (typeof startTimestamp === 'number' && order.time < startTimestamp) {
+        return;
+      }
+      const key = buildExecutedOrderKey(order);
+      if (keys.has(key)) {
+        return;
+      }
+      existing.push(order);
+      keys.add(key);
+    });
+
+    const trimmed = trimExecutedOrders(existing, startTimestamp, limit);
+    if (trimmed.length > 0) {
+      next.set(dealId, trimmed);
+    }
+  };
+
+  current.forEach((orders, dealId) => void appendOrders(dealId, orders));
+  incoming.forEach((orders, dealId) => void appendOrders(dealId, orders));
+
+  return next;
+};
+
+export const getSeriesStartTimestamp = (series: PortfolioEquitySeries): number | null => {
+  const firstPoint = series.points[0];
+  if (!firstPoint) {
+    return null;
+  }
+  return Number.isFinite(firstPoint.time) ? firstPoint.time : null;
+};
+
 export const createEmptyPortfolioEquitySeries = (): PortfolioEquitySeries => ({
   points: [],
   minValue: 0,
@@ -72,6 +197,14 @@ export const sortPortfolioEquityPoints = (points: PortfolioEquitySeries['points'
     return points;
   }
   return [...points].sort((left, right) => left.time - right.time);
+};
+
+export const compressTimedPoints = <T extends { time: number }>(points: readonly T[]): T[] => {
+  const sorted = [...points].sort((left, right) => left.time - right.time);
+  if (sorted.length <= 1) {
+    return sorted;
+  }
+  return sorted.filter((_point, index) => index % 2 === 0);
 };
 
 export const thinTimedPointsFromEnd = <T extends { time: number }>(points: readonly T[], limit: number): T[] => {

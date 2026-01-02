@@ -36,6 +36,7 @@ export interface BacktestInfo {
   netQuotePerDay: number;
   activeMaeAbsolute: number | null;
   averageDurationDays: number;
+  maxDurationSeconds: number;
   tradingDays: number;
   maxMaeAbsolute: number;
   maxMfeAbsolute: number;

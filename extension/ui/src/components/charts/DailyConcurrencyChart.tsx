@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
+import { useThemeMode } from '../../context/ThemeContext';
 import { createDailyConcurrencyChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 import type { DailyConcurrencyRecord, DailyConcurrencyStats } from '../../lib/deprecatedFile';
 
@@ -51,9 +52,11 @@ const DailyConcurrencyChartComponent = ({
   dataZoomRange,
   onDataZoom,
 }: DailyConcurrencyChartProps) => {
+  const { mode } = useThemeMode();
   const option = useMemo(
-    () => createDailyConcurrencyChartOptions(records, stats, dataZoomRange, filterVisibleRange ? 'filter' : 'none'),
-    [records, stats, dataZoomRange, filterVisibleRange],
+    () =>
+      createDailyConcurrencyChartOptions(records, stats, dataZoomRange, filterVisibleRange ? 'filter' : 'none', mode),
+    [records, stats, dataZoomRange, filterVisibleRange, mode],
   );
 
   const onEvents = useMemo(() => {
@@ -75,10 +78,13 @@ const DailyConcurrencyChartComponent = ({
     } satisfies Record<string, (event: DataZoomEventParams) => void>;
   }, [onDataZoom]);
 
+  const resolvedClassName = ['chart__full-width', className].filter(Boolean).join(' ');
+  const chartTheme = mode === 'dark' ? 'dark' : undefined;
+
   return (
     <ReactECharts
-      className={className}
-      style={{ width: '100%' }}
+      className={resolvedClassName}
+      theme={chartTheme}
       opts={{ renderer: 'canvas' }}
       notMerge
       option={option}

@@ -23,6 +23,7 @@ const baseInfo: Omit<BacktestInfo, 'deals'> = {
   netQuotePerDay: 0,
   activeMaeAbsolute: null,
   averageDurationDays: 0,
+  maxDurationSeconds: 0,
   tradingDays: 0,
   maxMaeAbsolute: 0,
   maxMfeAbsolute: 0,

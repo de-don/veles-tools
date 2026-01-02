@@ -12,19 +12,28 @@ import {
 } from 'react';
 import { ACTIVE_DEALS_DEFAULT_SIZE, fetchAllActiveDeals } from '../api/activeDeals';
 import { fetchApiKeys } from '../api/apiKeys';
-import type { ActiveDealMetrics } from '../lib/activeDeals';
-import { type ActiveDealsAggregation, aggregateDeals } from '../lib/activeDeals';
+import type { ActiveDealMetrics, ExecutedOrdersIndex } from '../lib/activeDeals';
+import { type ActiveDealsAggregation, aggregateDeals, buildExecutedOrdersIndex } from '../lib/activeDeals';
 import {
+  ACTIVE_DEALS_HISTORY_POINT_LIMIT,
   buildPortfolioEquitySeries,
+  compressTimedPoints,
   createEmptyPortfolioEquitySeries,
   DEAL_HISTORY_WINDOW_MS,
   type DealHistoryMap,
+  type ExecutedOrdersHistoryMap,
   filterDealHistoryByTimeWindow,
+  getSeriesStartTimestamp,
+  mergeExecutedOrdersHistory,
 } from '../lib/activeDealsHistory';
-import { type ActiveDealsRefreshInterval, DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL } from '../lib/activeDealsPolling';
+import type { ActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
 import type { DataZoomRange } from '../lib/chartOptions';
-import type { PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../lib/deprecatedFile';
+import type {
+  ExecutedOrderPoint,
+  PortfolioEquityGroupedSeriesItem,
+  PortfolioEquitySeries,
+} from '../lib/deprecatedFile';
 import {
   clearActiveDealsHistoryCache,
   readActiveDealsHistoryCache,
@@ -37,6 +46,7 @@ import {
 } from '../storage/activeDealsPreferencesStore';
 import type { ActiveDeal } from '../types/activeDeals';
 import type { ApiKey } from '../types/apiKeys';
+import { useDealsRefresh } from './DealsRefreshContext';
 
 interface DealsState {
   aggregation: ActiveDealsAggregation | null;
@@ -90,6 +100,23 @@ const composeGroupedSeries = (
     });
 };
 
+const buildExecutedOrdersIndexFromHistory = (history: ExecutedOrdersHistoryMap): ExecutedOrdersIndex => {
+  const byDeal: ExecutedOrdersIndex['byDeal'] = new Map();
+  const all: ExecutedOrderPoint[] = [];
+
+  history.forEach((orders, dealId) => {
+    const sorted = [...orders].sort((left, right) => left.time - right.time);
+    if (sorted.length > 0) {
+      byDeal.set(dealId, sorted);
+      all.push(...sorted);
+    }
+  });
+
+  all.sort((left, right) => left.time - right.time);
+
+  return { byDeal, all };
+};
+
 const INITIAL_DEALS_STATE: DealsState = {
   aggregation: null,
   positions: [],
@@ -108,14 +135,16 @@ export interface ActiveDealsContextValue {
   loading: boolean;
   error: string | null;
   refreshInterval: ActiveDealsRefreshInterval;
-  setRefreshInterval: (interval: ActiveDealsRefreshInterval) => void;
   fetchDeals: () => Promise<void>;
   resetHistory: () => void;
+  compressHistory: () => void;
   zoomRange: DataZoomRange | undefined;
   setZoomRange: Dispatch<SetStateAction<DataZoomRange | undefined>>;
   zoomPreset: ActiveDealsZoomPreset;
   setZoomPreset: Dispatch<SetStateAction<ActiveDealsZoomPreset>>;
   positionHistory: DealHistoryMap;
+  executedOrders: ExecutedOrderPoint[];
+  executedOrdersByDeal: Map<number, ExecutedOrderPoint[]>;
 }
 
 const ActiveDealsContext = createContext<ActiveDealsContextValue | undefined>(undefined);
@@ -126,6 +155,7 @@ interface ActiveDealsProviderProps {
 }
 
 export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsProviderProps) => {
+  const { refreshInterval } = useDealsRefresh();
   const initialPreferencesRef = useRef<ActiveDealsPreferences | null | undefined>(undefined);
   if (initialPreferencesRef.current === undefined) {
     initialPreferencesRef.current = readActiveDealsPreferences();
@@ -135,9 +165,6 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   const initialGroupedSeries: GroupedSeriesMap = new Map();
   const initialPositionHistory: DealHistoryMap = new Map();
 
-  const [refreshInterval, setRefreshIntervalState] = useState<ActiveDealsRefreshInterval>(
-    () => initialPreferences?.refreshInterval ?? DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
-  );
   const [dealsState, setDealsState] = useState<DealsState>(INITIAL_DEALS_STATE);
   const [pnlSeries, setPnlSeries] = useState<PortfolioEquitySeries>(() => cachedSeries);
   const [groupedPnlSeries, setGroupedPnlSeries] = useState<PortfolioEquityGroupedSeriesItem[]>(() =>
@@ -150,6 +177,10 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   const [zoomRange, setZoomRange] = useState<DataZoomRange | undefined>(undefined);
   const [zoomPreset, setZoomPreset] = useState<ActiveDealsZoomPreset>('all');
   const [positionHistory, setPositionHistory] = useState<DealHistoryMap>(() => initialPositionHistory);
+  const [executedOrdersIndex, setExecutedOrdersIndex] = useState<ExecutedOrdersIndex>(() => ({
+    byDeal: new Map(),
+    all: [],
+  }));
 
   const timerRef = useRef<number | null>(null);
   const initialLoadRef = useRef(false);
@@ -158,6 +189,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   const groupedSamplesRef = useRef<Map<number, ActiveDeal>>(new Map());
   const apiKeysRef = useRef<ApiKeyMap>(new Map());
   const positionHistoryRef = useRef<DealHistoryMap>(new Map(initialPositionHistory));
+  const executedOrdersHistoryRef = useRef<ExecutedOrdersHistoryMap>(new Map());
   const isLoadingApiKeysRef = useRef(false);
 
   const syncGroupedSeries = useCallback(() => {
@@ -192,6 +224,9 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
 
         positionHistoryRef.current = cache.positionHistory;
         setPositionHistory(cache.positionHistory);
+
+        executedOrdersHistoryRef.current = cache.executedOrders;
+        setExecutedOrdersIndex(buildExecutedOrdersIndexFromHistory(cache.executedOrders));
       })
       .catch((error) => {
         console.warn('[Veles Tools] Не удалось загрузить кэш истории активных сделок', error);
@@ -253,11 +288,17 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   );
 
   const persistActiveDealsHistory = useCallback(
-    (series: PortfolioEquitySeries, groupedSeries: GroupedSeriesMap, history: DealHistoryMap) => {
+    (
+      series: PortfolioEquitySeries,
+      groupedSeries: GroupedSeriesMap,
+      history: DealHistoryMap,
+      executedOrders: ExecutedOrdersHistoryMap,
+    ) => {
       void writeActiveDealsHistoryCache({
         pnlSeries: series,
         groupedSeries,
         positionHistory: history,
+        executedOrders,
       });
     },
     [],
@@ -313,6 +354,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   const handleDealsResponse = useCallback(
     (deals: ActiveDeal[], aggregation: ActiveDealsAggregation, timestamp: number) => {
       const nextSeries = appendSeriesPoint(aggregation.totalPnl, timestamp);
+      const historyStart = getSeriesStartTimestamp(nextSeries);
 
       const totalsByApiKey = new Map<number, number>();
       const dealSamples = new Map<number, ActiveDeal>();
@@ -345,7 +387,17 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       });
 
       const nextPositionHistory = updatePositionHistory(aggregation.positions, timestamp);
-      persistActiveDealsHistory(nextSeries, nextGroupedSeries, nextPositionHistory);
+      const incomingExecutedOrders = buildExecutedOrdersIndex(deals);
+      const nextExecutedOrdersHistory = mergeExecutedOrdersHistory(
+        executedOrdersHistoryRef.current,
+        incomingExecutedOrders.byDeal,
+        historyStart,
+        ACTIVE_DEALS_HISTORY_POINT_LIMIT,
+      );
+      executedOrdersHistoryRef.current = nextExecutedOrdersHistory;
+      setExecutedOrdersIndex(buildExecutedOrdersIndexFromHistory(nextExecutedOrdersHistory));
+
+      persistActiveDealsHistory(nextSeries, nextGroupedSeries, nextPositionHistory, nextExecutedOrdersHistory);
     },
     [appendSeriesPoint, loadApiKeys, persistActiveDealsHistory, updateGroupedSeries, updatePositionHistory],
   );
@@ -385,6 +437,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       groupedSamplesRef.current = new Map();
       apiKeysRef.current = new Map();
       positionHistoryRef.current = new Map();
+      executedOrdersHistoryRef.current = new Map();
       isLoadingApiKeysRef.current = false;
       setDealsState(INITIAL_DEALS_STATE);
       setPnlSeries(emptySeries);
@@ -393,6 +446,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       setZoomRange(undefined);
       setZoomPreset('all');
       setPositionHistory(new Map());
+      setExecutedOrdersIndex({ byDeal: new Map(), all: [] });
       initialLoadRef.current = false;
       setLoading(false);
       setError(null);
@@ -441,19 +495,60 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     groupedSeriesRef.current = new Map();
     groupedSamplesRef.current = new Map();
     positionHistoryRef.current = new Map();
+    executedOrdersHistoryRef.current = new Map();
     setPnlSeries(emptySeries);
     setGroupedPnlSeries([]);
     setDealsState(INITIAL_DEALS_STATE);
     setZoomRange(undefined);
     setZoomPreset('all');
     setPositionHistory(new Map());
+    setExecutedOrdersIndex({ byDeal: new Map(), all: [] });
     initialLoadRef.current = false;
     setError(null);
     void clearActiveDealsHistoryCache();
   }, []);
 
-  const updateRefreshInterval = useCallback((interval: ActiveDealsRefreshInterval) => {
-    setRefreshIntervalState(interval);
+  const compressHistory = useCallback(() => {
+    const compressedSeries = buildPortfolioEquitySeries(compressTimedPoints(seriesRef.current.points));
+    seriesRef.current = compressedSeries;
+    setPnlSeries(compressedSeries);
+
+    const nextGroupedSeries: GroupedSeriesMap = new Map();
+    groupedSeriesRef.current.forEach((series, apiKeyId) => {
+      const compressed = buildPortfolioEquitySeries(compressTimedPoints(series.points));
+      if (compressed.points.length > 0) {
+        nextGroupedSeries.set(apiKeyId, compressed);
+      }
+    });
+    groupedSeriesRef.current = nextGroupedSeries;
+    setGroupedPnlSeries(composeGroupedSeries(nextGroupedSeries, groupedSamplesRef.current, apiKeysRef.current));
+
+    const nextPositionHistory: DealHistoryMap = new Map();
+    positionHistoryRef.current.forEach((history, dealId) => {
+      const compressed = compressTimedPoints(history);
+      if (compressed.length > 0) {
+        nextPositionHistory.set(dealId, compressed);
+      }
+    });
+    positionHistoryRef.current = nextPositionHistory;
+    setPositionHistory(nextPositionHistory);
+
+    const nextExecutedOrdersHistory: ExecutedOrdersHistoryMap = new Map();
+    executedOrdersHistoryRef.current.forEach((orders, dealId) => {
+      const compressed = compressTimedPoints(orders);
+      if (compressed.length > 0) {
+        nextExecutedOrdersHistory.set(dealId, compressed);
+      }
+    });
+    executedOrdersHistoryRef.current = nextExecutedOrdersHistory;
+    setExecutedOrdersIndex(buildExecutedOrdersIndexFromHistory(nextExecutedOrdersHistory));
+
+    void writeActiveDealsHistoryCache({
+      pnlSeries: compressedSeries,
+      groupedSeries: nextGroupedSeries,
+      positionHistory: nextPositionHistory,
+      executedOrders: nextExecutedOrdersHistory,
+    });
   }, []);
 
   const contextValue = useMemo<ActiveDealsContextValue>(
@@ -467,14 +562,16 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       loading,
       error,
       refreshInterval,
-      setRefreshInterval: updateRefreshInterval,
       fetchDeals,
       resetHistory,
+      compressHistory,
       zoomRange,
       setZoomRange,
       zoomPreset,
       setZoomPreset,
       positionHistory,
+      executedOrders: executedOrdersIndex.all,
+      executedOrdersByDeal: executedOrdersIndex.byDeal,
     }),
     [
       dealsState,
@@ -485,12 +582,13 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       error,
       refreshInterval,
       groupByApiKey,
-      updateRefreshInterval,
       fetchDeals,
       resetHistory,
+      compressHistory,
       zoomRange,
       zoomPreset,
       positionHistory,
+      executedOrdersIndex,
     ],
   );
 
