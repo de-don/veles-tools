@@ -1,3 +1,13 @@
+## [2.3.0](https://github.com/de-don/veles-tools/compare/v2.2.0...v2.3.0) (2026-01-02)
+
+### Features
+
+* **dynamic-block:** add info modal for dynamic blocking explanation ([886fcef](https://github.com/de-don/veles-tools/commit/886fcefa20a80dd61041b518ffca03a5e7a5cd53))
+
+### Bug Fixes
+
+* **ui:** add telegram channel modal ([5fe223e](https://github.com/de-don/veles-tools/commit/5fe223ed228953e668a028f5f205c00a89d0f96e))
+
 ## [2.2.0](https://github.com/de-don/veles-tools/compare/v2.1.0...v2.2.0) (2026-01-02)
 
 ### Features
