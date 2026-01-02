@@ -1,3 +1,23 @@
+## [2.2.0](https://github.com/de-don/veles-tools/compare/v2.1.0...v2.2.0) (2026-01-02)
+
+### Features
+
+* **active-deals:** add algorithm filter to active deals table ([af6e773](https://github.com/de-don/veles-tools/commit/af6e7739967f5d6af91745fc55ebb092b3ca28b8))
+* **active-deals:** add history compression functionality ([712993f](https://github.com/de-don/veles-tools/commit/712993fcac0f2669617d607ba73f4d116f629a47))
+* **active-deals:** keep info about closed deals on the chart ([8e2c220](https://github.com/de-don/veles-tools/commit/8e2c2207f569cc0f3c8a3ecfe4de14dfc8410c7c))
+* **backtest-groups:** add max duration column ([b295e67](https://github.com/de-don/veles-tools/commit/b295e67d50cb9cf10dbe32aa518b5973e2404028))
+* **backtest-groups:** add option to create new group during backtest transfer ([6f0fc96](https://github.com/de-don/veles-tools/commit/6f0fc96bac1594a860bd57bf2855e9410f8340b2))
+* **bots:** add 'copy currencies' option to bulk actions menu ([d0d4501](https://github.com/de-don/veles-tools/commit/d0d4501114e5702075ddac4dc9462ef1517fe541))
+* **bots:** add bulk editing functionality for bot deposit and leverage ([3a293a9](https://github.com/de-don/veles-tools/commit/3a293a90c8047d53a41a867ab0bcda664ac18b2d))
+* **bots:** update status filter to support multiple selections ([1c1562e](https://github.com/de-don/veles-tools/commit/1c1562e34bb4e430c5ec742d03e9013f061f5fcf))
+* **dynamic-block:** implement dynamic block feature and move active-deals fetch interval to global settings ([1eca4c9](https://github.com/de-don/veles-tools/commit/1eca4c986828839b488647a8a5faab06997658c2))
+* **ui:** implement dark theme ([105570b](https://github.com/de-don/veles-tools/commit/105570b607d4c0fc3fbc544d380f64870afecda9))
+
+### Bug Fixes
+
+* **bots:** update ui for filters ([ab6cd41](https://github.com/de-don/veles-tools/commit/ab6cd4191272b46a0e01aa364e938ff175daded4))
+* correct links to veles.finance ([0e39ccb](https://github.com/de-don/veles-tools/commit/0e39ccbf1b58dcd1df9eccebfd9b9f26e7a24270))
+
 ## [2.1.0](https://github.com/de-don/veles-tools/compare/v2.0.1...v2.1.0) (2025-12-08)
 
 ### Features
