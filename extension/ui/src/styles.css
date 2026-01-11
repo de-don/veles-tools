@@ -1170,8 +1170,9 @@ body {
 
 .run-log__progress {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
 .progress-bar__label {
@@ -1179,6 +1180,7 @@ body {
   color: var(--ant-color-text-secondary, #475467);
   min-width: 40px;
   text-align: right;
+  align-self: flex-end;
 }
 
 .run-log__messages {
@@ -1262,6 +1264,12 @@ body {
 
 .modal-log__entry--info {
   color: var(--ant-color-text-secondary, #94a3b8);
+}
+
+.modal-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .alert-list {

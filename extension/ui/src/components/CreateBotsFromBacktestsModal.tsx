@@ -302,7 +302,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
 
       {isRunning && (
         <div className="run-log u-mt-16">
-          <Flex className="run-log__progress" vertical gap={8}>
+          <Flex className="run-log__progress modal-progress" vertical gap={8}>
             <span>
               Выполнено {processed} из {totalTargets}
             </span>

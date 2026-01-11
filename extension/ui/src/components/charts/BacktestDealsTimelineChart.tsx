@@ -248,7 +248,8 @@ const BacktestDealsTimelineChartComponent = ({ rows }: BacktestDealsTimelineChar
       theme={chartTheme}
       option={option}
       notMerge
-      opts={{ renderer: 'canvas', height: chartHeight }}
+      opts={{ renderer: 'canvas' }}
+      style={{ width: '100%', height: chartHeight }}
     />
   );
 };

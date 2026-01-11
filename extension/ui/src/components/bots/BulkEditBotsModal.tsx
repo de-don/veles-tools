@@ -260,7 +260,7 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
 
       {error && <div className="form-error u-mt-8">{error}</div>}
 
-      <Space direction="vertical" size={8} className="u-mt-16">
+      <Space direction="vertical" size={8} className="modal-progress u-mt-16">
         <Text type="secondary">
           {progressLabel}: {processedCount} из {totalBots}
         </Text>
