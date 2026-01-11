@@ -6,8 +6,8 @@ type StatisticTrend = 'default' | 'positive' | 'negative' | 'neutral' | 'muted';
 
 const trendValueStyles: Record<StatisticTrend, CSSProperties> = {
   default: {},
-  positive: { color: 'var(--ant-color-success, #047857)' },
-  negative: { color: 'var(--ant-color-error, #b91c1c)' },
+  positive: { color: 'var(--veles-color-positive, #047857)' },
+  negative: { color: 'var(--veles-color-negative, #b91c1c)' },
   neutral: { color: 'var(--ant-color-text, #0f172a)' },
   muted: { color: 'var(--ant-color-text, #0f172a)' },
 };
