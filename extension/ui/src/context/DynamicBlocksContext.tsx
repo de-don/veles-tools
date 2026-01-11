@@ -76,6 +76,9 @@ const countOpenPositions = (deals: ActiveDeal[]): Map<number, number> => {
 
 const computeNextLimit = (currentOpenPositions: number, currentBlock: number, config: DynamicBlockConfig): number => {
   const normalizedBlock = clamp(currentBlock, config.minPositionsBlock, config.maxPositionsBlock);
+  if (currentOpenPositions >= config.maxPositionsBlock) {
+    return config.maxPositionsBlock;
+  }
   if (currentOpenPositions < normalizedBlock - OPEN_POSITIONS_PADDING) {
     const target = currentOpenPositions + OPEN_POSITIONS_PADDING;
     return Math.max(target, config.minPositionsBlock);
@@ -100,8 +103,9 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
 
   const lastChecksRef = useRef<Record<number, number>>({});
   const automationInFlightRef = useRef(false);
+  const pendingImmediateRunRef = useRef<Record<number, DynamicBlockConfig> | null>(null);
 
-  const activeConfigs = useMemo(() => Object.values(configs).filter((config) => config.enabled), [configs]);
+  const activeConfigs = useMemo(() => Object.values(configs), [configs]);
 
   const _computeCurrentBlockValue = (apiKeyId: number): number => {
     const constraint = constraints.find((item) => item.apiKeyId === apiKeyId);
@@ -174,11 +178,18 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
   }, []);
 
   const runAutomation = useCallback(
-    async (triggeredManually = false) => {
-      if (!extensionReady || automationInFlightRef.current) {
+    async (triggeredManually = false, configsOverride?: Record<number, DynamicBlockConfig>) => {
+      if (!extensionReady) {
         return;
       }
-      const enabledConfigs = Object.values(configs).filter((config) => config.enabled);
+      if (automationInFlightRef.current) {
+        if (triggeredManually) {
+          pendingImmediateRunRef.current = configsOverride ?? configs;
+        }
+        return;
+      }
+      const configsSnapshot = configsOverride ?? configs;
+      const enabledConfigs = Object.values(configsSnapshot);
       if (enabledConfigs.length === 0) {
         return;
       }
@@ -225,29 +236,29 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
           const openPositions = snapshot.openPositionsByKey.get(config.apiKeyId) ?? 0;
           const rawLimit =
             constraint.limit !== null && constraint.limit !== undefined ? constraint.limit : config.maxPositionsBlock;
-          const currentLimit = clamp(rawLimit, config.minPositionsBlock, config.maxPositionsBlock);
           const cooldownPassed =
             !config.lastChangeAt || now - config.lastChangeAt >= config.timeoutBetweenChangesSec * 1000;
-          const nextLimit = computeNextLimit(openPositions, currentLimit, config);
+          const nextLimit = computeNextLimit(openPositions, rawLimit, config);
+          const isDecrease = nextLimit < rawLimit;
 
-          if (!cooldownPassed) {
+          if (!(cooldownPassed || isDecrease)) {
             const remainingMs = config.timeoutBetweenChangesSec * 1000 - (now - (config.lastChangeAt ?? 0));
             updates[config.apiKeyId] = {
               state: 'cooldown',
               lastCheckedAt: now,
               lastChangeAt: config.lastChangeAt,
-              lastLimit: currentLimit,
+              lastLimit: rawLimit,
               note: `Ожидаем ${Math.ceil(remainingMs / 1000)} секунд до следующей попытки`,
             };
             continue;
           }
 
-          if (nextLimit === currentLimit) {
+          if (nextLimit === rawLimit) {
             updates[config.apiKeyId] = {
               state: 'skipped',
               lastCheckedAt: now,
               lastChangeAt: config.lastChangeAt,
-              lastLimit: currentLimit,
+              lastLimit: rawLimit,
               note: 'Изменение блокировки не требуется',
             };
             continue;
@@ -291,6 +302,11 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
         setAutomationError(message);
       } finally {
         automationInFlightRef.current = false;
+        if (pendingImmediateRunRef.current) {
+          const pendingConfigs = pendingImmediateRunRef.current;
+          pendingImmediateRunRef.current = null;
+          runAutomation(true, pendingConfigs).catch(() => {});
+        }
       }
     },
     [
@@ -324,21 +340,25 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
 
   const upsertConfig = useCallback(
     (config: DynamicBlockConfig) => {
+      let nextRecord: Record<number, DynamicBlockConfig> | null = null;
       setConfigs((prev) => {
         const merged = { ...prev, [config.apiKeyId]: { ...config, checkPeriodSec: dealsRefreshInterval } };
-        void persistDynamicBlockConfigs(merged);
-        return normalizeDynamicBlockConfigs(merged);
+        nextRecord = normalizeDynamicBlockConfigs(merged);
+        void persistDynamicBlockConfigs(nextRecord);
+        return nextRecord;
       });
+      if (nextRecord && extensionReady) {
+        pendingImmediateRunRef.current = nextRecord;
+        runAutomation(true, nextRecord).catch(() => {});
+      }
     },
-    [dealsRefreshInterval],
+    [dealsRefreshInterval, extensionReady, runAutomation],
   );
 
   const disableConfig = useCallback((apiKeyId: number) => {
     setConfigs((prev) => {
-      const next = {
-        ...prev,
-        [apiKeyId]: { ...resolveConfigForApiKey(apiKeyId, prev), enabled: false, lastChangeAt: null },
-      };
+      const next = { ...prev };
+      delete next[apiKeyId];
       void persistDynamicBlockConfigs(next);
       return normalizeDynamicBlockConfigs(next);
     });

@@ -1733,6 +1733,10 @@ body {
   color: var(--ant-color-text, #334155);
 }
 
+.statistic--danger .ant-statistic-content {
+  color: var(--ant-color-error, #ef4444);
+}
+
 .backtest-info-table__cell {
   min-width: 150px;
 }
