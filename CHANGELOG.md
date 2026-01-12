@@ -1,3 +1,11 @@
+## [2.3.1](https://github.com/de-don/veles-tools/compare/v2.3.0...v2.3.1) (2026-01-12)
+
+### Bug Fixes
+
+* **dynamic-block:** update logic for downgrading the limit ([5f7b810](https://github.com/de-don/veles-tools/commit/5f7b810d86f2db8933824d33137b476f5fdc8c8d))
+* **theme:** update positive/negative colors for statistic cards ([4d4794a](https://github.com/de-don/veles-tools/commit/4d4794aa4f07af09f5475d4e07da4903b7d85963))
+* **ui:** correct some styles ([1f09db8](https://github.com/de-don/veles-tools/commit/1f09db8f143eb6f85a430791d2df30aec7b04c5a))
+
 ## [2.3.0](https://github.com/de-don/veles-tools/compare/v2.2.0...v2.3.0) (2026-01-02)
 
 ### Features
