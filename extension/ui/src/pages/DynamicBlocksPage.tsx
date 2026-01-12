@@ -23,7 +23,6 @@ import {
   Slider,
   Space,
   Statistic,
-  Switch,
   Typography,
 } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
@@ -168,6 +167,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
   const renderConfigCard = (config: DynamicBlockConfig) => {
     const currentLimit = computeCurrentBlockValue(config);
     const openPositions = openPositionsByKey.get(config.apiKeyId) ?? 0;
+    const isOverLimit = openPositions > config.maxPositionsBlock;
     const apiKeyLabel = resolveApiKeyLabel(config.apiKeyId, apiKeys);
 
     return (
@@ -183,18 +183,22 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
         size="small"
         extra={
           <Popconfirm
-            title="Отключить блокировку?"
-            okText="Да"
-            cancelText="Нет"
+            title="Удалить блокировку?"
+            okText="Удалить"
+            cancelText="Отмена"
             onConfirm={() => disableConfig(config.apiKeyId)}
           >
-            <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label="Отключить блокировку" />
+            <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label="Удалить блокировку" />
           </Popconfirm>
         }
       >
         <Space direction="vertical" size={12} className="u-full-width">
           <div className="dynamic-blocks-card__stats">
-            <Statistic title="Позиции" value={openPositions} />
+            <Statistic
+              title="Позиции"
+              value={openPositions}
+              className={isOverLimit ? 'statistic--danger' : undefined}
+            />
             <Statistic title="Лимит" value={currentLimit} suffix="поз." className="statistic--highlight" />
             <Statistic title="Диапазон" value={`${config.minPositionsBlock} – ${config.maxPositionsBlock}`} />
           </div>
@@ -267,21 +271,6 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             </Row>
           </Form>
 
-          <Row gutter={[12, 12]} align="middle" justify="space-between">
-            <Col>
-              <Space>
-                <Switch
-                  checked={config.enabled}
-                  onChange={(checked) => {
-                    updateConfig(config, { enabled: checked });
-                  }}
-                  disabled={!extensionReady}
-                />
-                <Typography.Text>Автоматически менять блокировку</Typography.Text>
-              </Space>
-            </Col>
-          </Row>
-
           {automationStatuses[config.apiKeyId]?.state === 'error' && (
             <Alert
               type="error"
@@ -353,7 +342,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
                 loading={manualRunPending}
                 disabled={!extensionReady || activeConfigs.length === 0}
               >
-                Проверить сейчас
+                Установить сейчас
               </Button>
             </Space>
           }
@@ -368,9 +357,6 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               </Col>
               <Col xs={24} md={12} lg={8}>
                 <Statistic title="Активных блокировок" value={activeConfigs.length} />
-              </Col>
-              <Col xs={24} md={12} lg={8}>
-                <Statistic title="Обновления" value={activeConfigs.length > 0 ? 'автоматические' : 'не настроены'} />
               </Col>
             </Row>
             {snapshotError && <Alert type="error" showIcon message={snapshotError} />}

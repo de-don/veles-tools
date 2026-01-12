@@ -846,7 +846,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
           {logs.length > 0 && (
             <div className="run-log">
-              <div className="run-log__progress">
+              <div className="run-log__progress modal-progress">
                 <Progress percent={progress} size="small" showInfo={false} />
                 <span className="progress-bar__label">{progress}%</span>
               </div>

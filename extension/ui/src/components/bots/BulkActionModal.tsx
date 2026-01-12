@@ -200,7 +200,7 @@ const BulkActionModal = ({
         {copy.checkboxLabel}
       </Checkbox>
 
-      <Space direction="vertical" size={8} className="u-mt-16">
+      <Space direction="vertical" size={8} className="modal-progress u-mt-16">
         <Text type="secondary">
           {progressLabel}: {processedCount} из {totalBots}
         </Text>

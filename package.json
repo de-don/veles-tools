@@ -3,9 +3,9 @@
   "version": "2.3.0",
   "private": true,
   "scripts": {
-    "dev": "vite build --watch --config extension/ui/vite.config.ts",
-    "build": "vite build --config extension/ui/vite.config.ts",
-    "preview": "vite preview --config extension/ui/vite.config.ts",
+    "dev": "vite build --watch --config extension/ui/vite.config.mts",
+    "build": "vite build --config extension/ui/vite.config.mts",
+    "preview": "vite preview --config extension/ui/vite.config.mts",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "tsc --project extension/ui/tsconfig.json --noEmit",

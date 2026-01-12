@@ -3,10 +3,14 @@
   color: var(--ant-color-text, #0f172a);
   background-color: var(--ant-color-bg-layout, #f5f7fb);
   color-scheme: light;
+  --veles-color-positive: #047857;
+  --veles-color-negative: #b91c1c;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
+  --veles-color-positive: var(--ant-color-success, #10b981);
+  --veles-color-negative: var(--ant-color-error, #ef4444);
 }
 
 * {
@@ -1166,8 +1170,9 @@ body {
 
 .run-log__progress {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
 }
 
 .progress-bar__label {
@@ -1175,6 +1180,7 @@ body {
   color: var(--ant-color-text-secondary, #475467);
   min-width: 40px;
   text-align: right;
+  align-self: flex-end;
 }
 
 .run-log__messages {
@@ -1258,6 +1264,12 @@ body {
 
 .modal-log__entry--info {
   color: var(--ant-color-text-secondary, #94a3b8);
+}
+
+.modal-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .alert-list {
@@ -1710,15 +1722,19 @@ body {
 }
 
 .pnl-value--positive {
-  color: var(--ant-color-success, #047857);
+  color: var(--veles-color-positive, #047857);
 }
 
 .pnl-value--negative {
-  color: var(--ant-color-error, #b91c1c);
+  color: var(--veles-color-negative, #b91c1c);
 }
 
 .pnl-value--neutral {
   color: var(--ant-color-text, #334155);
+}
+
+.statistic--danger .ant-statistic-content {
+  color: var(--ant-color-error, #ef4444);
 }
 
 .backtest-info-table__cell {
