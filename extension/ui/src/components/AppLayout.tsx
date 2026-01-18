@@ -22,6 +22,7 @@ import logo from '../assets/logo.png';
 import { APP_NAME, APP_VERSION } from '../config/version';
 import { useThemeMode } from '../context/ThemeContext';
 import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
+import ConnectionHelpModal from './ConnectionHelpModal';
 import SupportProjectModal from './SupportProjectModal';
 import TelegramChannelModal from './TelegramChannelModal';
 
@@ -70,6 +71,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
   const { mode: themeMode, setMode: setThemeMode } = useThemeMode();
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [telegramModalOpen, setTelegramModalOpen] = useState(false);
+  const [connectionHelpOpen, setConnectionHelpOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -167,6 +169,11 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
       <Button size="small" type="primary" icon={<ReloadOutlined />} onClick={onPing}>
         Обновить
       </Button>
+      {!connectionStatus.ok && (
+        <Button size="small" type="link" onClick={() => setConnectionHelpOpen(true)}>
+          Как восстановить связь
+        </Button>
+      )}
     </Space>
   );
 
@@ -251,6 +258,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
         onClose={() => setTelegramModalOpen(false)}
         channelUrl={TELEGRAM_CHANNEL_URL}
       />
+      <ConnectionHelpModal open={connectionHelpOpen} onClose={() => setConnectionHelpOpen(false)} />
     </Layout>
   );
 };
