@@ -62,6 +62,8 @@ interface DynamicBlocksProviderProps extends PropsWithChildren {
 }
 
 const OPEN_POSITIONS_PADDING = 1;
+const PENDING_LIMIT_TTL_MS = 30 * 1000;
+const CONSTRAINTS_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
@@ -76,15 +78,12 @@ const countOpenPositions = (deals: ActiveDeal[]): Map<number, number> => {
 
 const computeNextLimit = (currentOpenPositions: number, currentBlock: number, config: DynamicBlockConfig): number => {
   const normalizedBlock = clamp(currentBlock, config.minPositionsBlock, config.maxPositionsBlock);
-  if (currentOpenPositions >= config.maxPositionsBlock) {
-    return config.maxPositionsBlock;
-  }
   if (currentOpenPositions < normalizedBlock - OPEN_POSITIONS_PADDING) {
-    const target = currentOpenPositions + OPEN_POSITIONS_PADDING;
-    return Math.max(target, config.minPositionsBlock);
+    const target = Math.max(currentOpenPositions + OPEN_POSITIONS_PADDING, config.minPositionsBlock);
+    return clamp(target, config.minPositionsBlock, config.maxPositionsBlock);
   }
   if (currentOpenPositions >= normalizedBlock) {
-    return Math.min(normalizedBlock + 1, config.maxPositionsBlock);
+    return clamp(normalizedBlock + 1, config.minPositionsBlock, config.maxPositionsBlock);
   }
   return normalizedBlock;
 };
@@ -104,6 +103,7 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
   const lastChecksRef = useRef<Record<number, number>>({});
   const automationInFlightRef = useRef(false);
   const pendingImmediateRunRef = useRef<Record<number, DynamicBlockConfig> | null>(null);
+  const pendingLimitsRef = useRef<Record<number, { limit: number; updatedAt: number }>>({});
 
   const activeConfigs = useMemo(() => Object.values(configs), [configs]);
 
@@ -149,12 +149,59 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
     }
   }, [extensionReady]);
 
+  const refreshConstraints = useCallback(
+    async (silent = false): Promise<PositionConstraint[] | null> => {
+      if (!extensionReady) {
+        if (!silent) {
+          setSnapshotError('Расширение Veles Tools неактивно.');
+        }
+        return null;
+      }
+
+      try {
+        const constraintsResponse = await positionConstraintsService.getPositionConstraints();
+        setConstraints(constraintsResponse);
+        return constraintsResponse;
+      } catch (error) {
+        if (silent) {
+          console.warn('[Veles Tools] Не удалось обновить dynamic-blocks из API', error);
+          return null;
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        setSnapshotError(message);
+        return null;
+      }
+    },
+    [extensionReady],
+  );
+
+  const refreshOpenPositions = useCallback(async (): Promise<Map<number, number>> => {
+    const deals = await fetchAllActiveDeals({ size: ACTIVE_DEALS_DEFAULT_SIZE });
+    const positions = countOpenPositions(deals);
+    setOpenPositionsByKey(positions);
+    setLastSnapshotAt(Date.now());
+    return positions;
+  }, []);
+
   useEffect(() => {
     if (!extensionReady) {
       return;
     }
     refreshSnapshot().catch(() => {});
   }, [extensionReady, refreshSnapshot]);
+
+  useEffect(() => {
+    if (!extensionReady) {
+      return;
+    }
+    const timerId = window.setInterval(() => {
+      refreshConstraints(true).catch(() => {});
+    }, CONSTRAINTS_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [extensionReady, refreshConstraints]);
 
   useEffect(() => {
     let isActive = true;
@@ -207,20 +254,18 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
       setAutomationError(null);
 
       try {
-        const snapshot = (await refreshSnapshot()) ?? {
-          constraints,
-          openPositionsByKey,
-          apiKeys,
-        };
-        const snapshotConstraints = snapshot.constraints ?? [];
+        let positionsSnapshot: Map<number, number>;
+        try {
+          positionsSnapshot = await refreshOpenPositions();
+        } catch {
+          positionsSnapshot = openPositionsByKey;
+        }
+        const snapshotConstraints = constraints ?? [];
         const updates: Record<number, AutomationStatus> = {};
 
         for (const config of dueConfigs) {
           lastChecksRef.current[config.apiKeyId] = now;
-          const constraint =
-            snapshotConstraints.find((item) => item.apiKeyId === config.apiKeyId) ??
-            constraints.find((item) => item.apiKeyId === config.apiKeyId) ??
-            null;
+          const constraint = snapshotConstraints.find((item) => item.apiKeyId === config.apiKeyId) ?? null;
 
           if (!constraint) {
             updates[config.apiKeyId] = {
@@ -233,32 +278,37 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
             continue;
           }
 
-          const openPositions = snapshot.openPositionsByKey.get(config.apiKeyId) ?? 0;
-          const rawLimit =
-            constraint.limit !== null && constraint.limit !== undefined ? constraint.limit : config.maxPositionsBlock;
+          const openPositions = positionsSnapshot.get(config.apiKeyId) ?? 0;
+          const baseLimit = constraint.limit ?? config.maxPositionsBlock;
+          const pending = pendingLimitsRef.current[config.apiKeyId];
+          if (pending && now - pending.updatedAt >= PENDING_LIMIT_TTL_MS) {
+            delete pendingLimitsRef.current[config.apiKeyId];
+          }
+          const rawLimit = pending && now - pending.updatedAt < PENDING_LIMIT_TTL_MS ? pending.limit : baseLimit;
+          const currentLimit = clamp(rawLimit, config.minPositionsBlock, config.maxPositionsBlock);
           const cooldownPassed =
             !config.lastChangeAt || now - config.lastChangeAt >= config.timeoutBetweenChangesSec * 1000;
-          const nextLimit = computeNextLimit(openPositions, rawLimit, config);
-          const isDecrease = nextLimit < rawLimit;
+          const nextLimit = computeNextLimit(openPositions, currentLimit, config);
+          const isIncrease = nextLimit > currentLimit;
 
-          if (!(cooldownPassed || isDecrease)) {
+          if (isIncrease && !cooldownPassed) {
             const remainingMs = config.timeoutBetweenChangesSec * 1000 - (now - (config.lastChangeAt ?? 0));
             updates[config.apiKeyId] = {
               state: 'cooldown',
               lastCheckedAt: now,
               lastChangeAt: config.lastChangeAt,
-              lastLimit: rawLimit,
+              lastLimit: currentLimit,
               note: `Ожидаем ${Math.ceil(remainingMs / 1000)} секунд до следующей попытки`,
             };
             continue;
           }
 
-          if (nextLimit === rawLimit) {
+          if (nextLimit === currentLimit) {
             updates[config.apiKeyId] = {
               state: 'skipped',
               lastCheckedAt: now,
               lastChangeAt: config.lastChangeAt,
-              lastLimit: rawLimit,
+              lastLimit: currentLimit,
               note: 'Изменение блокировки не требуется',
             };
             continue;
@@ -272,6 +322,8 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
             short: constraint.short ?? null,
           });
 
+          pendingLimitsRef.current[config.apiKeyId] = { limit: nextLimit, updatedAt: now };
+
           setConstraints((prev) =>
             prev.map((item) =>
               item.apiKeyId === config.apiKeyId ? { ...item, limit: nextLimit, positionEnabled: true } : item,
@@ -279,7 +331,8 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
           );
 
           setConfigs((prev) => {
-            const current = resolveConfigForApiKey(config.apiKeyId, prev);
+            const fallback = resolveConfigForApiKey(config.apiKeyId, prev);
+            const current = configsSnapshot[config.apiKeyId] ?? prev[config.apiKeyId] ?? fallback;
             const nextRecord = { ...prev, [config.apiKeyId]: { ...current, lastChangeAt: now } };
             void persistDynamicBlockConfigs(nextRecord);
             return normalizeDynamicBlockConfigs(nextRecord);
@@ -310,13 +363,12 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
       }
     },
     [
-      apiKeys,
       configs,
       constraints,
       dealsRefreshInterval,
       extensionReady,
       openPositionsByKey,
-      refreshSnapshot,
+      refreshOpenPositions,
       updateAutomationStatuses,
     ],
   );

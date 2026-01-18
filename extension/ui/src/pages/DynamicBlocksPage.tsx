@@ -1,6 +1,7 @@
 import {
   ControlOutlined,
   DeleteOutlined,
+  EditOutlined,
   InfoCircleOutlined,
   PlusOutlined,
   ReloadOutlined,
@@ -25,7 +26,7 @@ import {
   Statistic,
   Typography,
 } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useDealsRefresh } from '../context/DealsRefreshContext';
 import { useDynamicBlocks } from '../context/DynamicBlocksContext';
 import { DEFAULT_DYNAMIC_BLOCK_CONFIG } from '../storage/dynamicPositionBlocksStore';
@@ -77,29 +78,30 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
     disableConfig,
   } = useDynamicBlocks();
   const [manualRunPending, setManualRunPending] = useState(false);
-  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<DynamicBlockConfig | null>(null);
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [addForm] = Form.useForm<AddFormValues>();
-  const updateConfig = useCallback(
-    (config: DynamicBlockConfig, patch: Partial<DynamicBlockConfig>) => {
-      upsertConfig({ ...config, ...patch });
-    },
-    [upsertConfig],
-  );
 
   const availableApiKeysForAdd = useMemo(() => {
     const usedIds = new Set(activeConfigs.map((config) => config.apiKeyId));
     return apiKeys.filter((key) => !usedIds.has(key.id));
   }, [activeConfigs, apiKeys]);
 
-  const apiKeyOptions: SelectProps['options'] = useMemo(
-    () =>
-      availableApiKeysForAdd.map((key) => ({
-        value: key.id,
-        label: key.name ? `${key.name}` : `API key ${key.id}`,
-      })),
-    [availableApiKeysForAdd],
-  );
+  const apiKeyOptions: SelectProps['options'] = useMemo(() => {
+    if (editingConfig) {
+      return [
+        {
+          value: editingConfig.apiKeyId,
+          label: resolveApiKeyLabel(editingConfig.apiKeyId, apiKeys),
+        },
+      ];
+    }
+    return availableApiKeysForAdd.map((key) => ({
+      value: key.id,
+      label: key.name ? `${key.name}` : `API key ${key.id}`,
+    }));
+  }, [availableApiKeysForAdd, apiKeys, editingConfig]);
 
   const openAddModal = () => {
     addForm.setFieldsValue({
@@ -108,13 +110,31 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
       maxPositionsBlock: DEFAULT_DYNAMIC_BLOCK_CONFIG.maxPositionsBlock,
       timeoutBetweenChangesMin: Math.round(DEFAULT_DYNAMIC_BLOCK_CONFIG.timeoutBetweenChangesSec / 60),
     });
-    setAddModalOpen(true);
+    setEditingConfig(null);
+    setConfigModalOpen(true);
   };
 
-  const handleAddSubmit = async () => {
+  const openEditModal = (config: DynamicBlockConfig) => {
+    addForm.setFieldsValue({
+      apiKeyId: config.apiKeyId,
+      minPositionsBlock: config.minPositionsBlock,
+      maxPositionsBlock: config.maxPositionsBlock,
+      timeoutBetweenChangesMin: Math.round(config.timeoutBetweenChangesSec / 60),
+    });
+    setEditingConfig(config);
+    setConfigModalOpen(true);
+  };
+
+  const closeConfigModal = () => {
+    setConfigModalOpen(false);
+    setEditingConfig(null);
+  };
+
+  const handleConfigSubmit = async () => {
     try {
       const values = await addForm.validateFields();
-      if (!values.apiKeyId) {
+      const apiKeyId = editingConfig?.apiKeyId ?? values.apiKeyId;
+      if (!apiKeyId) {
         message.error('Выберите API-ключ.');
         return;
       }
@@ -124,18 +144,18 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
       }
 
       const nextConfig: DynamicBlockConfig = {
-        apiKeyId: values.apiKeyId,
+        apiKeyId,
         minPositionsBlock: Math.trunc(values.minPositionsBlock),
         maxPositionsBlock: Math.trunc(values.maxPositionsBlock),
         timeoutBetweenChangesSec: Math.max(60, Math.trunc(values.timeoutBetweenChangesMin * 60)),
         checkPeriodSec: dealsRefreshInterval,
-        enabled: true,
-        lastChangeAt: null,
+        enabled: editingConfig?.enabled ?? true,
+        lastChangeAt: editingConfig?.lastChangeAt ?? null,
       };
 
       upsertConfig(nextConfig);
-      message.success('Динамическая блокировка добавлена.');
-      setAddModalOpen(false);
+      message.success(editingConfig ? 'Настройки обновлены.' : 'Динамическая блокировка добавлена.');
+      closeConfigModal();
     } catch (error) {
       const text = error instanceof Error ? error.message : String(error);
       message.error(text);
@@ -182,14 +202,23 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
         className="dynamic-blocks-card card--full-height"
         size="small"
         extra={
-          <Popconfirm
-            title="Удалить блокировку?"
-            okText="Удалить"
-            cancelText="Отмена"
-            onConfirm={() => disableConfig(config.apiKeyId)}
-          >
-            <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label="Удалить блокировку" />
-          </Popconfirm>
+          <Space size={4}>
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(config)}
+              aria-label="Редактировать блокировку"
+            />
+            <Popconfirm
+              title="Удалить блокировку?"
+              okText="Удалить"
+              cancelText="Отмена"
+              onConfirm={() => disableConfig(config.apiKeyId)}
+            >
+              <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label="Удалить блокировку" />
+            </Popconfirm>
+          </Space>
         }
       >
         <Space direction="vertical" size={12} className="u-full-width">
@@ -216,60 +245,6 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
             }}
             tooltip={{ open: false }}
           />
-
-          <Form layout="vertical" component="div" size="small" className="dynamic-blocks-card__form">
-            <Row gutter={[8, 8]}>
-              <Col xs={24} md={12} lg={8}>
-                <Form.Item label="Мин. блок">
-                  <InputNumber
-                    className="u-full-width"
-                    value={config.minPositionsBlock}
-                    min={1}
-                    size="small"
-                    onChange={(value) =>
-                      updateConfig(config, {
-                        minPositionsBlock: Number(value ?? 1),
-                        maxPositionsBlock: Math.max(config.maxPositionsBlock, Number(value ?? 1)),
-                      })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12} lg={8}>
-                <Form.Item label="Макс. блок">
-                  <InputNumber
-                    className="u-full-width"
-                    value={config.maxPositionsBlock}
-                    min={config.minPositionsBlock}
-                    size="small"
-                    onChange={(value) =>
-                      updateConfig(config, {
-                        maxPositionsBlock: Math.max(
-                          Number(value ?? config.minPositionsBlock),
-                          config.minPositionsBlock,
-                        ),
-                      })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-              <Col xs={24} md={12} lg={8}>
-                <Form.Item label="Таймаут (мин)">
-                  <InputNumber
-                    className="u-full-width"
-                    value={Math.round(config.timeoutBetweenChangesSec / 60)}
-                    min={1}
-                    size="small"
-                    onChange={(value) =>
-                      updateConfig(config, {
-                        timeoutBetweenChangesSec: Math.max(60, Math.round(Number(value ?? 1) * 60)),
-                      })
-                    }
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-          </Form>
 
           {automationStatuses[config.apiKeyId]?.state === 'error' && (
             <Alert
@@ -323,7 +298,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
                 icon={<PlusOutlined />}
                 type="primary"
                 onClick={openAddModal}
-                disabled={!extensionReady || apiKeyOptions.length === 0}
+                disabled={!extensionReady || availableApiKeysForAdd.length === 0}
               >
                 Добавить блокировку
               </Button>
@@ -371,7 +346,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
                 type="primary"
                 onClick={openAddModal}
                 icon={<PlusOutlined />}
-                disabled={!extensionReady || apiKeyOptions.length === 0}
+                disabled={!extensionReady || availableApiKeysForAdd.length === 0}
               >
                 Добавить блокировку
               </Button>
@@ -389,12 +364,12 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
       </Space>
 
       <Modal
-        title="Добавить динамическую блокировку"
-        open={addModalOpen}
-        onCancel={() => setAddModalOpen(false)}
-        onOk={handleAddSubmit}
+        title={editingConfig ? 'Редактировать динамическую блокировку' : 'Добавить динамическую блокировку'}
+        open={configModalOpen}
+        onCancel={closeConfigModal}
+        onOk={handleConfigSubmit}
         okText="Сохранить"
-        okButtonProps={{ disabled: apiKeyOptions.length === 0 }}
+        okButtonProps={{ disabled: !editingConfig && apiKeyOptions.length === 0 }}
       >
         <Form form={addForm} layout="vertical" size="small">
           <Form.Item label="API-ключ" name="apiKeyId" rules={[{ required: true, message: 'Выберите ключ' }]}>
@@ -403,7 +378,7 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               options={apiKeyOptions}
               showSearch
               optionFilterProp="label"
-              disabled={apiKeyOptions.length === 0}
+              disabled={Boolean(editingConfig) || apiKeyOptions.length === 0}
             />
           </Form.Item>
           <Form.Item label="Мин. блок" name="minPositionsBlock" rules={[{ required: true, type: 'number', min: 1 }]}>
