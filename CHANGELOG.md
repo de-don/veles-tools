@@ -1,3 +1,10 @@
+## [2.3.2](https://github.com/de-don/veles-tools/compare/v2.3.1...v2.3.2) (2026-01-19)
+
+### Bug Fixes
+
+* add connection help ([679e73e](https://github.com/de-don/veles-tools/commit/679e73e0e27f1222a5be0984b900de8ab24121bd))
+* **dynamic-block:** correct dynamic block ([10fa022](https://github.com/de-don/veles-tools/commit/10fa022d7fd44879863074b9df6a3d607d681b0b))
+
 ## [2.3.1](https://github.com/de-don/veles-tools/compare/v2.3.0...v2.3.1) (2026-01-12)
 
 ### Bug Fixes
