@@ -78,14 +78,19 @@ const countOpenPositions = (deals: ActiveDeal[]): Map<number, number> => {
 
 const computeNextLimit = (currentOpenPositions: number, currentBlock: number, config: DynamicBlockConfig): number => {
   const normalizedBlock = clamp(currentBlock, config.minPositionsBlock, config.maxPositionsBlock);
-  if (currentOpenPositions < normalizedBlock - OPEN_POSITIONS_PADDING) {
-    const target = Math.max(currentOpenPositions + OPEN_POSITIONS_PADDING, config.minPositionsBlock);
-    return clamp(target, config.minPositionsBlock, config.maxPositionsBlock);
+  if (currentBlock !== normalizedBlock) {
+    return normalizedBlock;
   }
-  if (currentOpenPositions >= normalizedBlock) {
-    return clamp(normalizedBlock + 1, config.minPositionsBlock, config.maxPositionsBlock);
+  if (currentOpenPositions > currentBlock) {
+    return clamp(currentOpenPositions, config.minPositionsBlock, config.maxPositionsBlock);
   }
-  return normalizedBlock;
+  if (currentOpenPositions < currentBlock - OPEN_POSITIONS_PADDING) {
+    return Math.max(currentOpenPositions + OPEN_POSITIONS_PADDING, config.minPositionsBlock);
+  }
+  if (currentOpenPositions >= currentBlock) {
+    return Math.min(currentBlock + 1, config.maxPositionsBlock);
+  }
+  return currentBlock;
 };
 
 export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlocksProviderProps) => {
@@ -284,14 +289,14 @@ export const DynamicBlocksProvider = ({ children, extensionReady }: DynamicBlock
           if (pending && now - pending.updatedAt >= PENDING_LIMIT_TTL_MS) {
             delete pendingLimitsRef.current[config.apiKeyId];
           }
-          const rawLimit = pending && now - pending.updatedAt < PENDING_LIMIT_TTL_MS ? pending.limit : baseLimit;
-          const currentLimit = clamp(rawLimit, config.minPositionsBlock, config.maxPositionsBlock);
+          const currentLimit = pending && now - pending.updatedAt < PENDING_LIMIT_TTL_MS ? pending.limit : baseLimit;
           const cooldownPassed =
             !config.lastChangeAt || now - config.lastChangeAt >= config.timeoutBetweenChangesSec * 1000;
           const nextLimit = computeNextLimit(openPositions, currentLimit, config);
           const isIncrease = nextLimit > currentLimit;
+          const isCatchUpIncrease = isIncrease && openPositions > currentLimit;
 
-          if (isIncrease && !cooldownPassed) {
+          if (isIncrease && !isCatchUpIncrease && !cooldownPassed) {
             const remainingMs = config.timeoutBetweenChangesSec * 1000 - (now - (config.lastChangeAt ?? 0));
             updates[config.apiKeyId] = {
               state: 'cooldown',

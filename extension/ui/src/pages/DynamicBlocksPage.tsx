@@ -175,20 +175,24 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
     }
   };
 
-  const computeCurrentBlockValue = (config: DynamicBlockConfig): number => {
+  const computeCurrentBlockValue = (config: DynamicBlockConfig): { actualLimit: number; displayLimit: number } => {
     const constraint = constraints.find((item) => item.apiKeyId === config.apiKeyId);
     const rawLimit =
       constraint && constraint.limit !== null && constraint.limit !== undefined
         ? constraint.limit
         : config.maxPositionsBlock;
-    return clamp(rawLimit, config.minPositionsBlock, config.maxPositionsBlock);
+    return {
+      actualLimit: rawLimit,
+      displayLimit: clamp(rawLimit, config.minPositionsBlock, config.maxPositionsBlock),
+    };
   };
 
   const renderConfigCard = (config: DynamicBlockConfig) => {
-    const currentLimit = computeCurrentBlockValue(config);
+    const { actualLimit, displayLimit } = computeCurrentBlockValue(config);
     const openPositions = openPositionsByKey.get(config.apiKeyId) ?? 0;
     const isOverLimit = openPositions > config.maxPositionsBlock;
     const apiKeyLabel = resolveApiKeyLabel(config.apiKeyId, apiKeys);
+    const isLimitOutOfRange = actualLimit !== displayLimit;
 
     return (
       <Card
@@ -228,18 +232,23 @@ const DynamicBlocksPage = ({ extensionReady }: DynamicBlocksPageProps) => {
               value={openPositions}
               className={isOverLimit ? 'statistic--danger' : undefined}
             />
-            <Statistic title="Лимит" value={currentLimit} suffix="поз." className="statistic--highlight" />
+            <Statistic
+              title="Лимит"
+              value={actualLimit}
+              suffix="поз."
+              className={isLimitOutOfRange ? 'statistic--danger' : 'statistic--highlight'}
+            />
             <Statistic title="Диапазон" value={`${config.minPositionsBlock} – ${config.maxPositionsBlock}`} />
           </div>
 
           <Slider
             min={config.minPositionsBlock}
             max={config.maxPositionsBlock}
-            value={currentLimit}
+            value={displayLimit}
             marks={{
               [config.minPositionsBlock]: 'MIN',
-              ...(currentLimit !== config.minPositionsBlock && currentLimit !== config.maxPositionsBlock
-                ? { [currentLimit]: 'Текущая' }
+              ...(displayLimit !== config.minPositionsBlock && displayLimit !== config.maxPositionsBlock
+                ? { [displayLimit]: 'Текущая' }
                 : {}),
               [config.maxPositionsBlock]: 'MAX',
             }}
