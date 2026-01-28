@@ -1,3 +1,9 @@
+## [2.3.3](https://github.com/de-don/veles-tools/compare/v2.3.2...v2.3.3) (2026-01-28)
+
+### Bug Fixes
+
+* **dynamic-block:** improve limit computation logic and update display values ([71e0dc7](https://github.com/de-don/veles-tools/commit/71e0dc724e81fd1e3ccb85adb176c07df36bf51b))
+
 ## [2.3.2](https://github.com/de-don/veles-tools/compare/v2.3.1...v2.3.2) (2026-01-19)
 
 ### Bug Fixes

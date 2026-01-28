@@ -1,6 +1,6 @@
 {
   "name": "veles-tools",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "private": true,
   "scripts": {
     "dev": "vite build --watch --config extension/ui/vite.config.mts",
