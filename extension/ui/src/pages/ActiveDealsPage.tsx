@@ -1,6 +1,6 @@
 import { DownOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Button, Card, Dropdown, Flex, message, Popconfirm, Segmented, Select, Space, Switch, Table } from 'antd';
+import { Button, Card, Checkbox, Drawer, Dropdown, Flex, message, Popconfirm, Segmented, Select, Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
@@ -12,7 +12,7 @@ import { StatisticCard } from '../components/ui/StatisticCard';
 import { TableColumnSettingsButton } from '../components/ui/TableColumnSettingsButton';
 import { useActiveDeals } from '../context/ActiveDealsContext';
 import { type ActiveDealMetrics, getDealBaseAsset } from '../lib/activeDeals';
-import type { DealHistoryPoint } from '../lib/activeDealsHistory';
+import { buildPortfolioEquitySeries, type DealHistoryPoint } from '../lib/activeDealsHistory';
 import {
   ACTIVE_DEALS_ZOOM_PRESET_OPTIONS,
   type ActiveDealsZoomPresetKey,
@@ -21,10 +21,16 @@ import {
 } from '../lib/activeDealsZoom';
 import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
 import type { DataZoomRange } from '../lib/chartOptions';
-import type { ExecutedOrderPoint, PortfolioEquitySeries } from '../lib/deprecatedFile';
+import type { ExecutedOrderPoint, PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../lib/deprecatedFile';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
-import type { ActiveDeal, ActiveDealAlgorithm } from '../types/activeDeals';
+import type { ActiveDeal, ActiveDealAlgorithm, ActiveDealsChartMode } from '../types/activeDeals';
+
+const ACTIVE_DEALS_CHART_MODE_OPTIONS: Array<{ label: string; value: ActiveDealsChartMode }> = [
+  { label: 'Общая', value: 'total' },
+  { label: 'Группировка по ключу', value: 'by-api-key' },
+  { label: 'Все сделки', value: 'all-deals' },
+];
 
 const currencyFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
@@ -342,8 +348,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     dealsState,
     pnlSeries,
     groupedPnlSeries,
-    groupByApiKey,
-    setGroupByApiKey,
+    chartMode,
+    setChartMode,
     apiKeysById,
     loading,
     error,
@@ -563,8 +569,46 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     return filtered;
   }, [algorithmFilter, apiKeyFilter, positions]);
 
-  const chartGroupedSeries = groupByApiKey && groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
+  const allDealsSeries = useMemo(() => {
+    if (positions.length === 0) {
+      return [];
+    }
+    return positions
+      .map((position) => {
+        const history = positionHistory.get(position.deal.id) ?? [];
+        const points = history.map((item) => ({ time: item.time, value: item.pnl }));
+        if (points.length === 0 && typeof dealsState.lastUpdated === 'number') {
+          points.push({ time: dealsState.lastUpdated, value: position.pnl });
+        }
+        if (points.length === 0) {
+          return null;
+        }
+        const series = buildPortfolioEquitySeries(points);
+        const botName = position.deal.botName?.trim() || 'Бот';
+        const label = botName;
+        return {
+          id: `deal-${position.deal.id}`,
+          label,
+          series,
+        };
+      })
+      .filter((item): item is PortfolioEquityGroupedSeriesItem => item !== null);
+  }, [dealsState.lastUpdated, positionHistory, positions]);
+
+  const chartGroupedSeries = useMemo(() => {
+    if (chartMode === 'by-api-key') {
+      return groupedPnlSeries.length > 0 ? groupedPnlSeries : undefined;
+    }
+    if (chartMode === 'all-deals') {
+      return allDealsSeries.length > 0 ? allDealsSeries : undefined;
+    }
+    return undefined;
+  }, [allDealsSeries, chartMode, groupedPnlSeries]);
+
+  const chartExecutedOrders = chartMode === 'all-deals' ? undefined : executedOrders;
+
   const [legendSelection, setLegendSelection] = useState<Record<string, boolean>>({ 'Суммарный P&L': true });
+  const [legendDrawerOpen, setLegendDrawerOpen] = useState(false);
 
   useEffect(() => {
     const names = chartGroupedSeries ? chartGroupedSeries.map((item) => item.label) : ['Суммарный P&L'];
@@ -580,6 +624,70 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
   const handleLegendSelectionChange = useCallback((selection: Record<string, boolean>) => {
     setLegendSelection(selection);
   }, []);
+
+  const legendNames = useMemo(() => chartGroupedSeries?.map((item) => item.label) ?? [], [chartGroupedSeries]);
+
+  const selectedLegendNames = useMemo(() => {
+    if (legendNames.length === 0) {
+      return [];
+    }
+    return legendNames.filter((name) => legendSelection[name] ?? true);
+  }, [legendNames, legendSelection]);
+
+  const handleLegendDrawerChange = useCallback(
+    (checkedValues: Array<string | number>) => {
+      const selected = new Set(checkedValues.map(String));
+      setLegendSelection((prev) => {
+        const next: Record<string, boolean> = {};
+        legendNames.forEach((name) => {
+          next[name] = selected.has(name);
+        });
+        Object.keys(prev).forEach((key) => {
+          if (!Object.hasOwn(next, key)) {
+            next[key] = prev[key];
+          }
+        });
+        return next;
+      });
+    },
+    [legendNames],
+  );
+
+  const selectAllLegends = useCallback(() => {
+    setLegendSelection((prev) => {
+      if (legendNames.length === 0) {
+        return prev;
+      }
+      const next: Record<string, boolean> = {};
+      legendNames.forEach((name) => {
+        next[name] = true;
+      });
+      Object.keys(prev).forEach((key) => {
+        if (!Object.hasOwn(next, key)) {
+          next[key] = prev[key];
+        }
+      });
+      return next;
+    });
+  }, [legendNames]);
+
+  const clearAllLegends = useCallback(() => {
+    setLegendSelection((prev) => {
+      if (legendNames.length === 0) {
+        return prev;
+      }
+      const next: Record<string, boolean> = {};
+      legendNames.forEach((name) => {
+        next[name] = false;
+      });
+      Object.keys(prev).forEach((key) => {
+        if (!Object.hasOwn(next, key)) {
+          next[key] = prev[key];
+        }
+      });
+      return next;
+    });
+  }, [legendNames]);
 
   const dealsColumns: ColumnsType<ActiveDealMetrics> = useMemo(
     () => [
@@ -927,8 +1035,8 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
               На графике отображается история суммарного результата портфеля с выбранным интервалом обновления. История
               накапливается только когда вкладка с расширением открыта.
             </p>
-            <Flex className="panel__actions panel__actions--spread u-full-width" gap={8} wrap>
-              <Space className="chart-zoom-presets" align="center" size="middle" wrap>
+            <Flex className="panel__actions panel__actions--spread u-full-width" gap={12} wrap>
+              <Space className="chart-zoom-presets" align="center" size={12} wrap>
                 <Segmented
                   options={ACTIVE_DEALS_ZOOM_PRESET_OPTIONS.map((preset) => ({
                     label: preset.label,
@@ -944,13 +1052,16 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                   </Button>
                 </Dropdown>
               </Space>
-              <Space align="center" size="middle">
-                <Switch
-                  checked={groupByApiKey}
-                  onChange={(checked) => setGroupByApiKey(checked)}
-                  aria-label="Группировка по ключу"
+              <Space align="center" size={12}>
+                <Segmented
+                  options={ACTIVE_DEALS_CHART_MODE_OPTIONS}
+                  value={chartMode}
+                  size="middle"
+                  onChange={(value) => setChartMode(value as ActiveDealsChartMode)}
                 />
-                <span>Группировка по ключу</span>
+                {chartGroupedSeries && chartGroupedSeries.length > 0 && chartMode === 'all-deals' && (
+                  <Button onClick={() => setLegendDrawerOpen(true)}>Легенда</Button>
+                )}
               </Space>
             </Flex>
           </div>
@@ -964,9 +1075,10 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
                 dataZoomRange={zoomRange}
                 onDataZoom={handleZoomChange}
                 groupedSeries={chartGroupedSeries}
-                executedOrders={executedOrders}
+                executedOrders={chartExecutedOrders}
                 legendSelection={legendSelection}
                 onLegendSelectionChange={handleLegendSelectionChange}
+                hideLegend={chartMode === 'all-deals'}
                 filterVisibleRange
               />
             )}
@@ -1021,6 +1133,37 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
           </div>
         </Card>
       </section>
+      <Drawer
+        title={`Легенда (${legendNames.length})`}
+        open={legendDrawerOpen}
+        onClose={() => setLegendDrawerOpen(false)}
+        width={360}
+        placement="right"
+        extra={
+          <Space>
+            <Button onClick={selectAllLegends}>Все</Button>
+            <Button onClick={clearAllLegends}>Ничего</Button>
+          </Space>
+        }
+      >
+        {legendNames.length === 0 ? (
+          <div className="empty-state">Нет доступных серий.</div>
+        ) : (
+          <Checkbox.Group
+            className="u-full-width"
+            value={selectedLegendNames}
+            onChange={(values) => handleLegendDrawerChange(values)}
+          >
+            <Space direction="vertical" className="u-full-width">
+              {legendNames.map((name) => (
+                <Checkbox key={name} value={name}>
+                  {name}
+                </Checkbox>
+              ))}
+            </Space>
+          </Checkbox.Group>
+        )}
+      </Drawer>
     </>
   );
 };

@@ -18,6 +18,7 @@ interface PortfolioEquityChartProps {
   onLegendSelectionChange?: (selection: Record<string, boolean>) => void;
   filterVisibleRange?: boolean;
   executedOrders?: ExecutedOrderPoint[];
+  hideLegend?: boolean;
 }
 
 interface DataZoomEventParams {
@@ -67,6 +68,7 @@ const PortfolioEquityChartComponent = ({
   onLegendSelectionChange,
   filterVisibleRange = false,
   executedOrders,
+  hideLegend = false,
 }: PortfolioEquityChartProps) => {
   const { mode } = useThemeMode();
   const option = useMemo(
@@ -79,8 +81,9 @@ const PortfolioEquityChartComponent = ({
         legendSelection,
         filterVisibleRange ? 'filter' : 'none',
         mode,
+        hideLegend,
       ),
-    [series, dataZoomRange, groupedSeries, executedOrders, legendSelection, filterVisibleRange, mode],
+    [series, dataZoomRange, groupedSeries, executedOrders, legendSelection, filterVisibleRange, mode, hideLegend],
   );
 
   const onEvents = useMemo(() => {

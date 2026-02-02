@@ -4,24 +4,43 @@ import {
   isActiveDealsRefreshInterval,
 } from '../lib/activeDealsPolling';
 import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
+import type { ActiveDealsChartMode } from '../types/activeDeals';
 
 const STORAGE_KEY = 'veles-active-deals-preferences-v2';
 const LEGACY_STORAGE_KEYS = ['veles-active-deals-preferences-v1'];
 
 export interface ActiveDealsPreferences {
   refreshInterval: ActiveDealsRefreshInterval;
-  groupByApiKey: boolean;
+  chartMode: ActiveDealsChartMode;
+  groupByApiKey?: boolean;
 }
+
+const ACTIVE_DEALS_CHART_MODES: ActiveDealsChartMode[] = ['all-deals', 'by-api-key', 'total'];
+
+const isActiveDealsChartMode = (value: unknown): value is ActiveDealsChartMode => {
+  return typeof value === 'string' && ACTIVE_DEALS_CHART_MODES.includes(value as ActiveDealsChartMode);
+};
 
 const isActiveDealsPreferences = (value: unknown): value is Partial<ActiveDealsPreferences> => {
   if (value === null || typeof value !== 'object') {
     return false;
   }
-  const candidate = value as { refreshInterval?: unknown; groupByApiKey?: unknown };
+  const candidate = value as { refreshInterval?: unknown; chartMode?: unknown; groupByApiKey?: unknown };
   const refreshValid =
     candidate.refreshInterval === undefined || isActiveDealsRefreshInterval(candidate.refreshInterval);
+  const chartModeValid = candidate.chartMode === undefined || isActiveDealsChartMode(candidate.chartMode);
   const groupValid = candidate.groupByApiKey === undefined || typeof candidate.groupByApiKey === 'boolean';
-  return refreshValid && groupValid;
+  return refreshValid && chartModeValid && groupValid;
+};
+
+const resolveChartMode = (candidate: { chartMode?: unknown; groupByApiKey?: unknown }): ActiveDealsChartMode => {
+  if (isActiveDealsChartMode(candidate.chartMode)) {
+    return candidate.chartMode;
+  }
+  if (typeof candidate.groupByApiKey === 'boolean') {
+    return candidate.groupByApiKey ? 'by-api-key' : 'total';
+  }
+  return 'total';
 };
 
 export const readActiveDealsPreferences = (): ActiveDealsPreferences | null => {
@@ -44,10 +63,11 @@ export const readActiveDealsPreferences = (): ActiveDealsPreferences | null => {
       const refreshInterval = isActiveDealsRefreshInterval(parsed.refreshInterval)
         ? parsed.refreshInterval
         : DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL;
-      const groupByApiKey = typeof parsed.groupByApiKey === 'boolean' ? parsed.groupByApiKey : false;
+      const chartMode = resolveChartMode(parsed);
       return {
         refreshInterval,
-        groupByApiKey,
+        chartMode,
+        groupByApiKey: chartMode === 'by-api-key',
       } satisfies ActiveDealsPreferences;
     }
   } catch (error) {
@@ -58,11 +78,13 @@ export const readActiveDealsPreferences = (): ActiveDealsPreferences | null => {
 };
 
 export const writeActiveDealsPreferences = (preferences: ActiveDealsPreferences): ActiveDealsPreferences => {
+  const chartMode = isActiveDealsChartMode(preferences.chartMode) ? preferences.chartMode : 'total';
   const payload: ActiveDealsPreferences = {
     refreshInterval: isActiveDealsRefreshInterval(preferences.refreshInterval)
       ? preferences.refreshInterval
       : DEFAULT_ACTIVE_DEALS_REFRESH_INTERVAL,
-    groupByApiKey: Boolean(preferences.groupByApiKey),
+    chartMode,
+    groupByApiKey: chartMode === 'by-api-key',
   };
   writeStorageValue(STORAGE_KEY, JSON.stringify(payload));
   return payload;

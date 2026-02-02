@@ -2,6 +2,8 @@ export type ActiveDealStatus = 'STARTED' | 'COMPLETED' | 'TERMINATED' | 'STOPPED
 
 export type ActiveDealAlgorithm = 'LONG' | 'SHORT';
 
+export type ActiveDealsChartMode = 'all-deals' | 'by-api-key' | 'total';
+
 export type ActiveDealOrderType =
   | 'MARKET'
   | 'LIMIT'

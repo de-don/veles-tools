@@ -337,6 +337,8 @@ const buildOrderScatterSeries = (
   };
 };
 
+const LEGEND_SCROLL_THRESHOLD = 12;
+
 export const createPortfolioEquityChartOptions = (
   series: PortfolioEquitySeries,
   range?: DataZoomRange,
@@ -345,6 +347,7 @@ export const createPortfolioEquityChartOptions = (
   legendSelection?: Record<string, boolean>,
   filterMode: DataZoomComponentOption['filterMode'] = 'none',
   themeMode?: ChartThemeMode,
+  hideLegend: boolean = false,
 ): EChartsOption => {
   const palette = resolveChartPalette(themeMode);
   if (groupedSeries && groupedSeries.length > 0) {
@@ -461,11 +464,16 @@ export const createPortfolioEquityChartOptions = (
         },
       },
       legend: {
+        show: !hideLegend,
+        type: groupedSeries.length > LEGEND_SCROLL_THRESHOLD ? 'scroll' : 'plain',
         bottom: 0,
         icon: 'roundRect',
         data: groupedSeries.map((group) => group.label),
         selected: legendSelection,
         inactiveColor: palette.legendInactive,
+        pageIconColor: palette.axisLabel,
+        pageIconInactiveColor: palette.legendInactive,
+        pageTextStyle: { color: palette.axisLabel },
       },
       xAxis: {
         type: 'time',

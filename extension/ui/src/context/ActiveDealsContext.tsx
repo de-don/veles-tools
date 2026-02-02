@@ -44,7 +44,7 @@ import {
   readActiveDealsPreferences,
   writeActiveDealsPreferences,
 } from '../storage/activeDealsPreferencesStore';
-import type { ActiveDeal } from '../types/activeDeals';
+import type { ActiveDeal, ActiveDealsChartMode } from '../types/activeDeals';
 import type { ApiKey } from '../types/apiKeys';
 import { useDealsRefresh } from './DealsRefreshContext';
 
@@ -129,8 +129,8 @@ export interface ActiveDealsContextValue {
   dealsState: DealsState;
   pnlSeries: PortfolioEquitySeries;
   groupedPnlSeries: PortfolioEquityGroupedSeriesItem[];
-  groupByApiKey: boolean;
-  setGroupByApiKey: Dispatch<SetStateAction<boolean>>;
+  chartMode: ActiveDealsChartMode;
+  setChartMode: Dispatch<SetStateAction<ActiveDealsChartMode>>;
   apiKeysById: ApiKeyMap;
   loading: boolean;
   error: string | null;
@@ -170,7 +170,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   const [groupedPnlSeries, setGroupedPnlSeries] = useState<PortfolioEquityGroupedSeriesItem[]>(() =>
     composeGroupedSeries(initialGroupedSeries, new Map(), new Map()),
   );
-  const [groupByApiKey, setGroupByApiKeyState] = useState<boolean>(() => initialPreferences?.groupByApiKey ?? false);
+  const [chartMode, setChartMode] = useState<ActiveDealsChartMode>(() => initialPreferences?.chartMode ?? 'total');
   const [apiKeysById, setApiKeysById] = useState<ApiKeyMap>(() => new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,8 +205,8 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
   }, [positionHistory]);
 
   useEffect(() => {
-    writeActiveDealsPreferences({ refreshInterval, groupByApiKey });
-  }, [refreshInterval, groupByApiKey]);
+    writeActiveDealsPreferences({ refreshInterval, chartMode });
+  }, [refreshInterval, chartMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -556,8 +556,8 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       dealsState,
       pnlSeries,
       groupedPnlSeries,
-      groupByApiKey,
-      setGroupByApiKey: setGroupByApiKeyState,
+      chartMode,
+      setChartMode,
       apiKeysById,
       loading,
       error,
@@ -581,7 +581,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       loading,
       error,
       refreshInterval,
-      groupByApiKey,
+      chartMode,
       fetchDeals,
       resetHistory,
       compressHistory,

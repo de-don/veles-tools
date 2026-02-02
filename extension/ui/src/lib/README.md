@@ -40,7 +40,7 @@ This directory contains shared utilities used across the UI. Every exported help
 
 ## `chartOptions.ts`
 - `DataZoomRange` – shape describing optional zoom bounds for ECharts data zoom components.
-- `createPortfolioEquityChartOptions(series, range?, groupedSeries?, executedOrders?, legendSelection?, filterMode?, themeMode?)` – builds ECharts options for portfolio equity charts with optional grouped series, executed orders, zoom range handling, and theme mode.
+- `createPortfolioEquityChartOptions(series, range?, groupedSeries?, executedOrders?, legendSelection?, filterMode?, themeMode?, hideLegend?)` – builds ECharts options for portfolio equity charts with optional grouped series, executed orders, zoom range handling, theme mode, and optional legend visibility.
 - `createAggregateRiskChartOptions(series, range?, filterMode?, themeMode?)` – builds ECharts options for aggregated risk charts with optional zoom range handling and theme mode.
 - `LimitImpactPoint` – shape describing points used in limit impact/efficiency charts.
 - `createLimitImpactChartOptions(points, themeMode?)` – builds ECharts options for limit impact charts with optional theme mode.
