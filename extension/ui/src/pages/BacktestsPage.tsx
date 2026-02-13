@@ -199,6 +199,17 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
     void startSync();
   }, [startSync]);
 
+  const handleResync = useCallback(() => {
+    Modal.confirm({
+      title: 'Пересинхронизировать бэктесты?',
+      content: 'Все локальные данные будут удалены и загружены заново. Это может занять некоторое время.',
+      okText: 'Пересинхронизировать',
+      okButtonProps: { danger: true },
+      cancelText: 'Отмена',
+      onOk: () => void startSync({ clearBefore: true }),
+    });
+  }, [startSync]);
+
   const syncReady = !(backtestsLoading || isSyncRunning || autoSyncPending);
 
   const handleTableChange = useCallback<NonNullable<TableProps<BacktestStatistics>['onChange']>>(
@@ -254,9 +265,14 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
         title="Бэктесты"
         description={`Локально сохранено: ${formatCountValue(localCount)}`}
         extra={
-          <Button type="primary" onClick={handleManualSync} loading={isSyncRunning} disabled={backtestsLoading}>
-            Синхронизировать
-          </Button>
+          <Flex gap={8}>
+            <Button onClick={handleResync} disabled={isSyncRunning || backtestsLoading}>
+              Пересинхронизировать
+            </Button>
+            <Button type="primary" onClick={handleManualSync} loading={isSyncRunning} disabled={backtestsLoading}>
+              Синхронизировать
+            </Button>
+          </Flex>
         }
       />
 
