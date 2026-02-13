@@ -1,3 +1,12 @@
+## [2.4.0](https://github.com/de-don/veles-tools/compare/v2.3.3...v2.4.0) (2026-02-13)
+
+### Features
+
+* **active-deals:** add button to clear history older than 1 week ([797610c](https://github.com/de-don/veles-tools/commit/797610cf75832838e9b759b731a517598fcb1ee9))
+* **active-deals:** add chart mode selection and legend visibility options ([16fec62](https://github.com/de-don/veles-tools/commit/16fec628afc6ae07a85125efc92b2e52a42aafa7))
+* **backtests:** add position blocking setting to aggregation analysis ([391d04e](https://github.com/de-don/veles-tools/commit/391d04e79fc025d5006f934a99323d33de97a239))
+* **backtests:** add resync button to clear and reload cached data ([64cf85b](https://github.com/de-don/veles-tools/commit/64cf85b692af6d1a3d3761578318948cb0e03f86))
+
 ## [2.3.3](https://github.com/de-don/veles-tools/compare/v2.3.2...v2.3.3) (2026-01-28)
 
 ### Bug Fixes
