@@ -138,6 +138,7 @@ export interface ActiveDealsContextValue {
   fetchDeals: () => Promise<void>;
   resetHistory: () => void;
   compressHistory: () => void;
+  trimOldHistory: (maxAgeMs: number) => void;
   zoomRange: DataZoomRange | undefined;
   setZoomRange: Dispatch<SetStateAction<DataZoomRange | undefined>>;
   zoomPreset: ActiveDealsZoomPreset;
@@ -551,6 +552,52 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
     });
   }, []);
 
+  const trimOldHistory = useCallback((maxAgeMs: number) => {
+    const cutoff = Date.now() - maxAgeMs;
+
+    const trimmedPoints = seriesRef.current.points.filter((point) => point.time >= cutoff);
+    const trimmedSeries = buildPortfolioEquitySeries(trimmedPoints);
+    seriesRef.current = trimmedSeries;
+    setPnlSeries(trimmedSeries);
+
+    const nextGroupedSeries: GroupedSeriesMap = new Map();
+    groupedSeriesRef.current.forEach((series, apiKeyId) => {
+      const filtered = buildPortfolioEquitySeries(series.points.filter((point) => point.time >= cutoff));
+      if (filtered.points.length > 0) {
+        nextGroupedSeries.set(apiKeyId, filtered);
+      }
+    });
+    groupedSeriesRef.current = nextGroupedSeries;
+    setGroupedPnlSeries(composeGroupedSeries(nextGroupedSeries, groupedSamplesRef.current, apiKeysRef.current));
+
+    const nextPositionHistory: DealHistoryMap = new Map();
+    positionHistoryRef.current.forEach((history, dealId) => {
+      const filtered = history.filter((point) => point.time >= cutoff);
+      if (filtered.length > 0) {
+        nextPositionHistory.set(dealId, filtered);
+      }
+    });
+    positionHistoryRef.current = nextPositionHistory;
+    setPositionHistory(nextPositionHistory);
+
+    const nextExecutedOrdersHistory: ExecutedOrdersHistoryMap = new Map();
+    executedOrdersHistoryRef.current.forEach((orders, dealId) => {
+      const filtered = orders.filter((order) => order.time >= cutoff);
+      if (filtered.length > 0) {
+        nextExecutedOrdersHistory.set(dealId, filtered);
+      }
+    });
+    executedOrdersHistoryRef.current = nextExecutedOrdersHistory;
+    setExecutedOrdersIndex(buildExecutedOrdersIndexFromHistory(nextExecutedOrdersHistory));
+
+    void writeActiveDealsHistoryCache({
+      pnlSeries: trimmedSeries,
+      groupedSeries: nextGroupedSeries,
+      positionHistory: nextPositionHistory,
+      executedOrders: nextExecutedOrdersHistory,
+    });
+  }, []);
+
   const contextValue = useMemo<ActiveDealsContextValue>(
     () => ({
       dealsState,
@@ -565,6 +612,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       fetchDeals,
       resetHistory,
       compressHistory,
+      trimOldHistory,
       zoomRange,
       setZoomRange,
       zoomPreset,
@@ -585,6 +633,7 @@ export const ActiveDealsProvider = ({ children, extensionReady }: ActiveDealsPro
       fetchDeals,
       resetHistory,
       compressHistory,
+      trimOldHistory,
       zoomRange,
       zoomPreset,
       positionHistory,

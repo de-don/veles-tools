@@ -372,6 +372,7 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     error,
     resetHistory,
     compressHistory,
+    trimOldHistory,
     fetchDeals,
     zoomRange,
     setZoomRange,
@@ -438,6 +439,12 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
     messageApi.success('Данные сжаты.');
   }, [compressHistory, messageApi]);
 
+  const handleTrimOldHistory = useCallback(() => {
+    const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+    trimOldHistory(ONE_WEEK_MS);
+    messageApi.success('История старше 1 недели очищена.');
+  }, [trimOldHistory, messageApi]);
+
   const historyMenuItems = useMemo<MenuProps['items']>(
     () => [
       {
@@ -447,6 +454,10 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
       {
         key: 'compress',
         label: 'Сжать данные',
+      },
+      {
+        key: 'trim-old',
+        label: 'Очистить старше 1 недели',
       },
     ],
     [],
@@ -461,11 +472,14 @@ const ActiveDealsPage = ({ extensionReady }: ActiveDealsPageProps) => {
         case 'compress':
           handleCompressHistory();
           break;
+        case 'trim-old':
+          handleTrimOldHistory();
+          break;
         default:
           break;
       }
     },
-    [handleCompressHistory, handleResetHistory],
+    [handleCompressHistory, handleResetHistory, handleTrimOldHistory],
   );
 
   const handleCloseDeal = useCallback(
