@@ -1,5 +1,5 @@
 import type { SliderSingleProps } from 'antd';
-import { Slider } from 'antd';
+import { Flex, Slider, Switch } from 'antd';
 import type { AggregationConfig } from '../../types/backtestAggregations';
 
 interface BacktestAggregationConfigPanelProps {
@@ -21,6 +21,10 @@ const BacktestAggregationConfigPanel = ({
     onChange({ ...value, maxConcurrentPositions: nextValue });
   };
 
+  const handlePositionBlockingChange = (checked: boolean) => {
+    onChange({ ...value, positionBlocking: checked });
+  };
+
   const maxValue = Math.max(MIN_CONCURRENCY, maxLimit);
   const sliderValue = Math.min(value.maxConcurrentPositions, maxValue);
 
@@ -33,17 +37,28 @@ const BacktestAggregationConfigPanel = ({
         };
 
   return (
-    <div>
-      <div className="aggregation-config__title">Лимит по одновременным позициям</div>
-      <Slider
-        min={MIN_CONCURRENCY}
-        max={maxValue}
-        value={sliderValue}
-        onChange={handleSliderChange}
-        marks={marks}
-        disabled={disabled}
-      />
-    </div>
+    <Flex gap={24}>
+      <div style={{ flex: 1 }}>
+        <div className="aggregation-config__title">Блокировка по ботам</div>
+        <Slider
+          min={MIN_CONCURRENCY}
+          max={maxValue}
+          value={sliderValue}
+          onChange={handleSliderChange}
+          marks={marks}
+          disabled={disabled}
+        />
+      </div>
+      <div style={{ paddingTop: 4 }}>
+        <div className="aggregation-config__title">Блокировка по позиции</div>
+        <Switch
+          checked={value.positionBlocking}
+          onChange={handlePositionBlockingChange}
+          disabled={disabled}
+          size="small"
+        />
+      </div>
+    </Flex>
   );
 };
 

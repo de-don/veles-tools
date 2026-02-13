@@ -10,6 +10,7 @@ import type { BacktestInfo, BacktestInfoDeal } from '../types/backtestInfos';
 
 export const DEFAULT_AGGREGATION_CONFIG: AggregationConfig = {
   maxConcurrentPositions: 3,
+  positionBlocking: false,
 };
 
 const sum = (values: number[]): number => {
@@ -57,6 +58,11 @@ export const aggregateBacktestsMetrics = (
   }
 
   const limit = Math.max(1, config.maxConcurrentPositions);
+  const positionBlocking = config.positionBlocking;
+
+  const backtestLookup = new Map(
+    backtests.map((bt) => [bt.id, { symbol: bt.symbol, algorithm: bt.algorithm }] as const),
+  );
 
   const allSortedDeals: BacktestInfoDeal[] = backtests
     .flatMap((info) =>
@@ -128,7 +134,19 @@ export const aggregateBacktestsMetrics = (
       // biome-ignore lint/style/noNonNullAssertion: checked above
       const potentialDeal = sortedDealsCopy.shift()!;
 
-      if (activeDeals.length < limit) {
+      let blocked = activeDeals.length >= limit;
+
+      if (!blocked && positionBlocking) {
+        const potentialInfo = backtestLookup.get(potentialDeal.backtestId);
+        if (potentialInfo) {
+          blocked = activeDeals.some((activeDeal) => {
+            const activeInfo = backtestLookup.get(activeDeal.backtestId);
+            return activeInfo?.symbol === potentialInfo.symbol && activeInfo?.algorithm === potentialInfo.algorithm;
+          });
+        }
+      }
+
+      if (!blocked) {
         activeDeals.push(potentialDeal);
         dealsResults.push({ deal: potentialDeal, used: true });
       } else {

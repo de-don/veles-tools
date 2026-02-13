@@ -419,7 +419,10 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
       const maxLimit = clampLimitImpactValue(limitImpactValue);
       const points: LimitImpactPoint[] = [];
       for (let limit = 1; limit <= maxLimit; limit += 1) {
-        const summary = aggregateBacktestsMetrics(selectedBacktests, { maxConcurrentPositions: limit });
+        const summary = aggregateBacktestsMetrics(selectedBacktests, {
+          ...aggregationConfig,
+          maxConcurrentPositions: limit,
+        });
         const worstRisk = Math.max(summary.maxAggregatedDrawdown, summary.maxConcurrentMae);
         points.push({
           label: `${limit}`,
@@ -440,7 +443,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     } finally {
       setLimitImpactLoading(false);
     }
-  }, [clampLimitImpactValue, limitImpactValue, messageApi, selectedBacktests]);
+  }, [aggregationConfig, clampLimitImpactValue, limitImpactValue, messageApi, selectedBacktests]);
 
   const availableTransferGroups = useMemo(
     () => (group ? groups.filter((item) => item.id !== group.id) : []),

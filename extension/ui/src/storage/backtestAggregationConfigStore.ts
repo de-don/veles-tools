@@ -36,6 +36,7 @@ export const readAggregationConfig = (groupId: string): AggregationConfig | null
   }
   return {
     maxConcurrentPositions: config.maxConcurrentPositions,
+    positionBlocking: config.positionBlocking ?? false,
   };
 };
 

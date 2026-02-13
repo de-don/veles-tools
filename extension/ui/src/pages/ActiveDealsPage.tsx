@@ -1,6 +1,19 @@
 import { DownOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
-import { Button, Card, Checkbox, Drawer, Dropdown, Flex, message, Popconfirm, Segmented, Select, Space, Table } from 'antd';
+import {
+  Button,
+  Card,
+  Checkbox,
+  Drawer,
+  Dropdown,
+  Flex,
+  message,
+  Popconfirm,
+  Segmented,
+  Select,
+  Space,
+  Table,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { closeActiveDeal } from '../api/activeDeals';
@@ -21,7 +34,11 @@ import {
 } from '../lib/activeDealsZoom';
 import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
 import type { DataZoomRange } from '../lib/chartOptions';
-import type { ExecutedOrderPoint, PortfolioEquityGroupedSeriesItem, PortfolioEquitySeries } from '../lib/deprecatedFile';
+import type {
+  ExecutedOrderPoint,
+  PortfolioEquityGroupedSeriesItem,
+  PortfolioEquitySeries,
+} from '../lib/deprecatedFile';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { ActiveDeal, ActiveDealAlgorithm, ActiveDealsChartMode } from '../types/activeDeals';

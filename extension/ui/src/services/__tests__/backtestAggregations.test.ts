@@ -101,7 +101,7 @@ describe('aggregateBacktestsMetrics', () => {
       ]),
     ];
 
-    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 2 });
+    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 2, positionBlocking: false });
 
     expect(metrics.totalBacktests).toBe(3);
     expect(metrics.totalProfitQuote).toBe(300);
@@ -155,7 +155,7 @@ describe('aggregateBacktestsMetrics', () => {
       ]),
     ];
 
-    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 1 });
+    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 1, positionBlocking: false });
 
     const overflowRow = metrics.dealTimelineRows.find((row) => row.backtestId === 2);
     expect(overflowRow).toBeDefined();
@@ -184,7 +184,7 @@ describe('aggregateBacktestsMetrics', () => {
       ]),
     ];
 
-    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 1 });
+    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 1, positionBlocking: false });
 
     expect(metrics.totalProfitQuote).toBe(50);
     expect(metrics.totalProfitableDeals).toBe(1);
@@ -241,7 +241,7 @@ describe('aggregateBacktestsMetrics', () => {
       ]),
     ];
 
-    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 3 });
+    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 3, positionBlocking: false });
 
     expect(metrics.totalProfitQuote).toBe(220);
     expect(metrics.averageNetPerDay).toBe(3.4375);
@@ -279,7 +279,7 @@ describe('aggregateBacktestsMetrics', () => {
       ]),
     ];
 
-    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 1 });
+    const metrics = aggregateBacktestsMetrics(backtests, { maxConcurrentPositions: 1, positionBlocking: false });
 
     expect(metrics.totalProfitQuote).toBe(40);
     expect(metrics.totalProfitableDeals).toBe(1);
@@ -333,7 +333,10 @@ describe('aggregateBacktestsMetrics', () => {
       buildDeal({ id: 902, start, end, maeAbsolute: 20 }),
     ];
 
-    const metrics = aggregateBacktestsMetrics([buildInfo({ id: 12 }, deals)], { maxConcurrentPositions: 3 });
+    const metrics = aggregateBacktestsMetrics([buildInfo({ id: 12 }, deals)], {
+      maxConcurrentPositions: 3,
+      positionBlocking: false,
+    });
 
     const uniqueDates = new Set(metrics.activeDealCountSeries.map((point) => point.date));
     expect(metrics.activeDealCountSeries).toHaveLength(uniqueDates.size);

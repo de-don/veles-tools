@@ -3,6 +3,7 @@ import type { BacktestInfo, BacktestInfoDeal } from './backtestInfos';
 
 export interface AggregationConfig {
   maxConcurrentPositions: number;
+  positionBlocking: boolean;
 }
 
 export interface ChartPoint {
