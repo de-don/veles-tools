@@ -12,7 +12,7 @@ import type {
   ExecutedOrderPoint,
   PortfolioEquityGroupedSeriesItem,
   PortfolioEquitySeries,
-} from './deprecatedFile';
+} from './aggregationTypes';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
@@ -337,6 +337,70 @@ const buildOrderScatterSeries = (
   };
 };
 
+const formatEquityTooltip = (params: any): string => {
+  const items = Array.isArray(params) ? params : [params];
+  const orderItem = items.find((item: any) => item.seriesType === 'scatter' && item.data?.customData);
+
+  if (orderItem) {
+    const order = orderItem.data.customData as ExecutedOrderPoint;
+    const isEntry = order.type === 'ENTRY';
+    const typeLabel = isEntry ? 'Сделка открыта' : 'Усреднение';
+    const color = isEntry ? '#10b981' : '#ef4444';
+    const totalValue = order.price * order.quantity;
+
+    return `
+      <div class="chart-tooltip" style="--tooltip-accent: ${color};">
+        <div class="chart-tooltip__title">${order.pair}</div>
+        <div class="chart-tooltip__row">
+          <span class="chart-tooltip__dot"></span>
+          <span class="chart-tooltip__accent">${typeLabel}</span>
+        </div>
+        <div class="chart-tooltip__grid">
+          <span class="chart-tooltip__label">Цена:</span>
+          <span class="chart-tooltip__value">${formatNumber(order.price)}</span>
+
+          <span class="chart-tooltip__label">Кол-во:</span>
+          <span class="chart-tooltip__value">${order.quantity}</span>
+
+          <span class="chart-tooltip__label">Сумма:</span>
+          <span class="chart-tooltip__value">${formatNumber(totalValue)}</span>
+
+          <span class="chart-tooltip__label">Позиция:</span>
+          <span class="chart-tooltip__value">${formatNumber(order.positionVolume)}</span>
+        </div>
+        <div class="chart-tooltip__footer">
+          ${order.botName} <span class="chart-tooltip__divider">·</span> ID ${order.dealId}
+        </div>
+      </div>
+    `;
+  }
+
+  if (items.length === 0) return '';
+  const dateLabel = dateTimeFormatter.format(new Date(items[0].axisValue));
+  const list = items
+    .map((item: any) => {
+      const value = item.value?.[1] ?? item.value;
+      if (value === null || value === undefined) return '';
+      return `
+        <div class="chart-tooltip__item">
+          <div class="chart-tooltip__item-meta">
+            ${item.marker}
+            <span class="chart-tooltip__label">${item.seriesName}</span>
+          </div>
+          <span class="chart-tooltip__value">${formatNumber(Number(value))}</span>
+        </div>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="chart-tooltip">
+      <div class="chart-tooltip__date">${dateLabel}</div>
+      ${list}
+    </div>
+  `;
+};
+
 const LEGEND_SCROLL_THRESHOLD = 12;
 
 export const createPortfolioEquityChartOptions = (
@@ -399,69 +463,7 @@ export const createPortfolioEquityChartOptions = (
         borderColor: palette.tooltipBorder,
         textStyle: { color: palette.tooltipText, fontSize: 12 },
         padding: [8, 12],
-        formatter: (params: any) => {
-          const items = Array.isArray(params) ? params : [params];
-          const orderItem = items.find((item: any) => item.seriesType === 'scatter' && item.data?.customData);
-
-          if (orderItem) {
-            const order = orderItem.data.customData as ExecutedOrderPoint;
-            const isEntry = order.type === 'ENTRY';
-            const typeLabel = isEntry ? 'Сделка открыта' : 'Усреднение';
-            const color = isEntry ? '#10b981' : '#ef4444';
-            const totalValue = order.price * order.quantity;
-
-            return `
-              <div class="chart-tooltip" style="--tooltip-accent: ${color};">
-                <div class="chart-tooltip__title">${order.pair}</div>
-                <div class="chart-tooltip__row">
-                  <span class="chart-tooltip__dot"></span>
-                  <span class="chart-tooltip__accent">${typeLabel}</span>
-                </div>
-                <div class="chart-tooltip__grid">
-                  <span class="chart-tooltip__label">Цена:</span>
-                  <span class="chart-tooltip__value">${formatNumber(order.price)}</span>
-                  
-                  <span class="chart-tooltip__label">Кол-во:</span>
-                  <span class="chart-tooltip__value">${order.quantity}</span>
-                  
-                  <span class="chart-tooltip__label">Сумма:</span>
-                  <span class="chart-tooltip__value">${formatNumber(totalValue)}</span>
-
-                  <span class="chart-tooltip__label">Позиция:</span>
-                  <span class="chart-tooltip__value">${formatNumber(order.positionVolume)}</span>
-                </div>
-                <div class="chart-tooltip__footer">
-                  ${order.botName} <span class="chart-tooltip__divider">·</span> ID ${order.dealId}
-                </div>
-              </div>
-            `;
-          }
-
-          if (items.length === 0) return '';
-          const dateLabel = dateTimeFormatter.format(new Date(items[0].axisValue));
-          const list = items
-            .map((item: any) => {
-              const value = item.value?.[1] ?? item.value;
-              if (value === null || value === undefined) return '';
-              return `
-                <div class="chart-tooltip__item">
-                  <div class="chart-tooltip__item-meta">
-                    ${item.marker}
-                    <span class="chart-tooltip__label">${item.seriesName}</span>
-                  </div>
-                  <span class="chart-tooltip__value">${formatNumber(Number(value))}</span>
-                </div>
-              `;
-            })
-            .join('');
-
-          return `
-            <div class="chart-tooltip">
-              <div class="chart-tooltip__date">${dateLabel}</div>
-              ${list}
-            </div>
-          `;
-        },
+        formatter: formatEquityTooltip,
       },
       legend: {
         show: !hideLegend,
@@ -594,69 +596,7 @@ export const createPortfolioEquityChartOptions = (
       borderColor: palette.tooltipBorder,
       textStyle: { color: palette.tooltipText, fontSize: 12 },
       padding: [8, 12],
-      formatter: (params: any) => {
-        const items = Array.isArray(params) ? params : [params];
-        const orderItem = items.find((item: any) => item.seriesType === 'scatter' && item.data?.customData);
-
-        if (orderItem) {
-          const order = orderItem.data.customData as ExecutedOrderPoint;
-          const isEntry = order.type === 'ENTRY';
-          const typeLabel = isEntry ? 'Сделка открыта' : 'Усреднение';
-          const color = isEntry ? '#10b981' : '#ef4444';
-          const totalValue = order.price * order.quantity;
-
-          return `
-            <div class="chart-tooltip" style="--tooltip-accent: ${color};">
-              <div class="chart-tooltip__title">${order.pair}</div>
-              <div class="chart-tooltip__row">
-                <span class="chart-tooltip__dot"></span>
-                <span class="chart-tooltip__accent">${typeLabel}</span>
-              </div>
-              <div class="chart-tooltip__grid">
-                <span class="chart-tooltip__label">Цена:</span>
-                <span class="chart-tooltip__value">${formatNumber(order.price)}</span>
-                
-                <span class="chart-tooltip__label">Кол-во:</span>
-                <span class="chart-tooltip__value">${order.quantity}</span>
-                
-                <span class="chart-tooltip__label">Сумма:</span>
-                <span class="chart-tooltip__value">${formatNumber(totalValue)}</span>
-
-                <span class="chart-tooltip__label">Позиция:</span>
-                <span class="chart-tooltip__value">${formatNumber(order.positionVolume)}</span>
-              </div>
-              <div class="chart-tooltip__footer">
-                ${order.botName} <span class="chart-tooltip__divider">·</span> ID ${order.dealId}
-              </div>
-            </div>
-          `;
-        }
-
-        if (items.length === 0) return '';
-        const dateLabel = dateTimeFormatter.format(new Date(items[0].axisValue));
-        const list = items
-          .map((item: any) => {
-            const value = item.value?.[1] ?? item.value;
-            if (value === null || value === undefined) return '';
-            return `
-              <div class="chart-tooltip__item">
-                <div class="chart-tooltip__item-meta">
-                  ${item.marker}
-                  <span class="chart-tooltip__label">${item.seriesName}</span>
-                </div>
-                <span class="chart-tooltip__value">${formatNumber(Number(value))}</span>
-              </div>
-            `;
-          })
-          .join('');
-
-        return `
-          <div class="chart-tooltip">
-            <div class="chart-tooltip__date">${dateLabel}</div>
-            ${list}
-          </div>
-        `;
-      },
+      formatter: formatEquityTooltip,
     },
     legend: {
       bottom: 0,

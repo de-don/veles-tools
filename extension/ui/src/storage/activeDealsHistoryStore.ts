@@ -14,7 +14,7 @@ import {
   snapshotHistoryToMap,
   thinTimedPointsFromEnd,
 } from '../lib/activeDealsHistory';
-import type { PortfolioEquityPoint, PortfolioEquitySeries } from '../lib/deprecatedFile';
+import type { PortfolioEquityPoint, PortfolioEquitySeries } from '../lib/aggregationTypes';
 import { deleteIndexedDb, getObjectStore, openIndexedDb } from '../lib/indexedDb';
 
 const DB_NAME = 'veles-active-deals-history';

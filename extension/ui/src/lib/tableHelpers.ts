@@ -18,6 +18,26 @@ export const buildNumberSorter = <T>(
   };
 };
 
+export const buildStringSorter = <T>(selector: (item: T) => string | null | undefined): ((a: T, b: T) => number) => {
+  return (a: T, b: T) => {
+    const aValue = selector(a) ?? '';
+    const bValue = selector(b) ?? '';
+    return aValue.localeCompare(bValue, 'ru', { sensitivity: 'base' });
+  };
+};
+
+export const buildDateSorter = <T>(selector: (item: T) => string | null | undefined): ((a: T, b: T) => number) => {
+  return (a: T, b: T) => {
+    const aDate = selector(a);
+    const bDate = selector(b);
+    const aTime = aDate ? Date.parse(aDate) : Number.NaN;
+    const bTime = bDate ? Date.parse(bDate) : Number.NaN;
+    const safeATime = Number.isNaN(aTime) ? Number.NEGATIVE_INFINITY : aTime;
+    const safeBTime = Number.isNaN(bTime) ? Number.NEGATIVE_INFINITY : bTime;
+    return safeATime - safeBTime;
+  };
+};
+
 const dayFormatter = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
   minimumFractionDigits: 0,

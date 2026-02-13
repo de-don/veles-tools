@@ -28,12 +28,12 @@ import {
 } from '../lib/activeDealsHistory';
 import type { ActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import type { ActiveDealsZoomPreset } from '../lib/activeDealsZoom';
-import type { DataZoomRange } from '../lib/chartOptions';
 import type {
   ExecutedOrderPoint,
   PortfolioEquityGroupedSeriesItem,
   PortfolioEquitySeries,
-} from '../lib/deprecatedFile';
+} from '../lib/aggregationTypes';
+import type { DataZoomRange } from '../lib/chartOptions';
 import {
   clearActiveDealsHistoryCache,
   readActiveDealsHistoryCache,

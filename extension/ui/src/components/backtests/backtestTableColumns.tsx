@@ -6,37 +6,9 @@ import {
   formatPercent,
   resolveDealCount,
 } from '../../lib/backtestFormatting';
-import { resolveSortableNumber } from '../../lib/backtestSorting';
 import { buildCabinetUrl } from '../../lib/cabinetUrls';
+import { buildDateSorter, buildNumberSorter, buildStringSorter } from '../../lib/tableHelpers';
 import type { BacktestStatistics } from '../../types/backtests';
-
-const buildStringSorter = (selector: (item: BacktestStatistics) => string | null | undefined) => {
-  return (a: BacktestStatistics, b: BacktestStatistics) => {
-    const aValue = selector(a) ?? '';
-    const bValue = selector(b) ?? '';
-    return aValue.localeCompare(bValue, 'ru', { sensitivity: 'base' });
-  };
-};
-
-const buildNumberSorter = (selector: (item: BacktestStatistics) => number | null | undefined) => {
-  return (a: BacktestStatistics, b: BacktestStatistics) => {
-    const aValue = resolveSortableNumber(selector(a));
-    const bValue = resolveSortableNumber(selector(b));
-    return aValue - bValue;
-  };
-};
-
-const buildDateSorter = (selector: (item: BacktestStatistics) => string | null | undefined) => {
-  return (a: BacktestStatistics, b: BacktestStatistics) => {
-    const aDate = selector(a);
-    const bDate = selector(b);
-    const aTime = aDate ? Date.parse(aDate) : Number.NaN;
-    const bTime = bDate ? Date.parse(bDate) : Number.NaN;
-    const safeATime = Number.isNaN(aTime) ? Number.NEGATIVE_INFINITY : aTime;
-    const safeBTime = Number.isNaN(bTime) ? Number.NEGATIVE_INFINITY : bTime;
-    return safeATime - safeBTime;
-  };
-};
 
 const buildColumns = (): ColumnsType<BacktestStatistics> => [
   {

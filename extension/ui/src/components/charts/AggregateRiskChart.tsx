@@ -1,8 +1,8 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
 import { useThemeMode } from '../../context/ThemeContext';
+import type { AggregateRiskSeries } from '../../lib/aggregationTypes';
 import { createAggregateRiskChartOptions, type DataZoomRange } from '../../lib/chartOptions';
-import type { AggregateRiskSeries } from '../../lib/deprecatedFile';
 
 interface AggregateRiskChartProps {
   series: AggregateRiskSeries;

@@ -1,5 +1,5 @@
+import type { PortfolioEquitySeries } from './aggregationTypes';
 import type { DataZoomRange } from './chartOptions';
-import type { PortfolioEquitySeries } from './deprecatedFile';
 
 export type ActiveDealsZoomPresetKey = 'lastHour' | 'last4Hours' | 'lastDay' | 'all';
 export type ActiveDealsZoomPreset = ActiveDealsZoomPresetKey | 'custom';

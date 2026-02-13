@@ -1,6 +1,6 @@
 import type { ActiveDeal, ActiveDealAlgorithm, ActiveDealOrder, ActiveDealOrderSide } from '../types/activeDeals';
+import type { ExecutedOrderPoint } from './aggregationTypes';
 import { toTimestamp } from './dateTime';
-import type { ExecutedOrderPoint } from './deprecatedFile';
 
 const EXECUTED_ORDER_STATUSES = new Set(['EXECUTED', 'FILLED']);
 const OPEN_ORDER_STATUSES = new Set(['CREATED', 'PENDING']);

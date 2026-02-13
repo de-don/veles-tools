@@ -1,4 +1,4 @@
-import type { ExecutedOrderPoint, PortfolioEquitySeries } from './deprecatedFile';
+import type { ExecutedOrderPoint, PortfolioEquitySeries } from './aggregationTypes';
 
 export interface DealHistoryPoint {
   time: number;

@@ -32,13 +32,13 @@ import {
   areZoomRangesEqual,
   calculateZoomRangeForPreset,
 } from '../lib/activeDealsZoom';
-import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
-import type { DataZoomRange } from '../lib/chartOptions';
 import type {
   ExecutedOrderPoint,
   PortfolioEquityGroupedSeriesItem,
   PortfolioEquitySeries,
-} from '../lib/deprecatedFile';
+} from '../lib/aggregationTypes';
+import { buildBotDetailsUrl, buildDealStatisticsUrl } from '../lib/cabinetUrls';
+import type { DataZoomRange } from '../lib/chartOptions';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { useTableColumnSettings } from '../lib/useTableColumnSettings';
 import type { ActiveDeal, ActiveDealAlgorithm, ActiveDealsChartMode } from '../types/activeDeals';

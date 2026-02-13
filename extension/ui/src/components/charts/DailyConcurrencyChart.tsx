@@ -1,8 +1,8 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
 import { useThemeMode } from '../../context/ThemeContext';
+import type { DailyConcurrencyRecord, DailyConcurrencyStats } from '../../lib/aggregationTypes';
 import { createDailyConcurrencyChartOptions, type DataZoomRange } from '../../lib/chartOptions';
-import type { DailyConcurrencyRecord, DailyConcurrencyStats } from '../../lib/deprecatedFile';
 
 interface DailyConcurrencyChartProps {
   records: DailyConcurrencyRecord[];

@@ -1,12 +1,12 @@
 import ReactECharts from 'echarts-for-react';
 import { memo, useMemo } from 'react';
 import { useThemeMode } from '../../context/ThemeContext';
-import { createPortfolioEquityChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 import type {
   ExecutedOrderPoint,
   PortfolioEquityGroupedSeriesItem,
   PortfolioEquitySeries,
-} from '../../lib/deprecatedFile';
+} from '../../lib/aggregationTypes';
+import { createPortfolioEquityChartOptions, type DataZoomRange } from '../../lib/chartOptions';
 
 interface PortfolioEquityChartProps {
   series: PortfolioEquitySeries;

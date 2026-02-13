@@ -5,7 +5,12 @@ This directory contains shared utilities used across the UI. Every exported help
 ## `tableHelpers.ts`
 - `resolveSortableNumber(value, fallback?)` – normalises numbers for sorting, replacing `null`/`undefined`/`NaN` with a configurable fallback.
 - `buildNumberSorter(selector, fallback?)` – generic sorter factory for AntD tables that compares rows using a numeric selector.
+- `buildStringSorter(selector)` – generic sorter factory for AntD tables that compares rows using a string selector with Russian locale collation.
+- `buildDateSorter(selector)` – generic sorter factory for AntD tables that compares rows by parsing ISO date strings into timestamps.
 - `formatDurationDays(value, suffix?)` – formats day-based durations with Russian locale rounding and an optional suffix (defaults to `д`).
+
+## `aggregationTypes.ts`
+Domain type definitions for aggregation charts and analytics: `TimeInterval`, `RiskInterval`, `EquityEvent`, `AggregationTrade`, `BacktestAggregationMetrics`, `DailyConcurrencyRecord`, `PortfolioEquityPoint`, `PortfolioEquitySeries`, `PortfolioEquityGroupedSeriesItem`, `ExecutedOrderPoint`, `AggregateRiskPoint`, `AggregateRiskSeries`, `DailyConcurrencyStats`, `DailyConcurrencyResult`, `AggregationSummary`.
 
 ## `dateTime.ts`
 - `MS_IN_SECOND`, `MS_IN_MINUTE`, `MS_IN_HOUR`, `MS_IN_DAY` – base time unit constants in milliseconds.
