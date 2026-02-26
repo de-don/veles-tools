@@ -1,7 +1,7 @@
 import type { PortfolioEquitySeries } from './aggregationTypes';
 import type { DataZoomRange } from './chartOptions';
 
-export type ActiveDealsZoomPresetKey = 'lastHour' | 'last4Hours' | 'lastDay' | 'all';
+export type ActiveDealsZoomPresetKey = 'lastHour' | 'last4Hours' | 'last8Hours' | 'lastDay' | 'all';
 export type ActiveDealsZoomPreset = ActiveDealsZoomPresetKey | 'custom';
 
 export interface ActiveDealsZoomPresetDefinition {
@@ -23,6 +23,11 @@ const PRESETS: Record<ActiveDealsZoomPresetKey, ActiveDealsZoomPresetDefinition>
     label: '4 часа',
     durationMs: 4 * HOUR_IN_MS,
   },
+  last8Hours: {
+    key: 'last8Hours',
+    label: '8 часов',
+    durationMs: 8 * HOUR_IN_MS,
+  },
   lastDay: {
     key: 'lastDay',
     label: '24 часа',
@@ -37,6 +42,7 @@ const PRESETS: Record<ActiveDealsZoomPresetKey, ActiveDealsZoomPresetDefinition>
 export const ACTIVE_DEALS_ZOOM_PRESET_OPTIONS: ActiveDealsZoomPresetDefinition[] = [
   PRESETS.lastHour,
   PRESETS.last4Hours,
+  PRESETS.last8Hours,
   PRESETS.lastDay,
   PRESETS.all,
 ];
@@ -94,6 +100,7 @@ export const areZoomRangesEqual = (left?: DataZoomRange, right?: DataZoomRange):
 const ZOOM_PRESET_STORAGE_VALUES = new Set<ActiveDealsZoomPreset>([
   'lastHour',
   'last4Hours',
+  'last8Hours',
   'lastDay',
   'all',
   'custom',
