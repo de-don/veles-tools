@@ -20,6 +20,12 @@ Domain type definitions for aggregation charts and analytics: `TimeInterval`, `R
 ## `backtestAnalytics.ts`
 - `calculateMaxDrawdown(values)` – scans an equity series and returns the maximum peak-to-trough drop before a new high.
 
+## `dealFiltering.ts`
+- `filterDealByPeriod(deal, periodStart, periodEnd)` – classifies a backtest deal as excluded, fully included, partially included, or open for a selected period.
+- `shouldShowOnCharts(status)` – returns whether a filtered deal should be rendered in deal charts.
+- `shouldCountInPnl(status)` – returns whether a filtered deal should contribute to aggregated P&L.
+- `isOpenDeal(status)` – returns whether a filtered deal should be treated as open.
+
 ## `activeDealsHistory.ts`
 - `ACTIVE_DEALS_HISTORY_POINT_LIMIT`, `DEAL_HISTORY_WINDOW_MS` – retention constants for stored history (currently only the point cap is enforced).
 - `filterDealHistoryByTimeWindow(points, windowMs, now)` – keeps only deal history points newer than `now - windowMs`.

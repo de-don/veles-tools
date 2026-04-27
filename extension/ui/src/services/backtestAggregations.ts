@@ -1,5 +1,11 @@
 import { calculateMaxDrawdown } from '../lib/backtestAnalytics';
 import { MS_IN_DAY } from '../lib/dateTime';
+import {
+  type DealInclusionStatus,
+  filterDealByPeriod,
+  shouldCountInPnl,
+  shouldShowOnCharts,
+} from '../lib/dealFiltering';
 import type {
   AggregatedBacktestsMetrics,
   AggregationConfig,
@@ -27,6 +33,12 @@ const average = (values: number[]): number => {
 const round = (value: number, decimals: number): number => {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
+};
+
+type AggregatedDeal = BacktestInfoDeal & {
+  filterStatus: DealInclusionStatus;
+  effectiveStart: number;
+  effectiveEnd: number;
 };
 
 export const aggregateBacktestsMetrics = (
@@ -59,24 +71,46 @@ export const aggregateBacktestsMetrics = (
 
   const limit = Math.max(1, config.maxConcurrentPositions);
   const positionBlocking = config.positionBlocking;
+  const fallbackBacktestStart = Math.min(...backtests.map((b) => new Date(b.from).getTime()));
+  const fallbackBacktestEnd = Math.max(...backtests.map((b) => new Date(b.to).getTime()));
+  const dealStarts = backtests.flatMap((backtest) => backtest.deals.map((deal) => deal.start));
+  const dealEnds = backtests.flatMap((backtest) => backtest.deals.map((deal) => deal.end));
+  const fallbackDealStart = dealStarts.length > 0 ? Math.min(...dealStarts) : fallbackBacktestStart;
+  const fallbackDealEnd = dealEnds.length > 0 ? Math.max(...dealEnds) : fallbackBacktestEnd;
+  const fallbackPeriodStart = Math.min(fallbackBacktestStart, fallbackDealStart);
+  const fallbackPeriodEnd = Math.max(fallbackBacktestEnd, fallbackDealEnd);
+  const configuredPeriodStart = config.dateRangeStart ?? fallbackPeriodStart;
+  const configuredPeriodEnd = config.dateRangeEnd ?? fallbackPeriodEnd;
+  const periodStart = Math.min(configuredPeriodStart, configuredPeriodEnd);
+  const periodEnd = Math.max(configuredPeriodStart, configuredPeriodEnd);
 
   const backtestLookup = new Map(
     backtests.map((bt) => [bt.id, { symbol: bt.symbol, algorithm: bt.algorithm }] as const),
   );
 
-  const allSortedDeals: BacktestInfoDeal[] = backtests
+  const allSortedDeals: AggregatedDeal[] = backtests
     .flatMap((info) =>
-      info.deals.map((deal) => ({
-        ...deal,
-        backtestId: info.id,
-        backtestName: info.name,
-        quoteCurrency: info.quote,
-      })),
+      info.deals.flatMap((deal): AggregatedDeal[] => {
+        const filterStatus = filterDealByPeriod(deal, periodStart, periodEnd);
+        if (!shouldShowOnCharts(filterStatus)) {
+          return [];
+        }
+        return [
+          {
+            ...deal,
+            filterStatus,
+            effectiveStart: Math.max(deal.start, periodStart),
+            effectiveEnd: Math.min(deal.end, periodEnd),
+            backtestId: info.id,
+            backtestName: info.name,
+            quoteCurrency: info.quote,
+          },
+        ];
+      }),
     )
-    .sort((a, b) => a.start - b.start);
+    .sort((a, b) => a.effectiveStart - b.effectiveStart || a.start - b.start);
 
-  // TODO: Add start & end of backtest periods from all backtests
-  const timePointsAll = allSortedDeals.flatMap((deal) => [deal.start, deal.end]);
+  const timePointsAll = allSortedDeals.flatMap((deal) => [deal.effectiveStart, deal.effectiveEnd]);
   const timePoints = [...new Set(timePointsAll)].sort((a, b) => a - b);
 
   const aggregatedStats = {
@@ -95,44 +129,41 @@ export const aggregateBacktestsMetrics = (
   };
 
   const sortedDealsCopy = [...allSortedDeals];
-  const activeDeals: BacktestInfoDeal[] = [];
-  const dealsResults: Array<{ deal: BacktestInfoDeal; used: boolean }> = [];
+  const activeDeals: AggregatedDeal[] = [];
+  const dealsResults: Array<{ deal: AggregatedDeal; used: boolean }> = [];
+  const closeFinishedDeals = (timePoint: number): void => {
+    for (let i = activeDeals.length - 1; i >= 0; i--) {
+      const deal = activeDeals[i];
+      if (deal.effectiveEnd !== timePoint) {
+        continue;
+      }
+      if (deal.status === 'STARTED') {
+        continue;
+      }
+      const closedDeal = activeDeals.splice(i, 1)[0];
+      if (shouldCountInPnl(closedDeal.filterStatus)) {
+        aggregatedStats.totalNet += closedDeal.net;
+        aggregatedStats.pnlSeries.push({ date: timePoint, value: aggregatedStats.totalNet });
+        if (closedDeal.net >= 0) {
+          aggregatedStats.deals.profit += 1;
+        } else {
+          aggregatedStats.deals.loss += 1;
+        }
+      }
+    }
+  };
+
   for (let timePointIndex = 0; timePointIndex < timePoints.length; timePointIndex++) {
     const timePoint = timePoints[timePointIndex];
     const nextTimePoint = timePoints[timePointIndex + 1] || null;
 
-    // Look for active deals that end at this particular time point
-    for (let i = activeDeals.length - 1; i >= 0; i--) {
-      if (activeDeals[i].end !== timePoint) {
-        // Deal is still active, leave it in activeDeals
-        continue;
+    closeFinishedDeals(timePoint);
+
+    while (sortedDealsCopy.at(0)?.effectiveStart === timePoint) {
+      const potentialDeal = sortedDealsCopy.shift();
+      if (!potentialDeal) {
+        break;
       }
-
-      // STARTED deals are not finished yet
-      if (activeDeals[i].status === 'STARTED') {
-        // Deal is not finished at the moment of backtest end, so we keep it as active until the end
-        aggregatedStats.deals.active += 1;
-        aggregatedStats.activeMae += activeDeals[i].maeAbsolute;
-        continue;
-      }
-
-      const closedDeal = activeDeals[i];
-      activeDeals.splice(i, 1);
-
-      // Update aggregated statistics
-      aggregatedStats.totalNet += closedDeal.net;
-      aggregatedStats.pnlSeries.push({ date: timePoint, value: aggregatedStats.totalNet });
-      if (closedDeal.net >= 0) {
-        aggregatedStats.deals.profit += 1;
-      } else {
-        aggregatedStats.deals.loss += 1;
-      }
-    }
-
-    // Look for new deals that start at the current time point and add them to activeDeals (and remove from allSortedDealsCopy)
-    while (sortedDealsCopy.at(0)?.start === timePoint) {
-      // biome-ignore lint/style/noNonNullAssertion: checked above
-      const potentialDeal = sortedDealsCopy.shift()!;
 
       let blocked = activeDeals.length >= limit;
 
@@ -154,7 +185,8 @@ export const aggregateBacktestsMetrics = (
       }
     }
 
-    // Update max concurrent positions
+    closeFinishedDeals(timePoint);
+
     aggregatedStats.maxConcurrentPositions = Math.max(aggregatedStats.maxConcurrentPositions, activeDeals.length);
 
     const sumMae = sum(activeDeals.map((entry) => entry.maeAbsolute));
@@ -165,11 +197,17 @@ export const aggregateBacktestsMetrics = (
 
     aggregatedStats.activeDealCountSeries.push({ date: timePoint, value: activeDeals.length });
 
-    // Net Per day calculation
     if (!activeDeals.length && nextTimePoint) {
       aggregatedStats.idleTime += nextTimePoint - timePoint;
     }
   }
+
+  activeDeals.forEach((deal) => {
+    if (deal.status === 'STARTED') {
+      aggregatedStats.deals.active += 1;
+      aggregatedStats.activeMae += deal.maeAbsolute;
+    }
+  });
 
   const usedDeals = dealsResults.filter((result) => result.used).map((result) => result.deal);
 
@@ -189,25 +227,24 @@ export const aggregateBacktestsMetrics = (
       id: deal.id,
       start: deal.start,
       end: deal.end,
-      net: deal.net,
+      net: shouldCountInPnl(deal.filterStatus) ? deal.net : 0,
       status: deal.status,
       limitedByConcurrency: !used,
+      filterStatus: deal.filterStatus,
     });
   });
 
   const totalProfitQuote = aggregatedStats.totalNet;
   const totalProfitableDeals = aggregatedStats.deals.profit;
   const totalLosingDeals = aggregatedStats.deals.loss;
-  const totalDeals = aggregatedStats.deals.profit + aggregatedStats.deals.loss + aggregatedStats.deals.active;
+  const totalDeals = totalProfitableDeals + totalLosingDeals + aggregatedStats.deals.active;
   const openDeals = aggregatedStats.deals.active;
   const maxConcurrentPositions = aggregatedStats.maxConcurrentPositions;
   const maxConcurrentMae = aggregatedStats.maeSeries.reduce((max, point) => Math.max(max, point.value), 0);
   const maxAggregatedDrawdown = calculateMaxDrawdown(aggregatedStats.pnlSeries.map((point) => point.value));
   const averageDealDurationDays = average(usedDeals.map((result) => result.durationInDays));
 
-  const startTime = Math.min(...backtests.map((b) => new Date(b.from).getTime()));
-  const endTime = Math.max(...backtests.map((b) => new Date(b.to).getTime()));
-  const totalDays = (endTime - startTime) / MS_IN_DAY;
+  const totalDays = (periodEnd - periodStart) / MS_IN_DAY;
 
   const averageNetPerDay = totalProfitQuote / Math.max(1, totalDays);
   const pnlToRisk = totalProfitQuote / Math.max(1, Math.max(maxConcurrentMae, maxAggregatedDrawdown));
