@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import {
+  type BacktestApiVersion,
   type BotStrategy,
   buildBacktestPayload,
   composeSymbol,
@@ -59,6 +60,7 @@ interface BacktestLaunchPayload {
   isPublic: boolean;
   includeWicks: boolean;
   assetList: string[];
+  apiVersion: BacktestApiVersion;
 }
 
 interface BacktestModalProps {
@@ -223,6 +225,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
   const [progress, setProgress] = useState(0);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [runError, setRunError] = useState<string | null>(null);
+  const [pendingVersion, setPendingVersion] = useState<BacktestApiVersion>('v1');
   const isActiveRef = useRef(true);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const { getInitialTitle, setTitle: setDocumentTitle, resetTitle } = useDocumentTitle();
@@ -388,6 +391,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
       isPublic: state.isPublic,
       includeWicks: state.includeWicks,
       assetList: variant === 'multiCurrency' ? parseAssetList(state.assetList) : [],
+      apiVersion: 'v1',
     }),
     [selectedBots, variant],
   );
@@ -516,7 +520,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                   periodEndISO: endISO,
                   overrideSymbol: descriptor,
                 });
-                const response = await postBacktest(body);
+                const response = await postBacktest(body, payload.apiVersion);
                 const backtestId = typeof response.id === 'number' ? response.id : '—';
                 const backtestUrl =
                   typeof response.id === 'number' ? buildCabinetUrl(`backtests/${response.id}`) : null;
@@ -680,7 +684,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
       return;
     }
 
-    const payload = buildPayload(formState);
+    const payload = { ...buildPayload(formState), apiVersion: pendingVersion };
     await runBacktests(payload);
   };
 
@@ -864,8 +868,23 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
           <footer className="modal__footer">
             <Button onClick={handleCancel}>{isRunning ? 'Отменить' : isCompleted ? 'Закрыть' : 'Отмена'}</Button>
-            <Button type="primary" htmlType="submit" loading={isRunning}>
-              {isRunning ? 'Запускаем…' : 'Запустить'}
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isRunning && pendingVersion === 'v1'}
+              disabled={isRunning && pendingVersion !== 'v1'}
+              onClick={() => setPendingVersion('v1')}
+            >
+              {isRunning && pendingVersion === 'v1' ? 'Запускаем…' : 'Запустить'}
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={isRunning && pendingVersion === 'v2'}
+              disabled={isRunning && pendingVersion !== 'v2'}
+              onClick={() => setPendingVersion('v2')}
+            >
+              {isRunning && pendingVersion === 'v2' ? 'Запускаем…' : 'Запустить v2'}
             </Button>
           </footer>
         </form>

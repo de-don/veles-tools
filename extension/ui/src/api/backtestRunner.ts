@@ -4,7 +4,10 @@ import type { BotIdentifier, BotSettings } from '../types/bots';
 import { buildApiUrl } from './baseUrl';
 
 const BOTS_ENDPOINT = buildApiUrl('/api/bots');
-const BACKTESTS_ENDPOINT = `${buildApiUrl('/api/backtests')}/`;
+const BACKTESTS_ENDPOINT_V1 = `${buildApiUrl('/api/backtests')}/`;
+const BACKTESTS_ENDPOINT_V2 = `${buildApiUrl('/api/backtests/v2')}/`;
+
+export type BacktestApiVersion = 'v1' | 'v2';
 
 export interface BotStrategyPair {
   exchange?: string | null;
@@ -200,9 +203,13 @@ export const buildBacktestPayload = (baseStrategy: BotStrategy, options: BuildPa
   return payload;
 };
 
-export const postBacktest = async (payload: BotStrategy): Promise<BacktestCreateResponse> => {
+export const postBacktest = async (
+  payload: BotStrategy,
+  version: BacktestApiVersion = 'v1',
+): Promise<BacktestCreateResponse> => {
+  const url = version === 'v2' ? BACKTESTS_ENDPOINT_V2 : BACKTESTS_ENDPOINT_V1;
   const response = await proxyHttpRequest<BacktestCreateResponse>({
-    url: BACKTESTS_ENDPOINT,
+    url,
     init: {
       method: 'POST',
       credentials: 'include',
