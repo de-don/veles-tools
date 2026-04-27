@@ -1,3 +1,10 @@
+## [2.5.0](https://github.com/de-don/veles-tools/compare/v2.4.0...v2.5.0) (2026-04-27)
+
+### Features
+
+* **active-deals:** add 8-hour zoom preset ([e937b57](https://github.com/de-don/veles-tools/commit/e937b57a0e1e48a1bfa42a69760b36c598a68876))
+* **backtests:** add v2 API endpoint launch button ([3f88065](https://github.com/de-don/veles-tools/commit/3f8806509d9f2d323f93add9b6774a2a92f9954c))
+
 ## [2.4.0](https://github.com/de-don/veles-tools/compare/v2.3.3...v2.4.0) (2026-02-13)
 
 ### Features
