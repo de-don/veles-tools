@@ -344,4 +344,80 @@ describe('aggregateBacktestsMetrics', () => {
     expect(metrics.activeDealCountSeries.at(-1)).toEqual({ date: end, value: 0 });
     expect(metrics.maxConcurrentPositions).toBe(2);
   });
+
+  it('filters deals by the configured aggregation date range', () => {
+    const periodStart = toTimestamp('2024-07-03T00:00:00Z');
+    const periodEnd = toTimestamp('2024-07-05T00:00:00Z');
+    const deals = [
+      buildDeal({
+        id: 'before',
+        start: toTimestamp('2024-07-01T00:00:00Z'),
+        end: toTimestamp('2024-07-02T23:00:00Z'),
+        net: 1000,
+      }),
+      buildDeal({
+        id: 'overlap-start',
+        start: toTimestamp('2024-07-01T00:00:00Z'),
+        end: periodStart,
+        net: 10,
+      }),
+      buildDeal({
+        id: 'started-through-period',
+        start: toTimestamp('2024-07-02T00:00:00Z'),
+        end: toTimestamp('2024-07-08T00:00:00Z'),
+        status: 'STARTED',
+        net: -100,
+        maeAbsolute: 30,
+      }),
+      buildDeal({
+        id: 'inside',
+        start: toTimestamp('2024-07-04T00:00:00Z'),
+        end: toTimestamp('2024-07-04T12:00:00Z'),
+        net: 20,
+      }),
+      buildDeal({
+        id: 'overlap-end',
+        start: periodEnd,
+        end: toTimestamp('2024-07-06T00:00:00Z'),
+        net: -5,
+      }),
+      buildDeal({
+        id: 'after',
+        start: toTimestamp('2024-07-06T00:00:00Z'),
+        end: toTimestamp('2024-07-06T12:00:00Z'),
+        net: 1000,
+      }),
+    ];
+
+    const metrics = aggregateBacktestsMetrics([buildInfo({ id: 13 }, deals)], {
+      maxConcurrentPositions: 10,
+      positionBlocking: false,
+      dateRangeStart: periodStart,
+      dateRangeEnd: periodEnd,
+    });
+
+    expect(metrics.totalProfitQuote).toBe(25);
+    expect(metrics.totalProfitableDeals).toBe(2);
+    expect(metrics.totalLosingDeals).toBe(1);
+    expect(metrics.openDeals).toBe(1);
+    expect(metrics.aggregatedActiveMae).toBe(30);
+    expect(metrics.averageNetPerDay).toBe(12.5);
+    expect(metrics.pnlSeries).toEqual([
+      { date: periodStart, value: 10 },
+      { date: toTimestamp('2024-07-04T12:00:00Z'), value: 30 },
+      { date: periodEnd, value: 25 },
+    ]);
+    expect(metrics.dealTimelineRows[0]?.items.map((item) => item.id)).toEqual([
+      'overlap-start',
+      'started-through-period',
+      'inside',
+      'overlap-end',
+    ]);
+    expect(metrics.dealTimelineRows[0]?.items.map((item) => item.filterStatus)).toEqual([
+      'partialEnd',
+      'open',
+      'fullIncluded',
+      'partialEnd',
+    ]);
+  });
 });

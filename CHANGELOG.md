@@ -1,3 +1,9 @@
+## [2.5.1](https://github.com/de-don/veles-tools/compare/v2.5.0...v2.5.1) (2026-04-27)
+
+### Bug Fixes
+
+* **backtests:** filter aggregation deals by selected period
+
 ## [2.5.0](https://github.com/de-don/veles-tools/compare/v2.4.0...v2.5.0) (2026-04-27)
 
 ### Features

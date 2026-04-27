@@ -1,9 +1,12 @@
 import type { LimitImpactPoint } from '../lib/chartOptions';
+import type { DealInclusionStatus } from '../lib/dealFiltering';
 import type { BacktestInfo, BacktestInfoDeal } from './backtestInfos';
 
 export interface AggregationConfig {
   maxConcurrentPositions: number;
   positionBlocking: boolean;
+  dateRangeStart?: number;
+  dateRangeEnd?: number;
 }
 
 export interface ChartPoint {
@@ -41,6 +44,7 @@ export interface DealTimelineItem {
   net: number;
   status: BacktestInfoDeal['status'];
   limitedByConcurrency: boolean;
+  filterStatus?: DealInclusionStatus;
 }
 
 export interface DealTimelineRow {
