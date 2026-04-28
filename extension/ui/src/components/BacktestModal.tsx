@@ -90,7 +90,8 @@ const defaultFormState: BacktestFormState = {
   assetList: '',
 };
 
-const MIN_BACKTEST_DELAY_MS = 31_000;
+const V1_BACKTEST_DELAY_MS = 31_000;
+const V2_BACKTEST_DELAY_MS = 5_000;
 
 const retainDigits = (value: string) => value.replace(/[^0-9.,]/g, '');
 
@@ -406,6 +407,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
       try {
         const { startISO, endISO } = toIsoRange(payload.periodFrom, payload.periodTo);
+        const launchDelayMs = payload.apiVersion === 'v2' ? V2_BACKTEST_DELAY_MS : V1_BACKTEST_DELAY_MS;
 
         const assets = payload.variant === 'multiCurrency' ? payload.assetList : [];
         const plannedTotal =
@@ -548,7 +550,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 } else {
                   appendLog(errorNode);
                 }
-                await wait(MIN_BACKTEST_DELAY_MS);
+                await wait(launchDelayMs);
                 if (!isActiveRef.current) {
                   return;
                 }
@@ -557,7 +559,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 completed += 1;
                 updateProgress();
               }
-              await wait(MIN_BACKTEST_DELAY_MS);
+              await wait(launchDelayMs);
               if (!isActiveRef.current) {
                 return;
               }
@@ -633,7 +635,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
               } else {
                 appendLog(`❌ Ошибка запуска «${backtestName}»: ${message}`);
               }
-              await wait(MIN_BACKTEST_DELAY_MS);
+              await wait(launchDelayMs);
               if (!isActiveRef.current) {
                 return;
               }
@@ -642,7 +644,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
               completed += 1;
               updateProgress();
             }
-            await wait(MIN_BACKTEST_DELAY_MS);
+            await wait(launchDelayMs);
             if (!isActiveRef.current) {
               return;
             }
