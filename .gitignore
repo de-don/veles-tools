@@ -1,5 +1,6 @@
 .idea
 .DS_Store
+.serena
 node_modules
 extension/ui/dist
 release-artifacts/
