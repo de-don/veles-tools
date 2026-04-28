@@ -45,7 +45,8 @@ const DEFAULT_LIMIT_IMPACT_VALUE = 5;
 const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPageProps) => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { groups, createGroup, deleteGroup, updateGroupName, removeBacktests, transferBacktests } = useBacktestGroups();
+  const { groups, deleteGroup, updateGroupName, removeBacktests, transferBacktests, transferBacktestsToNewGroup } =
+    useBacktestGroups();
   const [messageApi, messageContextHolder] = message.useMessage();
   const group: BacktestGroup | null = useMemo(() => {
     return groups.find((item) => item.id === groupId) ?? null;
@@ -506,19 +507,14 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
       return;
     }
     if (transferMode === 'new') {
-      const createdGroup = createGroup(newGroupName, selectedIds);
-      if (!createdGroup) {
+      const result = transferBacktestsToNewGroup(group.id, newGroupName, selectedIds);
+      if (!result) {
         messageApi.error('Укажите имя новой группы.');
         return;
       }
-      const updatedGroup = removeBacktests(group.id, selectedIds);
-      if (!updatedGroup) {
-        messageApi.error('Не удалось перенести бэктесты.');
-        return;
-      }
-      syncStateWithGroupIds(updatedGroup.backtestIds);
-      messageApi.success(`Перенесено ${selectedIds.length} бэктестов в «${createdGroup.name}».`);
-      setTransferTargetGroupId(createdGroup.id);
+      syncStateWithGroupIds(result.source.backtestIds);
+      messageApi.success(`Перенесено ${selectedIds.length} бэктестов в «${result.target.name}».`);
+      setTransferTargetGroupId(result.target.id);
       setTransferModalOpen(false);
       return;
     }
@@ -534,14 +530,13 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     messageApi.success(`Перенесено ${selectedIds.length} бэктестов.`);
     setTransferModalOpen(false);
   }, [
-    createGroup,
     group,
     messageApi,
     newGroupName,
-    removeBacktests,
     selectedIds,
     syncStateWithGroupIds,
     transferBacktests,
+    transferBacktestsToNewGroup,
     transferMode,
     transferTargetGroupId,
   ]);

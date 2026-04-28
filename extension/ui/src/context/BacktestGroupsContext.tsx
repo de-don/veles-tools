@@ -14,6 +14,11 @@ interface BacktestGroupsContextValue {
     targetGroupId: string,
     backtestIds: number[],
   ) => { source: BacktestGroup; target: BacktestGroup } | null;
+  transferBacktestsToNewGroup: (
+    sourceGroupId: string,
+    name: string,
+    backtestIds: number[],
+  ) => { source: BacktestGroup; target: BacktestGroup } | null;
   refresh: () => void;
 }
 
@@ -245,6 +250,49 @@ export const BacktestGroupsProvider = ({ children }: PropsWithChildren) => {
     [groups, persist],
   );
 
+  const transferBacktestsToNewGroup = useCallback(
+    (
+      sourceGroupId: string,
+      name: string,
+      backtestIds: number[],
+    ): { source: BacktestGroup; target: BacktestGroup } | null => {
+      const trimmedName = name.trim();
+      const normalizedIds = normalizeBacktestIds(backtestIds);
+      if (!sourceGroupId || trimmedName.length === 0 || normalizedIds.length === 0) {
+        return null;
+      }
+
+      const sourceIndex = groups.findIndex((group) => group.id === sourceGroupId);
+      if (sourceIndex === -1) {
+        return null;
+      }
+
+      const idsToMove = new Set(normalizedIds);
+      const sourceGroup = groups[sourceIndex];
+      const filteredIds = sourceGroup.backtestIds.filter((id) => !idsToMove.has(id));
+      const timestamp = Date.now();
+      const updatedSource: BacktestGroup = {
+        ...sourceGroup,
+        backtestIds: filteredIds,
+        updatedAt: timestamp,
+      };
+      const newGroup: BacktestGroup = {
+        id: generateGroupId(),
+        name: trimmedName,
+        backtestIds: normalizedIds,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      };
+
+      const nextGroups = groups.map((group, index) => (index === sourceIndex ? updatedSource : group));
+      nextGroups.push(newGroup);
+      persist(nextGroups);
+
+      return { source: updatedSource, target: newGroup };
+    },
+    [groups, persist],
+  );
+
   const refresh = useCallback(() => {
     setGroups(readBacktestGroups());
   }, []);
@@ -258,9 +306,20 @@ export const BacktestGroupsProvider = ({ children }: PropsWithChildren) => {
       deleteGroup,
       removeBacktests,
       transferBacktests,
+      transferBacktestsToNewGroup,
       refresh,
     }),
-    [groups, createGroup, appendToGroup, updateGroupName, deleteGroup, removeBacktests, transferBacktests, refresh],
+    [
+      groups,
+      createGroup,
+      appendToGroup,
+      updateGroupName,
+      deleteGroup,
+      removeBacktests,
+      transferBacktests,
+      transferBacktestsToNewGroup,
+      refresh,
+    ],
   );
 
   return <BacktestGroupsContext.Provider value={value}>{children}</BacktestGroupsContext.Provider>;
