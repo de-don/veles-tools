@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { BacktestConfigDto } from '../../api/backtests.dtos';
 import type { BacktestCycle, BacktestDetail, BacktestOrder, BacktestStatistics } from '../../types/backtests';
-import { buildBacktestInfo } from '../backtestInfos';
+import { buildBacktestInfo, collectUniqueBacktestCoins } from '../backtestInfos';
 
 const baseConfig: BacktestConfigDto = {
   id: 1,
@@ -275,5 +275,35 @@ describe('buildBacktestInfo', () => {
 
     const info = buildBacktestInfo(detail, cycles);
     expect(info.tradingDays).toBe(3);
+  });
+});
+
+describe('collectUniqueBacktestCoins', () => {
+  it('returns sorted unique base coins for selected backtests', () => {
+    const btcInfo = buildBacktestInfo(createDetail(), []);
+    const ethInfo = buildBacktestInfo(
+      createDetail({
+        statistics: {
+          ...baseStatistics,
+          id: 2,
+          symbol: 'ETHUSDT',
+          base: 'ETH',
+        },
+      }),
+      [],
+    );
+    const duplicatedBtcInfo = buildBacktestInfo(
+      createDetail({
+        statistics: {
+          ...baseStatistics,
+          id: 3,
+          symbol: 'BTCUSDT',
+          base: 'BTC',
+        },
+      }),
+      [],
+    );
+
+    expect(collectUniqueBacktestCoins([ethInfo, btcInfo, duplicatedBtcInfo])).toEqual(['BTC', 'ETH']);
   });
 });
