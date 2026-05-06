@@ -1,4 +1,4 @@
-import { Button, Progress } from 'antd';
+import { Button, Progress, Select } from 'antd';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -11,6 +11,7 @@ import {
 } from 'react';
 import {
   type BacktestApiVersion,
+  BacktestRequestError,
   type BotStrategy,
   buildBacktestPayload,
   composeSymbol,
@@ -19,6 +20,7 @@ import {
   resolveQuoteCurrency,
   type SymbolDescriptor,
 } from '../api/backtestRunner';
+import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import { useImportedBots } from '../context/ImportedBotsContext';
 import { parseAssetList } from '../lib/assetList';
 import { buildCabinetUrl } from '../lib/cabinetUrls';
@@ -26,6 +28,7 @@ import { applyBotNameTemplate } from '../lib/nameTemplate';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
 import type { BotSummary } from '../types/bots';
+import type { BacktestGroup } from '../types/backtestGroups';
 
 export type BacktestVariant = 'single' | 'multiCurrency';
 
@@ -36,7 +39,11 @@ interface FormErrors {
   makerCommission?: string;
   takerCommission?: string;
   assetList?: string;
+  targetGroupName?: string;
+  targetGroupId?: string;
 }
+
+type BacktestGroupTargetMode = 'none' | 'existing' | 'new';
 
 interface BacktestFormState {
   nameTemplate: string;
@@ -47,6 +54,15 @@ interface BacktestFormState {
   isPublic: boolean;
   includeWicks: boolean;
   assetList: string;
+  targetGroupMode: BacktestGroupTargetMode;
+  targetGroupId: string;
+  targetGroupName: string;
+}
+
+interface BacktestGroupTarget {
+  mode: BacktestGroupTargetMode;
+  groupId: string | null;
+  groupName: string | null;
 }
 
 interface BacktestLaunchPayload {
@@ -61,6 +77,7 @@ interface BacktestLaunchPayload {
   includeWicks: boolean;
   assetList: string[];
   apiVersion: BacktestApiVersion;
+  groupTarget: BacktestGroupTarget;
 }
 
 interface BacktestModalProps {
@@ -88,10 +105,14 @@ const defaultFormState: BacktestFormState = {
   isPublic: false,
   includeWicks: true,
   assetList: '',
+  targetGroupMode: 'none',
+  targetGroupId: '',
+  targetGroupName: '',
 };
 
 const V1_BACKTEST_DELAY_MS = 31_000;
 const V2_BACKTEST_DELAY_MS = 5_000;
+const RATE_LIMIT_RETRY_DELAY_MS = 10_000;
 
 const retainDigits = (value: string) => value.replace(/[^0-9.,]/g, '');
 
@@ -215,6 +236,16 @@ const wait = (ms: number) =>
     window.setTimeout(resolve, ms);
   });
 
+const isRateLimitError = (error: unknown): boolean => {
+  if (error instanceof BacktestRequestError && error.status === 429) {
+    return true;
+  }
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return /\b429\b/.test(error.message) || error.message.toLowerCase().includes('too many requests');
+};
+
 const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) => {
   const [formState, setFormState] = useState<BacktestFormState>(() => ({
     ...defaultFormState,
@@ -231,6 +262,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const { getInitialTitle, setTitle: setDocumentTitle, resetTitle } = useDocumentTitle();
   const { getStrategyById } = useImportedBots();
+  const { groups, createGroup, appendToGroup } = useBacktestGroups();
 
   useEffect(() => {
     isActiveRef.current = true;
@@ -334,6 +366,30 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
     }));
   };
 
+  const handleGroupModeChange = (value: BacktestGroupTargetMode) => {
+    setFormState((prev) => ({
+      ...prev,
+      targetGroupMode: value,
+      targetGroupId: value === 'existing' ? (prev.targetGroupId || groups[0]?.id || '') : prev.targetGroupId,
+    }));
+    setFormErrors((prev) => ({
+      ...prev,
+      targetGroupId: undefined,
+      targetGroupName: undefined,
+    }));
+  };
+
+  const handleGroupIdChange = (value: string) => {
+    setFormState((prev) => ({
+      ...prev,
+      targetGroupId: value,
+    }));
+    setFormErrors((prev) => ({
+      ...prev,
+      targetGroupId: undefined,
+    }));
+  };
+
   const handleCheckboxChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = event.target;
     setFormState((prev) => ({
@@ -375,6 +431,13 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
         }
       }
 
+      if (state.targetGroupMode === 'existing' && !state.targetGroupId) {
+        errors.targetGroupId = 'Выберите группу';
+      }
+      if (state.targetGroupMode === 'new' && state.targetGroupName.trim().length === 0) {
+        errors.targetGroupName = 'Введите название группы';
+      }
+
       return errors;
     },
     [variant],
@@ -393,6 +456,11 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
       includeWicks: state.includeWicks,
       assetList: variant === 'multiCurrency' ? parseAssetList(state.assetList) : [],
       apiVersion: 'v1',
+      groupTarget: {
+        mode: state.targetGroupMode,
+        groupId: state.targetGroupMode === 'existing' ? state.targetGroupId : null,
+        groupName: state.targetGroupMode === 'new' ? state.targetGroupName.trim() : null,
+      },
     }),
     [selectedBots, variant],
   );
@@ -426,6 +494,84 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           }
           const safeCompleted = Math.min(completed, plannedTotal);
           setProgress(Math.round((safeCompleted / plannedTotal) * 100));
+        };
+
+        let resolvedTargetGroup: BacktestGroup | null =
+          payload.groupTarget.mode === 'existing' && payload.groupTarget.groupId
+            ? (groups.find((group) => group.id === payload.groupTarget.groupId) ?? null)
+            : null;
+
+        const addBacktestToTargetGroup = (backtestId: number) => {
+          if (payload.groupTarget.mode === 'none') {
+            return;
+          }
+
+          if (payload.groupTarget.mode === 'existing') {
+            if (!payload.groupTarget.groupId) {
+              appendLog(`⚠️ Бэктест ${backtestId} не добавлен в группу: группа не выбрана.`);
+              return;
+            }
+            const updatedGroup = appendToGroup(payload.groupTarget.groupId, [backtestId]);
+            if (!updatedGroup) {
+              appendLog(`⚠️ Бэктест ${backtestId} не добавлен в группу: группа недоступна.`);
+              return;
+            }
+            resolvedTargetGroup = updatedGroup;
+            return;
+          }
+
+          if (!payload.groupTarget.groupName) {
+            appendLog(`⚠️ Бэктест ${backtestId} не добавлен в группу: не указано название группы.`);
+            return;
+          }
+
+          if (!resolvedTargetGroup) {
+            const createdGroup = createGroup(payload.groupTarget.groupName, [backtestId]);
+            if (!createdGroup) {
+              appendLog(`⚠️ Бэктест ${backtestId} не добавлен в новую группу.`);
+              return;
+            }
+            resolvedTargetGroup = createdGroup;
+            appendLog(`Группа «${createdGroup.name}» создана.`);
+            return;
+          }
+
+          const updatedGroup = appendToGroup(resolvedTargetGroup.id, [backtestId]);
+          if (!updatedGroup) {
+            appendLog(`⚠️ Бэктест ${backtestId} не добавлен в группу «${resolvedTargetGroup.name}».`);
+            return;
+          }
+          resolvedTargetGroup = updatedGroup;
+        };
+
+        const postBacktestWithRateLimitRetry = async (
+          body: BotStrategy,
+          version: BacktestApiVersion,
+          backtestName: string,
+          logId: string | null,
+        ) => {
+          let attempt = 1;
+          while (isActiveRef.current) {
+            try {
+              return await postBacktest(body, version);
+            } catch (error) {
+              if (!isRateLimitError(error)) {
+                throw error;
+              }
+
+              const retryNode = `⏳ «${backtestName}»: получен 429, повтор через 10 секунд (попытка ${attempt + 1})`;
+              if (logId) {
+                replaceLog(logId, retryNode);
+              } else {
+                appendLog(retryNode);
+              }
+
+              attempt += 1;
+              await wait(RATE_LIMIT_RETRY_DELAY_MS);
+            }
+          }
+
+          return null;
         };
 
         if (payload.variant === 'multiCurrency' && assets.length === 0) {
@@ -522,8 +668,19 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                   periodEndISO: endISO,
                   overrideSymbol: descriptor,
                 });
-                const response = await postBacktest(body, payload.apiVersion);
+                const response = await postBacktestWithRateLimitRetry(
+                  body,
+                  payload.apiVersion,
+                  backtestName,
+                  pendingId,
+                );
+                if (!response) {
+                  return;
+                }
                 const backtestId = typeof response.id === 'number' ? response.id : '—';
+                if (typeof response.id === 'number') {
+                  addBacktestToTargetGroup(response.id);
+                }
                 const backtestUrl =
                   typeof response.id === 'number' ? buildCabinetUrl(`backtests/${response.id}`) : null;
                 const successNode = backtestUrl ? (
@@ -595,8 +752,14 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 periodEndISO: endISO,
                 overrideSymbol: descriptor,
               });
-              const response = await postBacktest(body);
+              const response = await postBacktestWithRateLimitRetry(body, payload.apiVersion, backtestName, logId);
+              if (!response) {
+                return;
+              }
               const backtestId = typeof response.id === 'number' ? response.id : '—';
+              if (typeof response.id === 'number') {
+                addBacktestToTargetGroup(response.id);
+              }
               const backtestUrl = typeof response.id === 'number' ? buildCabinetUrl(`backtests/${response.id}`) : null;
               if (logId) {
                 replaceLog(
@@ -829,6 +992,60 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
               <span>Учитывать тени свечей</span>
             </label>
           </div>
+
+          <div className="form-field">
+            <label className="form-label" htmlFor="backtest-target-group-mode">
+              Группа бэктестов
+            </label>
+            <Select<BacktestGroupTargetMode>
+              id="backtest-target-group-mode"
+              value={formState.targetGroupMode}
+              onChange={handleGroupModeChange}
+              disabled={isRunning}
+              options={[
+                { label: 'Не добавлять в группу', value: 'none' },
+                { label: 'Добавить в существующую', value: 'existing', disabled: groups.length === 0 },
+                { label: 'Создать новую группу', value: 'new' },
+              ]}
+            />
+          </div>
+
+          {formState.targetGroupMode === 'existing' && (
+            <div className="form-field">
+              <label className="form-label" htmlFor="backtest-target-group-id">
+                Выберите группу
+              </label>
+              <Select
+                id="backtest-target-group-id"
+                value={formState.targetGroupId || undefined}
+                onChange={handleGroupIdChange}
+                disabled={isRunning}
+                status={formErrors.targetGroupId ? 'error' : undefined}
+                placeholder="Группа"
+                options={groups.map((group) => ({ label: group.name, value: group.id }))}
+              />
+              {formErrors.targetGroupId && <span className="form-error">{formErrors.targetGroupId}</span>}
+            </div>
+          )}
+
+          {formState.targetGroupMode === 'new' && (
+            <div className="form-field">
+              <label className="form-label" htmlFor="backtest-target-group-name">
+                Название новой группы
+              </label>
+              <input
+                id="backtest-target-group-name"
+                name="targetGroupName"
+                type="text"
+                className={`input ${formErrors.targetGroupName ? 'input--error' : ''}`}
+                value={formState.targetGroupName}
+                onChange={handleTextChange}
+                placeholder="Например: Майские бэктесты"
+                disabled={isRunning}
+              />
+              {formErrors.targetGroupName && <span className="form-error">{formErrors.targetGroupName}</span>}
+            </div>
+          )}
 
           {variant === 'multiCurrency' && (
             <div className="form-field">
