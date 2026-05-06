@@ -1,3 +1,11 @@
+## [2.5.1](https://github.com/de-don/veles-tools/compare/v2.5.0...v2.5.1) (2026-04-28)
+
+### Bug Fixes
+
+* **backtests:** keep new group when transferring backtests ([cb2fb41](https://github.com/de-don/veles-tools/commit/cb2fb41e7e20dc3aa326bd7290cf3d5a5529ee83)), closes [#27](https://github.com/de-don/veles-tools/issues/27)
+* **backtests:** reduce v2 launch delay ([3d417f5](https://github.com/de-don/veles-tools/commit/3d417f5829105b9a47419524d7507f366f16701b))
+* **lint:** format manifest.json and ignore .serena ([b0e1015](https://github.com/de-don/veles-tools/commit/b0e1015d1ae2df18dddcdb56a2f5c105a0a77bd9))
+
 ## [2.5.0](https://github.com/de-don/veles-tools/compare/v2.4.0...v2.5.0) (2026-04-27)
 
 ### Features
