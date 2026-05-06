@@ -168,3 +168,16 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
     deals,
   };
 };
+
+export const collectUniqueBacktestCoins = (backtests: BacktestInfo[]): string[] => {
+  const coins = new Set<string>();
+
+  backtests.forEach((backtest) => {
+    const coin = backtest.base.trim();
+    if (coin.length > 0) {
+      coins.add(coin);
+    }
+  });
+
+  return Array.from(coins).sort((left, right) => left.localeCompare(right, 'en', { sensitivity: 'base' }));
+};

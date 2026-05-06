@@ -4,6 +4,7 @@ import type { BacktestsListParams } from '../types/backtests';
 import type {
   BacktestConfigDto,
   BacktestCyclesListDto,
+  BacktestLimitsDto,
   BacktestStatisticsDto,
   BacktestStatisticsListDto,
 } from './backtests.dtos';
@@ -28,6 +29,28 @@ export const fetchBacktests = async (params: BacktestsListParams): Promise<Backt
 
   const response = await proxyHttpRequest<BacktestStatisticsListDto>({
     url,
+    init: {
+      method: 'GET',
+      credentials: 'include',
+    },
+  });
+
+  if (!response.ok) {
+    const errorMessage = resolveProxyErrorMessage(response);
+    throw new Error(errorMessage);
+  }
+
+  const { body } = response;
+  if (!body) {
+    throw new Error('Пустой ответ сервера.');
+  }
+
+  return body;
+};
+
+export const fetchBacktestLimits = async (): Promise<BacktestLimitsDto> => {
+  const response = await proxyHttpRequest<BacktestLimitsDto>({
+    url: `${BACKTESTS_CORE_ENDPOINT}/limits`,
     init: {
       method: 'GET',
       credentials: 'include',

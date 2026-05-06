@@ -1,5 +1,6 @@
 import {
   DEFAULT_CYCLES_PAGE_SIZE,
+  fetchBacktestLimits,
   fetchBacktestConfig,
   fetchBacktestCycles,
   fetchBacktestStatistics,
@@ -19,6 +20,7 @@ import {
 import type {
   BacktestCycle,
   BacktestDetail,
+  BacktestLimits,
   BacktestStatistics,
   BacktestStatisticsListResponse,
   BacktestsListParams,
@@ -41,6 +43,11 @@ export interface BacktestCyclesRequest extends GetBacktestCyclesOptions {
   to?: string | null;
 }
 
+const ACCOUNT_STATUS_CACHE_TTL_MS = 5 * 60 * 1000;
+let backtestLimitsCache: { value: BacktestLimits; fetchedAt: number } | null = null;
+let backtestLimitsErrorCache: { error: Error; fetchedAt: number } | null = null;
+let backtestLimitsRequest: Promise<BacktestLimits> | null = null;
+
 export const getBacktestsList = async (params: BacktestsListParams): Promise<BacktestStatisticsListResponse> => {
   const dto = await fetchBacktests(params);
   return {
@@ -49,6 +56,62 @@ export const getBacktestsList = async (params: BacktestsListParams): Promise<Bac
     pageNumber: dto.pageNumber,
     content: mapStatisticsListFromDto(dto.content ?? []),
   };
+};
+
+const parseBacktestLimitExpiration = (value: string | number | null): Date | null => {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === 'number') {
+    const timestamp = value > 10_000_000_000 ? value : value * 1000;
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    return null;
+  }
+
+  return new Date(timestamp);
+};
+
+export const getBacktestLimits = async (): Promise<BacktestLimits> => {
+  const now = Date.now();
+  if (backtestLimitsCache && now - backtestLimitsCache.fetchedAt < ACCOUNT_STATUS_CACHE_TTL_MS) {
+    return backtestLimitsCache.value;
+  }
+  if (backtestLimitsErrorCache && now - backtestLimitsErrorCache.fetchedAt < ACCOUNT_STATUS_CACHE_TTL_MS) {
+    throw backtestLimitsErrorCache.error;
+  }
+  if (backtestLimitsRequest) {
+    return backtestLimitsRequest;
+  }
+
+  backtestLimitsRequest = fetchBacktestLimits()
+    .then((dto) => {
+      const expiration = parseBacktestLimitExpiration(dto.expiration);
+      const limits: BacktestLimits = {
+        permits: dto.permits,
+        expiration,
+        hasActiveSubscription: expiration !== null && expiration.getTime() > Date.now(),
+      };
+
+      backtestLimitsCache = { value: limits, fetchedAt: Date.now() };
+      backtestLimitsErrorCache = null;
+      return limits;
+    })
+    .catch((error) => {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      backtestLimitsErrorCache = { error: normalizedError, fetchedAt: Date.now() };
+      throw normalizedError;
+    })
+    .finally(() => {
+      backtestLimitsRequest = null;
+    });
+
+  return backtestLimitsRequest;
 };
 
 export const getBacktestDetail = async (
@@ -137,6 +200,7 @@ export const getBacktestCycles = async (id: number, params: BacktestCyclesReques
 
 export const backtestsService = {
   getBacktestsList,
+  getBacktestLimits,
   getBacktestDetail,
   getBacktestCycles,
   readCachedBacktestDetail,

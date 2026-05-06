@@ -22,6 +22,10 @@ import logo from '../assets/logo.png';
 import { APP_NAME, APP_VERSION } from '../config/version';
 import { useThemeMode } from '../context/ThemeContext';
 import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
+import { backtestsService } from '../services/backtests';
+import { usersService } from '../services/users';
+import type { BacktestLimits } from '../types/backtests';
+import type { UserBalance } from '../types/users';
 import ConnectionHelpModal from './ConnectionHelpModal';
 import SupportProjectModal from './SupportProjectModal';
 import TelegramChannelModal from './TelegramChannelModal';
@@ -47,12 +51,49 @@ const AUTHOR_URL = 'https://t.me/dontsov';
 const CHROME_WEBSTORE_URL = 'https://chromewebstore.google.com/detail/veles-tools/hgfhapnhcnncjplmjkbbljhjpcjilbgm';
 const TELEGRAM_CHANNEL_URL = 'https://t.me/veles_tools';
 const TELEGRAM_MODAL_KEY = '__VELES_TG_CHANNEL_SHOWN';
+const ACCOUNT_STATUS_REFRESH_MS = 5 * 60 * 1000;
+
+interface AccountStatusSnapshot {
+  backtestLimits: BacktestLimits | null;
+  backtestLimitsError: string | null;
+  userBalance: UserBalance | null;
+  userBalanceError: string | null;
+}
 
 const formatTimestamp = (timestamp: number | null) => {
   if (!timestamp) {
     return '—';
   }
   return new Date(timestamp).toLocaleTimeString();
+};
+
+const formatBacktestLimitsExpiration = (expiration: Date): string => {
+  return expiration.toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+};
+
+const formatBacktestLimitsStatus = (limits: BacktestLimits | null): string => {
+  if (!limits) {
+    return '—';
+  }
+  if (limits.hasActiveSubscription && limits.expiration) {
+    return `Активна до ${formatBacktestLimitsExpiration(limits.expiration)}`;
+  }
+  return `Бесплатно: ${limits.permits} из 10`;
+};
+
+const serviceBalanceFormatter = new Intl.NumberFormat('ru-RU', {
+  maximumFractionDigits: 8,
+});
+
+const formatServiceBalance = (balance: UserBalance | null): string => {
+  if (!balance) {
+    return '—';
+  }
+  return serviceBalanceFormatter.format(balance.balance);
 };
 
 const resolveSelectedKey = (pathname: string, navigationKeys: string[]) => {
@@ -72,6 +113,12 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [telegramModalOpen, setTelegramModalOpen] = useState(false);
   const [connectionHelpOpen, setConnectionHelpOpen] = useState(false);
+  const [backtestLimits, setBacktestLimits] = useState<BacktestLimits | null>(null);
+  const [backtestLimitsLoading, setBacktestLimitsLoading] = useState(false);
+  const [backtestLimitsError, setBacktestLimitsError] = useState<string | null>(null);
+  const [userBalance, setUserBalance] = useState<UserBalance | null>(null);
+  const [userBalanceLoading, setUserBalanceLoading] = useState(false);
+  const [userBalanceError, setUserBalanceError] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -81,6 +128,82 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
       writeStorageValue(TELEGRAM_MODAL_KEY, 'shown');
     }
   }, []);
+
+  useEffect(() => {
+    if (!extensionReady || !connectionStatus.ok) {
+      setBacktestLimits(null);
+      setBacktestLimitsError(null);
+      setBacktestLimitsLoading(false);
+      setUserBalance(null);
+      setUserBalanceError(null);
+      setUserBalanceLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const applySnapshot = (snapshot: AccountStatusSnapshot) => {
+      setBacktestLimits(snapshot.backtestLimits);
+      setBacktestLimitsError(snapshot.backtestLimitsError);
+      setBacktestLimitsLoading(false);
+      setUserBalance(snapshot.userBalance);
+      setUserBalanceError(snapshot.userBalanceError);
+      setUserBalanceLoading(false);
+    };
+
+    const loadStatus = async () => {
+      setBacktestLimitsLoading(true);
+      setBacktestLimitsError(null);
+      setUserBalanceLoading(true);
+      setUserBalanceError(null);
+      try {
+        const [limitsResult, balanceResult] = await Promise.allSettled([
+          backtestsService.getBacktestLimits(),
+          usersService.getUserBalance(),
+        ]);
+        const snapshot: AccountStatusSnapshot = {
+          backtestLimits: limitsResult.status === 'fulfilled' ? limitsResult.value : null,
+          backtestLimitsError: limitsResult.status === 'rejected' ? 'Не удалось загрузить' : null,
+          userBalance: balanceResult.status === 'fulfilled' ? balanceResult.value : null,
+          userBalanceError: balanceResult.status === 'rejected' ? 'Не удалось загрузить' : null,
+        };
+
+        if (limitsResult.status === 'rejected') {
+          console.warn('[AppLayout] Не удалось загрузить лимиты бэктестов', limitsResult.reason);
+        }
+        if (balanceResult.status === 'rejected') {
+          console.warn('[AppLayout] Не удалось загрузить баланс сервиса', balanceResult.reason);
+        }
+
+        if (!cancelled) {
+          applySnapshot(snapshot);
+        }
+      } catch (error) {
+        console.warn('[AppLayout] Не удалось загрузить статус аккаунта', error);
+        if (!cancelled) {
+          setBacktestLimits(null);
+          setBacktestLimitsError('Не удалось загрузить');
+          setUserBalance(null);
+          setUserBalanceError('Не удалось загрузить');
+        }
+      } finally {
+        if (!cancelled) {
+          setBacktestLimitsLoading(false);
+          setUserBalanceLoading(false);
+        }
+      }
+    };
+
+    void loadStatus();
+    const refreshTimer = window.setInterval(() => {
+      void loadStatus();
+    }, ACCOUNT_STATUS_REFRESH_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshTimer);
+    };
+  }, [connectionStatus.ok, connectionStatus.origin, extensionReady]);
 
   const navigationItems = [
     {
@@ -199,6 +322,26 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
             description="Откройте интерфейс из меню расширения для работы с запросами."
           />
         )}
+        <div className="app-layout__status-panel">
+          <div className="app-layout__status-row">
+            <Typography.Text type="secondary" className="app-layout__status-label">
+              Бэктесты
+            </Typography.Text>
+            <Tag color={backtestLimits?.hasActiveSubscription ? 'success' : 'default'}>
+              {backtestLimitsLoading
+                ? 'Загрузка...'
+                : (backtestLimitsError ?? formatBacktestLimitsStatus(backtestLimits))}
+            </Tag>
+          </div>
+          <div className="app-layout__status-row">
+            <Typography.Text type="secondary" className="app-layout__status-label">
+              Баланс сервиса
+            </Typography.Text>
+            <Tag color="processing">
+              {userBalanceLoading ? 'Загрузка...' : (userBalanceError ?? formatServiceBalance(userBalance))}
+            </Tag>
+          </div>
+        </div>
         <div className="app-layout__sider-footer">
           <Space direction="vertical" size={8}>
             <Typography.Link href={CHROME_WEBSTORE_URL} target="_blank" rel="noreferrer noopener">

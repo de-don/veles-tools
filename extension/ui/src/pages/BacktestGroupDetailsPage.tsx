@@ -1,5 +1,5 @@
 import type { MenuProps } from 'antd';
-import { Alert, Button, Card, Dropdown, Empty, Input, Modal, message, Progress, Radio, Select } from 'antd';
+import { Alert, Button, Card, Dropdown, Empty, Input, Modal, message, Progress, Radio, Select, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import BacktestAggregationConfigPanel from '../components/backtests/BacktestAggregationConfigPanel';
@@ -11,7 +11,7 @@ import PageHeader from '../components/ui/PageHeader';
 import { useBacktestGroups } from '../context/BacktestGroupsContext';
 import type { LimitImpactPoint } from '../lib/chartOptions';
 import { aggregateBacktestsMetrics, DEFAULT_AGGREGATION_CONFIG } from '../services/backtestAggregations';
-import { buildBacktestInfo } from '../services/backtestInfos';
+import { buildBacktestInfo, collectUniqueBacktestCoins } from '../services/backtestInfos';
 import { backtestsService } from '../services/backtests';
 import { readAggregationConfig, writeAggregationConfig } from '../storage/backtestAggregationConfigStore';
 import { readLimitAnalysisPreferences, writeLimitAnalysisPreferences } from '../storage/backtestLimitAnalysisStore';
@@ -41,6 +41,7 @@ const isCompleteSource = (source: CachedBacktestSource): source is CompleteBackt
 };
 
 const DEFAULT_LIMIT_IMPACT_VALUE = 5;
+const MAX_VISIBLE_SELECTED_COINS = 24;
 
 const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPageProps) => {
   const { groupId } = useParams<{ groupId: string }>();
@@ -346,6 +347,9 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     const selectedSet = new Set(selectedIds);
     return backtestInfos.filter((info) => selectedSet.has(info.id));
   }, [backtestInfos, selectedIds]);
+  const selectedCoins = useMemo(() => collectUniqueBacktestCoins(selectedBacktests), [selectedBacktests]);
+  const visibleSelectedCoins = selectedCoins.slice(0, MAX_VISIBLE_SELECTED_COINS);
+  const hiddenSelectedCoinsCount = Math.max(0, selectedCoins.length - visibleSelectedCoins.length);
 
   const aggregatedMetrics = useMemo<AggregatedBacktestsMetrics | null>(() => {
     if (selectedBacktests.length === 0) {
@@ -710,6 +714,15 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
             <p className="panel__description">
               Загружено {loadedCount} из {totalBacktests} · выбрано {selectedCount}
             </p>
+            {selectedCoins.length > 0 && (
+              <div className="u-mt-8">
+                <span className="panel__description">Монеты выбранных бэктестов: </span>
+                {visibleSelectedCoins.map((coin) => (
+                  <Tag key={coin}>{coin}</Tag>
+                ))}
+                {hiddenSelectedCoinsCount > 0 && <Tag>+{hiddenSelectedCoinsCount}</Tag>}
+              </div>
+            )}
           </div>
         </div>
 

@@ -49,6 +49,16 @@ export interface BacktestCreateResponse {
   status?: string | null;
 }
 
+export class BacktestRequestError extends Error {
+  readonly status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.name = 'BacktestRequestError';
+    this.status = status;
+  }
+}
+
 export interface SymbolDescriptor {
   base: string;
   quote: string;
@@ -79,7 +89,7 @@ export const fetchBotStrategy = async (botId: BotIdentifier): Promise<BotStrateg
 
   if (!response.ok) {
     const message = resolveProxyErrorMessage(response);
-    throw new Error(message);
+    throw new BacktestRequestError(message, response.status);
   }
 
   if (!response.body) {
@@ -223,7 +233,7 @@ export const postBacktest = async (
 
   if (!response.ok) {
     const message = resolveProxyErrorMessage(response);
-    throw new Error(message);
+    throw new BacktestRequestError(message, response.status);
   }
 
   if (!response.body) {

@@ -25,5 +25,11 @@ export interface BacktestStatisticsListResponse {
   content: BacktestStatistics[];
 }
 
+export interface BacktestLimits {
+  permits: number;
+  expiration: Date | null;
+  hasActiveSubscription: boolean;
+}
+
 export type BacktestCycle = BacktestCycleDto;
 export type BacktestOrder = BacktestOrderDto;

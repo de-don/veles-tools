@@ -52,6 +52,7 @@ export const BacktestGroupsProvider = ({ children }: PropsWithChildren) => {
       if (trimmedName.length === 0 || normalizedIds.length === 0) {
         return null;
       }
+      const currentGroups = readBacktestGroups();
       const timestamp = Date.now();
       const group: BacktestGroup = {
         id: generateGroupId(),
@@ -60,10 +61,10 @@ export const BacktestGroupsProvider = ({ children }: PropsWithChildren) => {
         createdAt: timestamp,
         updatedAt: timestamp,
       };
-      persist([...groups, group]);
+      persist([...currentGroups, group]);
       return group;
     },
-    [groups, persist],
+    [persist],
   );
 
   const appendToGroup = useCallback(
@@ -76,9 +77,10 @@ export const BacktestGroupsProvider = ({ children }: PropsWithChildren) => {
         return null;
       }
 
+      const currentGroups = readBacktestGroups();
       let updatedGroup: BacktestGroup | null = null;
       let changed = false;
-      const nextGroups = groups.map((group) => {
+      const nextGroups = currentGroups.map((group) => {
         if (group.id !== groupId) {
           return group;
         }
@@ -105,7 +107,7 @@ export const BacktestGroupsProvider = ({ children }: PropsWithChildren) => {
       }
       return updatedGroup;
     },
-    [groups, persist],
+    [persist],
   );
 
   const updateGroupName = useCallback(

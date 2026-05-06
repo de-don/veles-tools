@@ -27,7 +27,8 @@
   ],
   "host_permissions": [
     "https://veles.finance/*",
-    "https://ru.veles.finance/*"
+    "https://ru.veles.finance/*",
+    "https://beta.veles.finance/*"
   ],
   "background": {
     "service_worker": "scripts/background.js"
@@ -36,7 +37,8 @@
     {
       "matches": [
         "https://veles.finance/*",
-        "https://ru.veles.finance/*"
+        "https://ru.veles.finance/*",
+        "https://beta.veles.finance/*"
       ],
       "js": [
         "scripts/proxy-bridge.js"
@@ -51,7 +53,8 @@
       ],
       "matches": [
         "https://veles.finance/*",
-        "https://ru.veles.finance/*"
+        "https://ru.veles.finance/*",
+        "https://beta.veles.finance/*"
       ]
     },
     {
@@ -61,7 +64,8 @@
       ],
       "matches": [
         "https://veles.finance/*",
-        "https://ru.veles.finance/*"
+        "https://ru.veles.finance/*",
+        "https://beta.veles.finance/*"
       ]
     }
   ]
