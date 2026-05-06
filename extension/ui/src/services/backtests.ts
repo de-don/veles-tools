@@ -1,8 +1,8 @@
 import {
   DEFAULT_CYCLES_PAGE_SIZE,
-  fetchBacktestLimits,
   fetchBacktestConfig,
   fetchBacktestCycles,
+  fetchBacktestLimits,
   fetchBacktestStatistics,
   fetchBacktests,
 } from '../api/backtests';

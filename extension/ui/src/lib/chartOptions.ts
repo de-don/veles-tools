@@ -337,12 +337,30 @@ const buildOrderScatterSeries = (
   };
 };
 
-const formatEquityTooltip = (params: any): string => {
-  const items = Array.isArray(params) ? params : [params];
-  const orderItem = items.find((item: any) => item.seriesType === 'scatter' && item.data?.customData);
+interface EquityTooltipParam {
+  axisValue?: string | number | Date;
+  data?: null | {
+    customData?: ExecutedOrderPoint;
+  };
+  marker?: string;
+  seriesName?: string;
+  seriesType?: string;
+  value?: number | Array<number | string | null> | null;
+}
+
+const isEquityTooltipParam = (value: unknown): value is EquityTooltipParam => {
+  return typeof value === 'object' && value !== null;
+};
+
+const formatEquityTooltip = (params: unknown): string => {
+  const items = (Array.isArray(params) ? params : [params]).filter(isEquityTooltipParam);
+  const orderItem = items.find((item) => item.seriesType === 'scatter' && item.data?.customData);
 
   if (orderItem) {
-    const order = orderItem.data.customData as ExecutedOrderPoint;
+    const order = orderItem.data?.customData;
+    if (!order) {
+      return '';
+    }
     const isEntry = order.type === 'ENTRY';
     const typeLabel = isEntry ? 'Сделка открыта' : 'Усреднение';
     const color = isEntry ? '#10b981' : '#ef4444';
@@ -376,16 +394,16 @@ const formatEquityTooltip = (params: any): string => {
   }
 
   if (items.length === 0) return '';
-  const dateLabel = dateTimeFormatter.format(new Date(items[0].axisValue));
+  const dateLabel = dateTimeFormatter.format(new Date(items[0].axisValue ?? Date.now()));
   const list = items
-    .map((item: any) => {
-      const value = item.value?.[1] ?? item.value;
+    .map((item) => {
+      const value = Array.isArray(item.value) ? item.value[1] : item.value;
       if (value === null || value === undefined) return '';
       return `
         <div class="chart-tooltip__item">
           <div class="chart-tooltip__item-meta">
-            ${item.marker}
-            <span class="chart-tooltip__label">${item.seriesName}</span>
+            ${item.marker ?? ''}
+            <span class="chart-tooltip__label">${item.seriesName ?? ''}</span>
           </div>
           <span class="chart-tooltip__value">${formatNumber(Number(value))}</span>
         </div>

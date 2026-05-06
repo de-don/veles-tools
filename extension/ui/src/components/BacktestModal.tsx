@@ -27,8 +27,8 @@ import { buildCabinetUrl } from '../lib/cabinetUrls';
 import { applyBotNameTemplate } from '../lib/nameTemplate';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
-import type { BotSummary } from '../types/bots';
 import type { BacktestGroup } from '../types/backtestGroups';
+import type { BotSummary } from '../types/bots';
 
 export type BacktestVariant = 'single' | 'multiCurrency';
 
@@ -370,7 +370,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
     setFormState((prev) => ({
       ...prev,
       targetGroupMode: value,
-      targetGroupId: value === 'existing' ? (prev.targetGroupId || groups[0]?.id || '') : prev.targetGroupId,
+      targetGroupId: value === 'existing' ? prev.targetGroupId || groups[0]?.id || '' : prev.targetGroupId,
     }));
     setFormErrors((prev) => ({
       ...prev,
@@ -838,7 +838,7 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
         }
       }
     },
-    [appendLog, getStrategyById, replaceLog],
+    [appendLog, appendToGroup, createGroup, getStrategyById, groups, replaceLog],
   );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

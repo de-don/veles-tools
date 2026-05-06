@@ -130,7 +130,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
   }, []);
 
   useEffect(() => {
-    if (!extensionReady || !connectionStatus.ok) {
+    if (!(extensionReady && connectionStatus.ok)) {
       setBacktestLimits(null);
       setBacktestLimitsError(null);
       setBacktestLimitsLoading(false);
@@ -203,7 +203,7 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
       cancelled = true;
       window.clearInterval(refreshTimer);
     };
-  }, [connectionStatus.ok, connectionStatus.origin, extensionReady]);
+  }, [connectionStatus.ok, extensionReady]);
 
   const navigationItems = [
     {
