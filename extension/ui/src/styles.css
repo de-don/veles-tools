@@ -93,6 +93,33 @@ body {
   margin-top: 24px;
 }
 
+.app-layout__status-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--ant-color-border, #e2e8f0);
+  border-radius: 8px;
+  background-color: var(--ant-color-fill-alter, #f8fafc);
+}
+
+.app-layout__status-label {
+  font-size: 12px;
+}
+
+.app-layout__status-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-layout__status-panel .ant-tag {
+  width: fit-content;
+  max-width: 100%;
+  white-space: normal;
+}
+
 .app-layout__sider-footer {
   margin-top: auto;
   padding-top: 16px;

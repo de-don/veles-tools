@@ -13,6 +13,11 @@ export interface BacktestStatisticsListDto {
   content: BacktestStatisticsDto[];
 }
 
+export interface BacktestLimitsDto {
+  permits: number;
+  expiration: string | number | null;
+}
+
 export interface BacktestCyclesListDto {
   totalElements: number;
   totalPages: number;
