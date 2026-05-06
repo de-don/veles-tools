@@ -15,6 +15,26 @@ if (typeof versionArg !== 'string' || versionArg.trim() === '') {
 const releaseVersion = versionArg.trim();
 
 /**
+ * @param {string} command
+ * @param {string[]} args
+ * @param {import('node:child_process').SpawnSyncOptions} options
+ */
+const runCommand = (command, args, options = {}) => {
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    ...options,
+  });
+
+  if (result.error instanceof Error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`Command failed: ${command} ${args.join(' ')}`);
+  }
+};
+
+/**
  * @param {unknown} value
  * @returns {value is Record<string, unknown>}
  */
@@ -31,6 +51,7 @@ if (!isRecord(manifestData)) {
 manifestData.version = releaseVersion;
 
 writeFileSync(manifestPath, `${JSON.stringify(manifestData, null, 2)}\n`, 'utf8');
+runCommand('npx', ['--no-install', 'biome', 'format', '--write', manifestPath]);
 
 const artifactsDir = resolve(process.cwd(), 'release-artifacts');
 if (!existsSync(artifactsDir)) {
@@ -52,15 +73,6 @@ if (itemsToArchive.length === 0) {
 }
 
 const zipArgs = ['-r', archivePath, ...itemsToArchive, '-x', '*.DS_Store'];
-const zipResult = spawnSync('zip', zipArgs, {
+runCommand('zip', zipArgs, {
   cwd: extensionDir,
-  stdio: 'inherit',
 });
-
-if (zipResult.error instanceof Error) {
-  throw zipResult.error;
-}
-
-if (zipResult.status !== 0) {
-  throw new Error('Failed to create extension archive.');
-}
