@@ -1,3 +1,18 @@
+## [2.6.0](https://github.com/de-don/veles-tools/compare/v2.5.1...v2.6.0) (2026-05-06)
+
+### Features
+
+* improve backtest launch flow ([1200dc4](https://github.com/de-don/veles-tools/commit/1200dc454a5493f134878f1cc8913d351423372a)), closes [#26](https://github.com/de-don/veles-tools/issues/26)
+* keep backtest modal chrome fixed ([2408f58](https://github.com/de-don/veles-tools/commit/2408f583c42a9332861fe154e60e9ba6281bf94e))
+* show backtest subscription status ([a5f2df4](https://github.com/de-don/veles-tools/commit/a5f2df4c3b89657b02672c320079a0e074d75cc3))
+* show selected backtest coins ([15bd28b](https://github.com/de-don/veles-tools/commit/15bd28b2efea4a9a47e11d1f012bd8a5987a3dff))
+* show service balance ([7d56e20](https://github.com/de-don/veles-tools/commit/7d56e20f0d468e4c55bd851a21c02a5f6a160fce))
+* support beta veles domain ([3d58e14](https://github.com/de-don/veles-tools/commit/3d58e14a90f771a48d6302370e0c65cdcafd664a))
+
+### Bug Fixes
+
+* satisfy lint after backtests merge ([10b57b1](https://github.com/de-don/veles-tools/commit/10b57b1ef7935e0c774aa3e5ad78cf1abaae0c1f))
+
 ## [2.5.1](https://github.com/de-don/veles-tools/compare/v2.5.0...v2.5.1) (2026-04-28)
 
 ### Bug Fixes
