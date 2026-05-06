@@ -1,3 +1,10 @@
+## [2.6.1](https://github.com/de-don/veles-tools/compare/v2.6.0...v2.6.1) (2026-05-06)
+
+### Bug Fixes
+
+* format manifest during release prep ([ebabb18](https://github.com/de-don/veles-tools/commit/ebabb18df699630f01bd0edcc993e9b2753419af))
+* move backtest currencies to actions menu ([719ff4d](https://github.com/de-don/veles-tools/commit/719ff4db65de9164834ca9e7b3b58bff08c90531))
+
 ## [2.6.0](https://github.com/de-don/veles-tools/compare/v2.5.1...v2.6.0) (2026-05-06)
 
 ### Features
