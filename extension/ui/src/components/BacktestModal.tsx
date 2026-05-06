@@ -867,223 +867,225 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
         </header>
 
         <form className="modal__form" onSubmit={handleSubmit}>
-          <div className="form-field">
-            <label className="form-label" htmlFor="backtest-name">
-              Название бэктеста
-            </label>
-            <input
-              id="backtest-name"
-              name="nameTemplate"
-              type="text"
-              className={`input ${formErrors.nameTemplate ? 'input--error' : ''}`}
-              value={formState.nameTemplate}
-              onChange={handleTextChange}
-              placeholder="Например: {bot_name} backtest"
-              disabled={isRunning}
-            />
-            <span className="form-hint">Можно использовать плейсхолдеры {placeholderExample}</span>
-            {formErrors.nameTemplate && <span className="form-error">{formErrors.nameTemplate}</span>}
-          </div>
-
-          <div className="form-grid">
+          <div className="modal__body">
             <div className="form-field">
-              <label className="form-label" htmlFor="backtest-period-from">
-                Дата начала
+              <label className="form-label" htmlFor="backtest-name">
+                Название бэктеста
               </label>
               <input
-                id="backtest-period-from"
-                name="periodFrom"
-                type="date"
-                className={`input ${formErrors.periodFrom ? 'input--error' : ''}`}
-                value={formState.periodFrom}
-                onChange={handleTextChange}
-                disabled={isRunning}
-              />
-              {formErrors.periodFrom && <span className="form-error">{formErrors.periodFrom}</span>}
-            </div>
-
-            <div className="form-field">
-              <label className="form-label" htmlFor="backtest-period-to">
-                Дата окончания
-              </label>
-              <input
-                id="backtest-period-to"
-                name="periodTo"
-                type="date"
-                className={`input ${formErrors.periodTo ? 'input--error' : ''}`}
-                value={formState.periodTo}
-                onChange={handleTextChange}
-                disabled={isRunning}
-              />
-              {formErrors.periodTo && <span className="form-error">{formErrors.periodTo}</span>}
-            </div>
-          </div>
-
-          <div className="form-presets">
-            <span className="form-presets__label">Быстрый период:</span>
-            {periodPresets.map((preset) => (
-              <Button
-                key={preset.months}
-                className="form-preset-button"
-                size="small"
-                onClick={() => handlePresetClick(preset.months)}
-                disabled={isRunning}
-              >
-                {preset.label}
-              </Button>
-            ))}
-          </div>
-
-          <div className="form-grid">
-            <div className="form-field">
-              <label className="form-label" htmlFor="maker-commission">
-                Комиссия мейкера
-              </label>
-              <input
-                id="maker-commission"
-                name="makerCommission"
+                id="backtest-name"
+                name="nameTemplate"
                 type="text"
-                inputMode="decimal"
-                className={`input ${formErrors.makerCommission ? 'input--error' : ''}`}
-                value={formState.makerCommission}
+                className={`input ${formErrors.nameTemplate ? 'input--error' : ''}`}
+                value={formState.nameTemplate}
                 onChange={handleTextChange}
+                placeholder="Например: {bot_name} backtest"
                 disabled={isRunning}
               />
-              {formErrors.makerCommission && <span className="form-error">{formErrors.makerCommission}</span>}
+              <span className="form-hint">Можно использовать плейсхолдеры {placeholderExample}</span>
+              {formErrors.nameTemplate && <span className="form-error">{formErrors.nameTemplate}</span>}
             </div>
 
-            <div className="form-field">
-              <label className="form-label" htmlFor="taker-commission">
-                Комиссия тейкера
-              </label>
-              <input
-                id="taker-commission"
-                name="takerCommission"
-                type="text"
-                inputMode="decimal"
-                className={`input ${formErrors.takerCommission ? 'input--error' : ''}`}
-                value={formState.takerCommission}
-                onChange={handleTextChange}
-                disabled={isRunning}
-              />
-              {formErrors.takerCommission && <span className="form-error">{formErrors.takerCommission}</span>}
-            </div>
-          </div>
-
-          <div className="form-checkboxes">
-            <label className="checkbox-field">
-              <input
-                type="checkbox"
-                name="isPublic"
-                checked={formState.isPublic}
-                onChange={handleCheckboxChange}
-                disabled={isRunning}
-              />
-              <span>Публичный бэктест</span>
-            </label>
-            <label className="checkbox-field">
-              <input
-                type="checkbox"
-                name="includeWicks"
-                checked={formState.includeWicks}
-                onChange={handleCheckboxChange}
-                disabled={isRunning}
-              />
-              <span>Учитывать тени свечей</span>
-            </label>
-          </div>
-
-          <div className="form-field">
-            <label className="form-label" htmlFor="backtest-target-group-mode">
-              Группа бэктестов
-            </label>
-            <Select<BacktestGroupTargetMode>
-              id="backtest-target-group-mode"
-              value={formState.targetGroupMode}
-              onChange={handleGroupModeChange}
-              disabled={isRunning}
-              options={[
-                { label: 'Не добавлять в группу', value: 'none' },
-                { label: 'Добавить в существующую', value: 'existing', disabled: groups.length === 0 },
-                { label: 'Создать новую группу', value: 'new' },
-              ]}
-            />
-          </div>
-
-          {formState.targetGroupMode === 'existing' && (
-            <div className="form-field">
-              <label className="form-label" htmlFor="backtest-target-group-id">
-                Выберите группу
-              </label>
-              <Select
-                id="backtest-target-group-id"
-                value={formState.targetGroupId || undefined}
-                onChange={handleGroupIdChange}
-                disabled={isRunning}
-                status={formErrors.targetGroupId ? 'error' : undefined}
-                placeholder="Группа"
-                options={groups.map((group) => ({ label: group.name, value: group.id }))}
-              />
-              {formErrors.targetGroupId && <span className="form-error">{formErrors.targetGroupId}</span>}
-            </div>
-          )}
-
-          {formState.targetGroupMode === 'new' && (
-            <div className="form-field">
-              <label className="form-label" htmlFor="backtest-target-group-name">
-                Название новой группы
-              </label>
-              <input
-                id="backtest-target-group-name"
-                name="targetGroupName"
-                type="text"
-                className={`input ${formErrors.targetGroupName ? 'input--error' : ''}`}
-                value={formState.targetGroupName}
-                onChange={handleTextChange}
-                placeholder="Например: Майские бэктесты"
-                disabled={isRunning}
-              />
-              {formErrors.targetGroupName && <span className="form-error">{formErrors.targetGroupName}</span>}
-            </div>
-          )}
-
-          {variant === 'multiCurrency' && (
-            <div className="form-field">
-              <label className="form-label" htmlFor="asset-list">
-                Список валют
-              </label>
-              <textarea
-                id="asset-list"
-                name="assetList"
-                className={`textarea ${formErrors.assetList ? 'textarea--error' : ''}`}
-                rows={3}
-                placeholder="Например: BTC, ETH, SOL"
-                value={formState.assetList}
-                onChange={handleTextChange}
-                disabled={isRunning}
-              />
-              <span className="form-hint">Разделитель — пробел, запятая или перенос строки</span>
-              {formErrors.assetList && <span className="form-error">{formErrors.assetList}</span>}
-            </div>
-          )}
-
-          {logs.length > 0 && (
-            <div className="run-log">
-              <div className="run-log__progress modal-progress">
-                <Progress percent={progress} size="small" showInfo={false} />
-                <span className="progress-bar__label">{progress}%</span>
+            <div className="form-grid">
+              <div className="form-field">
+                <label className="form-label" htmlFor="backtest-period-from">
+                  Дата начала
+                </label>
+                <input
+                  id="backtest-period-from"
+                  name="periodFrom"
+                  type="date"
+                  className={`input ${formErrors.periodFrom ? 'input--error' : ''}`}
+                  value={formState.periodFrom}
+                  onChange={handleTextChange}
+                  disabled={isRunning}
+                />
+                {formErrors.periodFrom && <span className="form-error">{formErrors.periodFrom}</span>}
               </div>
-              <div className="run-log__messages" role="log" aria-live="polite" ref={logContainerRef}>
-                {logs.map((entry) => (
-                  <div key={entry.id} className="run-log__entry">
-                    {entry.node}
-                  </div>
-                ))}
+
+              <div className="form-field">
+                <label className="form-label" htmlFor="backtest-period-to">
+                  Дата окончания
+                </label>
+                <input
+                  id="backtest-period-to"
+                  name="periodTo"
+                  type="date"
+                  className={`input ${formErrors.periodTo ? 'input--error' : ''}`}
+                  value={formState.periodTo}
+                  onChange={handleTextChange}
+                  disabled={isRunning}
+                />
+                {formErrors.periodTo && <span className="form-error">{formErrors.periodTo}</span>}
               </div>
             </div>
-          )}
 
-          {runError && <div className="banner banner--warning">{runError}</div>}
+            <div className="form-presets">
+              <span className="form-presets__label">Быстрый период:</span>
+              {periodPresets.map((preset) => (
+                <Button
+                  key={preset.months}
+                  className="form-preset-button"
+                  size="small"
+                  onClick={() => handlePresetClick(preset.months)}
+                  disabled={isRunning}
+                >
+                  {preset.label}
+                </Button>
+              ))}
+            </div>
+
+            <div className="form-grid">
+              <div className="form-field">
+                <label className="form-label" htmlFor="maker-commission">
+                  Комиссия мейкера
+                </label>
+                <input
+                  id="maker-commission"
+                  name="makerCommission"
+                  type="text"
+                  inputMode="decimal"
+                  className={`input ${formErrors.makerCommission ? 'input--error' : ''}`}
+                  value={formState.makerCommission}
+                  onChange={handleTextChange}
+                  disabled={isRunning}
+                />
+                {formErrors.makerCommission && <span className="form-error">{formErrors.makerCommission}</span>}
+              </div>
+
+              <div className="form-field">
+                <label className="form-label" htmlFor="taker-commission">
+                  Комиссия тейкера
+                </label>
+                <input
+                  id="taker-commission"
+                  name="takerCommission"
+                  type="text"
+                  inputMode="decimal"
+                  className={`input ${formErrors.takerCommission ? 'input--error' : ''}`}
+                  value={formState.takerCommission}
+                  onChange={handleTextChange}
+                  disabled={isRunning}
+                />
+                {formErrors.takerCommission && <span className="form-error">{formErrors.takerCommission}</span>}
+              </div>
+            </div>
+
+            <div className="form-checkboxes">
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  name="isPublic"
+                  checked={formState.isPublic}
+                  onChange={handleCheckboxChange}
+                  disabled={isRunning}
+                />
+                <span>Публичный бэктест</span>
+              </label>
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  name="includeWicks"
+                  checked={formState.includeWicks}
+                  onChange={handleCheckboxChange}
+                  disabled={isRunning}
+                />
+                <span>Учитывать тени свечей</span>
+              </label>
+            </div>
+
+            <div className="form-field">
+              <label className="form-label" htmlFor="backtest-target-group-mode">
+                Группа бэктестов
+              </label>
+              <Select<BacktestGroupTargetMode>
+                id="backtest-target-group-mode"
+                value={formState.targetGroupMode}
+                onChange={handleGroupModeChange}
+                disabled={isRunning}
+                options={[
+                  { label: 'Не добавлять в группу', value: 'none' },
+                  { label: 'Добавить в существующую', value: 'existing', disabled: groups.length === 0 },
+                  { label: 'Создать новую группу', value: 'new' },
+                ]}
+              />
+            </div>
+
+            {formState.targetGroupMode === 'existing' && (
+              <div className="form-field">
+                <label className="form-label" htmlFor="backtest-target-group-id">
+                  Выберите группу
+                </label>
+                <Select
+                  id="backtest-target-group-id"
+                  value={formState.targetGroupId || undefined}
+                  onChange={handleGroupIdChange}
+                  disabled={isRunning}
+                  status={formErrors.targetGroupId ? 'error' : undefined}
+                  placeholder="Группа"
+                  options={groups.map((group) => ({ label: group.name, value: group.id }))}
+                />
+                {formErrors.targetGroupId && <span className="form-error">{formErrors.targetGroupId}</span>}
+              </div>
+            )}
+
+            {formState.targetGroupMode === 'new' && (
+              <div className="form-field">
+                <label className="form-label" htmlFor="backtest-target-group-name">
+                  Название новой группы
+                </label>
+                <input
+                  id="backtest-target-group-name"
+                  name="targetGroupName"
+                  type="text"
+                  className={`input ${formErrors.targetGroupName ? 'input--error' : ''}`}
+                  value={formState.targetGroupName}
+                  onChange={handleTextChange}
+                  placeholder="Например: Майские бэктесты"
+                  disabled={isRunning}
+                />
+                {formErrors.targetGroupName && <span className="form-error">{formErrors.targetGroupName}</span>}
+              </div>
+            )}
+
+            {variant === 'multiCurrency' && (
+              <div className="form-field">
+                <label className="form-label" htmlFor="asset-list">
+                  Список валют
+                </label>
+                <textarea
+                  id="asset-list"
+                  name="assetList"
+                  className={`textarea ${formErrors.assetList ? 'textarea--error' : ''}`}
+                  rows={3}
+                  placeholder="Например: BTC, ETH, SOL"
+                  value={formState.assetList}
+                  onChange={handleTextChange}
+                  disabled={isRunning}
+                />
+                <span className="form-hint">Разделитель — пробел, запятая или перенос строки</span>
+                {formErrors.assetList && <span className="form-error">{formErrors.assetList}</span>}
+              </div>
+            )}
+
+            {logs.length > 0 && (
+              <div className="run-log">
+                <div className="run-log__progress modal-progress">
+                  <Progress percent={progress} size="small" showInfo={false} />
+                  <span className="progress-bar__label">{progress}%</span>
+                </div>
+                <div className="run-log__messages" role="log" aria-live="polite" ref={logContainerRef}>
+                  {logs.map((entry) => (
+                    <div key={entry.id} className="run-log__entry">
+                      {entry.node}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {runError && <div className="banner banner--warning">{runError}</div>}
+          </div>
 
           <footer className="modal__footer">
             <Button onClick={handleCancel}>{isRunning ? 'Отменить' : isCompleted ? 'Закрыть' : 'Отмена'}</Button>
