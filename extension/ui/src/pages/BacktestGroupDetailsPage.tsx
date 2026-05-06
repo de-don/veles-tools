@@ -1,5 +1,5 @@
 import type { MenuProps } from 'antd';
-import { Alert, Button, Card, Dropdown, Empty, Input, Modal, message, Progress, Radio, Select, Tag } from 'antd';
+import { Alert, Button, Card, Dropdown, Empty, Input, Modal, message, Progress, Radio, Select } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import BacktestAggregationConfigPanel from '../components/backtests/BacktestAggregationConfigPanel';
@@ -41,7 +41,6 @@ const isCompleteSource = (source: CachedBacktestSource): source is CompleteBackt
 };
 
 const DEFAULT_LIMIT_IMPACT_VALUE = 5;
-const MAX_VISIBLE_SELECTED_COINS = 24;
 
 const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPageProps) => {
   const { groupId } = useParams<{ groupId: string }>();
@@ -348,8 +347,6 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     return backtestInfos.filter((info) => selectedSet.has(info.id));
   }, [backtestInfos, selectedIds]);
   const selectedCoins = useMemo(() => collectUniqueBacktestCoins(selectedBacktests), [selectedBacktests]);
-  const visibleSelectedCoins = selectedCoins.slice(0, MAX_VISIBLE_SELECTED_COINS);
-  const hiddenSelectedCoinsCount = Math.max(0, selectedCoins.length - visibleSelectedCoins.length);
 
   const aggregatedMetrics = useMemo<AggregatedBacktestsMetrics | null>(() => {
     if (selectedBacktests.length === 0) {
@@ -458,6 +455,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
   const hasSelection = selectedIds.length > 0;
   const canTransfer = hasSelection;
   const canCreateBots = hasSelection && selectedIds.every((id) => detailsById.has(id));
+  const canCopyCurrencies = selectedCoins.length > 0;
   const canInvertSelection = backtestInfos.length > 0;
 
   const handleDeleteSelected = useCallback(() => {
@@ -563,6 +561,24 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
     setCreateBotsOpen(true);
   }, [detailsById, hasSelection, messageApi, selectedBacktests]);
 
+  const handleCopyCurrencies = useCallback(async () => {
+    if (navigator.clipboard?.writeText == null) {
+      messageApi.error('Буфер обмена недоступен');
+      return;
+    }
+    const payload = selectedCoins.join(' ');
+    if (!payload) {
+      messageApi.warning('Нет валют для копирования.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+      messageApi.success('Список валют скопирован.');
+    } catch {
+      messageApi.error('Не удалось скопировать в буфер обмена');
+    }
+  }, [messageApi, selectedCoins]);
+
   const handleBotsModalClose = useCallback(() => {
     setCreateBotsOpen(false);
     setBotTargets([]);
@@ -587,6 +603,11 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
           label: 'Создать ботов из выбранных',
           disabled: !canCreateBots,
         },
+        {
+          key: 'copy-currencies',
+          label: 'Скопировать список валют',
+          disabled: !canCopyCurrencies,
+        },
         { type: 'divider' },
         {
           key: 'invert-selection',
@@ -594,7 +615,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
           disabled: !canInvertSelection,
         },
       ],
-      [canCreateBots, canInvertSelection, canTransfer, hasSelection],
+      [canCopyCurrencies, canCreateBots, canInvertSelection, canTransfer, hasSelection],
     ) ?? [];
 
   const handleActionsMenuClick = useCallback<NonNullable<MenuProps['onClick']>>(
@@ -609,6 +630,9 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
         case 'create-bots':
           handleOpenCreateBots();
           break;
+        case 'copy-currencies':
+          void handleCopyCurrencies();
+          break;
         case 'invert-selection':
           handleInvertSelection();
           break;
@@ -616,7 +640,7 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
           break;
       }
     },
-    [handleDeleteSelected, handleOpenCreateBots, handleOpenTransfer, handleInvertSelection],
+    [handleCopyCurrencies, handleDeleteSelected, handleOpenCreateBots, handleOpenTransfer, handleInvertSelection],
   );
 
   const hasEnabledAction = actionMenuItems.some((item) => {
@@ -714,15 +738,6 @@ const BacktestGroupDetailsPage = ({ extensionReady }: BacktestGroupDetailsPagePr
             <p className="panel__description">
               Загружено {loadedCount} из {totalBacktests} · выбрано {selectedCount}
             </p>
-            {selectedCoins.length > 0 && (
-              <div className="u-mt-8">
-                <span className="panel__description">Монеты выбранных бэктестов: </span>
-                {visibleSelectedCoins.map((coin) => (
-                  <Tag key={coin}>{coin}</Tag>
-                ))}
-                {hiddenSelectedCoinsCount > 0 && <Tag>+{hiddenSelectedCoinsCount}</Tag>}
-              </div>
-            )}
           </div>
         </div>
 
