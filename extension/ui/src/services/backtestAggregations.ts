@@ -134,6 +134,24 @@ export const aggregateBacktestsMetrics = (
       // biome-ignore lint/style/noNonNullAssertion: checked above
       const potentialDeal = sortedDealsCopy.shift()!;
 
+      // Instant deals (open and close within the same time point, e.g. a stop-loss that triggers
+      // in the same candle it opened) must not be added to activeDeals: the closing pass for this
+      // time point has already run, so they would otherwise stay "active" forever and permanently
+      // consume a concurrency slot, blocking every later deal. Finalize them immediately instead.
+      if (potentialDeal.end <= timePoint) {
+        dealsResults.push({ deal: potentialDeal, used: true });
+        if (potentialDeal.status !== 'STARTED') {
+          aggregatedStats.totalNet += potentialDeal.net;
+          aggregatedStats.pnlSeries.push({ date: timePoint, value: aggregatedStats.totalNet });
+          if (potentialDeal.net >= 0) {
+            aggregatedStats.deals.profit += 1;
+          } else {
+            aggregatedStats.deals.loss += 1;
+          }
+        }
+        continue;
+      }
+
       let blocked = activeDeals.length >= limit;
 
       if (!blocked && positionBlocking) {

@@ -344,4 +344,32 @@ describe('aggregateBacktestsMetrics', () => {
     expect(metrics.activeDealCountSeries.at(-1)).toEqual({ date: end, value: 0 });
     expect(metrics.maxConcurrentPositions).toBe(2);
   });
+
+  it('does not let instant (zero-duration) deals occupy a concurrency slot forever', () => {
+    // A stop-loss that triggers in the same candle it opened produces a deal with start === end.
+    // It must not stay "active" and block every later deal (which truncated the aggregated chart).
+    const instant = toTimestamp('2024-07-01T00:00:00Z');
+    const laterStart = toTimestamp('2024-07-05T00:00:00Z');
+    const laterEnd = toTimestamp('2024-07-05T06:00:00Z');
+    const deals = [
+      buildDeal({ id: 'instant', start: instant, end: instant, net: -5 }),
+      buildDeal({ id: 'later', start: laterStart, end: laterEnd, net: 30 }),
+    ];
+
+    const metrics = aggregateBacktestsMetrics([buildInfo({ id: 20 }, deals)], {
+      maxConcurrentPositions: 1,
+      positionBlocking: false,
+    });
+
+    // Both deals are counted (the later one is NOT blocked by a phantom instant deal).
+    expect(metrics.totalProfitQuote).toBe(25);
+    expect(metrics.totalProfitableDeals).toBe(1);
+    expect(metrics.totalLosingDeals).toBe(1);
+    expect(metrics.maxConcurrentPositions).toBe(1);
+    // The instant deal does not leave a permanent open position.
+    expect(metrics.openDeals).toBe(0);
+    // The P&L series reaches the last real deal's close, not the instant deal's timestamp.
+    expect(metrics.pnlSeries.at(-1)).toEqual({ date: laterEnd, value: 25 });
+    expect(metrics.dealTimelineRows[0]?.items.every((item) => item.limitedByConcurrency === false)).toBe(true);
+  });
 });
