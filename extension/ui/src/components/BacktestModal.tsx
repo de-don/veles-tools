@@ -26,6 +26,7 @@ import { parseAssetList } from '../lib/assetList';
 import { buildCabinetUrl } from '../lib/cabinetUrls';
 import { applyBotNameTemplate } from '../lib/nameTemplate';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { DEFAULT_V2_BACKTEST_DELAY_MS, readBacktestV2LaunchDelay } from '../storage/backtestLaunchDelayStore';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
 import type { BacktestGroup } from '../types/backtestGroups';
 import type { BotSummary } from '../types/bots';
@@ -111,7 +112,6 @@ const defaultFormState: BacktestFormState = {
 };
 
 const V1_BACKTEST_DELAY_MS = 31_000;
-const V2_BACKTEST_DELAY_MS = 5_000;
 const RATE_LIMIT_RETRY_DELAY_MS = 10_000;
 
 const retainDigits = (value: string) => value.replace(/[^0-9.,]/g, '');
@@ -475,7 +475,10 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
 
       try {
         const { startISO, endISO } = toIsoRange(payload.periodFrom, payload.periodTo);
-        const launchDelayMs = payload.apiVersion === 'v2' ? V2_BACKTEST_DELAY_MS : V1_BACKTEST_DELAY_MS;
+        const launchDelayMs =
+          payload.apiVersion === 'v2'
+            ? (readBacktestV2LaunchDelay() ?? DEFAULT_V2_BACKTEST_DELAY_MS)
+            : V1_BACKTEST_DELAY_MS;
 
         const assets = payload.variant === 'multiCurrency' ? payload.assetList : [];
         const plannedTotal =
