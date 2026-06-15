@@ -1,3 +1,13 @@
+## [2.7.0](https://github.com/de-don/veles-tools/compare/v2.6.1...v2.7.0) (2026-06-15)
+
+### Features
+
+* **backtests:** configurable launch delay for v2 backtests ([5277e1f](https://github.com/de-don/veles-tools/commit/5277e1f526d37efa8efa6a76c831d5465ba3659f))
+
+### Bug Fixes
+
+* **backtests:** prevent instant deals from blocking aggregation ([1819ca0](https://github.com/de-don/veles-tools/commit/1819ca093c599b44d60a695472e5d1dd527c981e))
+
 ## [2.6.1](https://github.com/de-don/veles-tools/compare/v2.6.0...v2.6.1) (2026-05-06)
 
 ### Bug Fixes
