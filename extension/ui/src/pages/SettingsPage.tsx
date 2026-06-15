@@ -4,6 +4,12 @@ import { useDealsRefresh } from '../context/DealsRefreshContext';
 import { useRequestDelay } from '../context/RequestDelayContext';
 import type { ActiveDealsRefreshInterval } from '../lib/activeDealsPolling';
 import { clearBacktestCache } from '../storage/backtestCache';
+import {
+  DEFAULT_V2_BACKTEST_DELAY_MS,
+  normalizeBacktestV2LaunchDelay,
+  readBacktestV2LaunchDelay,
+  writeBacktestV2LaunchDelay,
+} from '../storage/backtestLaunchDelayStore';
 import { normalizeRequestDelay } from '../storage/requestDelayStore';
 
 const SettingsPage = () => {
@@ -13,6 +19,8 @@ const SettingsPage = () => {
   const [requestDelayDraft, setRequestDelayDraft] = useState<number>(delayMs);
   const { refreshInterval: dealsRefreshInterval, setRefreshInterval, defaultInterval, options } = useDealsRefresh();
   const [dealsRefreshDraft, setDealsRefreshDraft] = useState<ActiveDealsRefreshInterval>(dealsRefreshInterval);
+  const [v2DelayMs, setV2DelayMs] = useState<number>(() => readBacktestV2LaunchDelay() ?? DEFAULT_V2_BACKTEST_DELAY_MS);
+  const [v2DelayDraft, setV2DelayDraft] = useState<number>(v2DelayMs);
 
   useEffect(() => {
     setRequestDelayDraft(delayMs);
@@ -71,9 +79,35 @@ const SettingsPage = () => {
     setDelayMs(defaultDelayMs);
   };
 
+  const handleV2DelayChange = (value: number | null) => {
+    setV2DelayDraft(value ?? 0);
+  };
+
+  const handleV2DelayBlur = () => {
+    setV2DelayDraft((prev) => normalizeBacktestV2LaunchDelay(prev));
+  };
+
+  const handleV2DelaySave = () => {
+    setV2DelayDraft((prev) => {
+      const saved = writeBacktestV2LaunchDelay(prev);
+      setV2DelayMs(saved);
+      return saved;
+    });
+  };
+
+  const handleV2DelayReset = () => {
+    const saved = writeBacktestV2LaunchDelay(DEFAULT_V2_BACKTEST_DELAY_MS);
+    setV2DelayDraft(saved);
+    setV2DelayMs(saved);
+  };
+
   const normalizedDraft = normalizeRequestDelay(requestDelayDraft);
   const saveDisabled = normalizedDraft === delayMs;
   const resetDisabled = delayMs === defaultDelayMs && normalizedDraft === defaultDelayMs;
+  const normalizedV2Draft = normalizeBacktestV2LaunchDelay(v2DelayDraft);
+  const v2SaveDisabled = normalizedV2Draft === v2DelayMs;
+  const v2ResetDisabled =
+    v2DelayMs === DEFAULT_V2_BACKTEST_DELAY_MS && normalizedV2Draft === DEFAULT_V2_BACKTEST_DELAY_MS;
   const dealsSaveDisabled = dealsRefreshDraft === dealsRefreshInterval;
   const dealsResetDisabled = dealsRefreshInterval === defaultInterval && dealsRefreshDraft === defaultInterval;
 
@@ -115,6 +149,36 @@ const SettingsPage = () => {
             </Space>
             <Typography.Text type="secondary">
               Новое значение применяется немедленно и сохраняется в локальном хранилище.
+            </Typography.Text>
+          </Space>
+        </Card>
+
+        <Card title="Задержка между запуском бектестов (v2)" bordered>
+          <Space direction="vertical" size={16} className="u-full-width">
+            <Typography.Paragraph className="u-mb-0">
+              Пауза между последовательными запусками бектестов через API v2. По умолчанию —{' '}
+              {DEFAULT_V2_BACKTEST_DELAY_MS} мс. Если часто получаете ответ 429 (Too Many Requests) при запуске,
+              увеличьте значение.
+            </Typography.Paragraph>
+            <Space size={12} align="center" wrap>
+              <InputNumber
+                min={0}
+                step={500}
+                value={v2DelayDraft}
+                onChange={handleV2DelayChange}
+                onBlur={handleV2DelayBlur}
+                onPressEnter={handleV2DelaySave}
+                addonAfter="мс"
+              />
+              <Button type="primary" onClick={handleV2DelaySave} disabled={v2SaveDisabled}>
+                Сохранить
+              </Button>
+              <Button onClick={handleV2DelayReset} disabled={v2ResetDisabled}>
+                Сбросить к {DEFAULT_V2_BACKTEST_DELAY_MS} мс
+              </Button>
+            </Space>
+            <Typography.Text type="secondary">
+              Применяется при следующем запуске. Влияет только на API v2.
             </Typography.Text>
           </Space>
         </Card>
