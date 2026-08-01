@@ -1,12 +1,6 @@
 import type { SymbolDescriptor } from '../api/backtestRunner';
 import type { CreateBotPayload } from '../api/bots';
-import type {
-  BotDepositConfigDto,
-  BotProfitConfigDto,
-  BotSettingsDto,
-  BotStopLossConfigDto,
-  StrategyConditionDto,
-} from '../api/bots.dtos';
+import type { BotDepositConfigDto, BotProfitConfigDto, BotSettingsDto, BotStopLossConfigDto } from '../api/bots.dtos';
 import type { BotDepositConfig, TradingBot } from '../types/bots';
 
 export interface BotCloneOverrides {
@@ -65,7 +59,10 @@ export const buildBotClonePayload = (
   }
   const normalizedDepositCurrency = normalizeCurrency(overrides.depositCurrency, bot.deposit.currency ?? null);
 
-  const clonedConditions: StrategyConditionDto[] = bot.conditions ? deepClone(bot.conditions) : [];
+  // The source bot uses either the new conditionGroups tree or the legacy flat conditions list — never both.
+  // Pass through whichever is present rather than force-converting to the other format.
+  const clonedConditionGroups = bot.conditionGroups ? deepClone(bot.conditionGroups) : undefined;
+  const clonedConditions = bot.conditions ? deepClone(bot.conditions) : undefined;
   const clonedStopLoss: BotStopLossConfigDto | null = bot.stopLoss
     ? (deepClone(bot.stopLoss) as BotStopLossConfigDto)
     : null;
@@ -75,6 +72,7 @@ export const buildBotClonePayload = (
     leverage: overrides.depositLeverage,
     marginType,
     currency: normalizedDepositCurrency,
+    reinvest: bot.deposit.reinvest ?? null,
   };
 
   const settingsPayload: BotSettingsDto = deepClone(bot.settings);
@@ -83,7 +81,6 @@ export const buildBotClonePayload = (
     type: 'ABSOLUTE',
     currency: normalizedProfitCurrency ?? '',
     checkPnl: null,
-    conditions: null,
   };
 
   const resolvedSymbols = (() => {
@@ -105,6 +102,7 @@ export const buildBotClonePayload = (
   return {
     algorithm: bot.algorithm,
     apiKey: overrides.apiKeyId,
+    conditionGroups: clonedConditionGroups,
     conditions: clonedConditions,
     deposit: depositConfig,
     exchange: bot.exchange,
@@ -116,6 +114,6 @@ export const buildBotClonePayload = (
     settings: settingsPayload,
     stopLoss: clonedStopLoss,
     symbols: resolvedSymbols,
-    termination: null,
+    termination: bot.termination ?? null,
   };
 };

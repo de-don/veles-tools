@@ -7,7 +7,11 @@ import type {
   BotSettingsDto,
   BotStopLossConfigDto,
   BotsListResponseDto,
-  StrategyConditionDto as StrategyConditionDtoDto,
+  ConditionGroupsDto,
+  ConditionOperationNode as ConditionOperationNodeDto,
+  ConditionSignalNode as ConditionSignalNodeDto,
+  ConditionValueNode as ConditionValueNodeDto,
+  LegacyConditionDto as LegacyConditionDtoDto,
 } from '../api/bots.dtos';
 
 export type BotIdentifier = BotIdentifierDto;
@@ -41,13 +45,12 @@ export interface BotsListResponse extends Omit<BotsListResponseDto, 'content'> {
 }
 
 export interface TradingBot
-  extends Omit<BotDto, 'algorithm' | 'status' | 'profit' | 'deposit' | 'settings' | 'conditions' | 'stopLoss'> {
+  extends Omit<BotDto, 'algorithm' | 'status' | 'profit' | 'deposit' | 'settings' | 'stopLoss'> {
   algorithm: BotAlgorithm;
   status: BotStatus;
   profit: BotProfitConfig | null;
   deposit: BotDepositConfig;
   settings: BotSettings;
-  conditions: StrategyConditionDto[] | null;
   stopLoss: BotStopLossConfig | null;
 }
 
@@ -69,7 +72,15 @@ export type BotOrder = BotOrderDto;
 
 export type BotSettings = BotSettingsDto;
 
-export type StrategyConditionDto = StrategyConditionDtoDto;
+export type ConditionGroups = ConditionGroupsDto;
+
+export type ConditionValueNode = ConditionValueNodeDto;
+
+export type ConditionOperationNode = ConditionOperationNodeDto;
+
+export type ConditionSignalNode = ConditionSignalNodeDto;
+
+export type LegacyConditionDto = LegacyConditionDtoDto;
 
 export type BotStopLossConfig = BotStopLossConfigDto;
 

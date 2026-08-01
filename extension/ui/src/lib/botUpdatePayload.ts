@@ -1,11 +1,5 @@
 import type { UpdateBotPayload } from '../api/bots';
-import type {
-  BotDepositConfigDto,
-  BotProfitConfigDto,
-  BotSettingsDto,
-  BotStopLossConfigDto,
-  StrategyConditionDto,
-} from '../api/bots.dtos';
+import type { BotDepositConfigDto, BotProfitConfigDto, BotSettingsDto, BotStopLossConfigDto } from '../api/bots.dtos';
 import type { TradingBot } from '../types/bots';
 
 export interface BotUpdateOverrides {
@@ -60,7 +54,10 @@ export const buildBotUpdatePayload = (bot: TradingBot, overrides: BotUpdateOverr
   };
 
   const profit: BotProfitConfigDto | null = bot.profit ? deepClone(bot.profit) : null;
-  const conditions: StrategyConditionDto[] = bot.conditions ? deepClone(bot.conditions) : [];
+  // The bot uses either the new conditionGroups tree or the legacy flat conditions list — never both.
+  // Pass through whichever is present rather than force-converting to the other format.
+  const conditionGroups = bot.conditionGroups ? deepClone(bot.conditionGroups) : undefined;
+  const conditions = bot.conditions ? deepClone(bot.conditions) : undefined;
   const settings: BotSettingsDto | null = bot.settings ? deepClone(bot.settings) : null;
   const stopLoss: BotStopLossConfigDto | null = bot.stopLoss ? deepClone(bot.stopLoss) : null;
 
@@ -69,6 +66,7 @@ export const buildBotUpdatePayload = (bot: TradingBot, overrides: BotUpdateOverr
   return {
     algorithm: bot.algorithm,
     apiKey: bot.apiKey,
+    conditionGroups,
     conditions,
     deposit,
     exchange: bot.exchange,
@@ -80,6 +78,12 @@ export const buildBotUpdatePayload = (bot: TradingBot, overrides: BotUpdateOverr
     settings,
     stopLoss,
     symbols,
-    termination: null,
+    termination: bot.termination ?? null,
+    // Marketplace flags are platform-assigned; only echo them back if the source bot actually had them,
+    // never send an explicit null that would wipe a flag we never actually read.
+    forBeginners: bot.forBeginners,
+    new: bot.new,
+    hot: bot.hot,
+    categories: bot.categories ? deepClone(bot.categories) : bot.categories,
   };
 };

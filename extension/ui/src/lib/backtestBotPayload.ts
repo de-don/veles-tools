@@ -33,6 +33,7 @@ const buildDepositConfig = (
     leverage: overrides.depositLeverage,
     marginType: normalizedMarginType,
     currency: resolvedCurrency,
+    reinvest: detailDeposit.reinvest ?? null,
   };
 };
 
@@ -84,11 +85,12 @@ export const buildBotCreationPayload = (detail: BacktestDetail, overrides: BotCr
         type: 'ABSOLUTE',
         currency: stats.quote,
         checkPnl: null,
-        conditions: null,
       };
 
   const settings = clonePayloadFragment(config.settings);
-  const conditions = clonePayloadFragment(config.conditions);
+  // The backtest config uses either the new conditionGroups tree or the legacy flat conditions list — never both.
+  const conditionGroups = config.conditionGroups ? clonePayloadFragment(config.conditionGroups) : undefined;
+  const conditions = config.conditions ? clonePayloadFragment(config.conditions) : undefined;
   const stopLoss = clonePayloadFragment(config.stopLoss);
 
   const resolvedSymbols = (() => {
@@ -102,6 +104,7 @@ export const buildBotCreationPayload = (detail: BacktestDetail, overrides: BotCr
   return {
     algorithm,
     apiKey: overrides.apiKeyId,
+    conditionGroups,
     conditions,
     deposit,
     exchange,
@@ -113,6 +116,6 @@ export const buildBotCreationPayload = (detail: BacktestDetail, overrides: BotCr
     settings,
     stopLoss,
     symbols: resolvedSymbols,
-    termination: null,
+    termination: null, // BacktestConfigDto has no termination field — nothing to carry over
   };
 };

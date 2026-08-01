@@ -6,7 +6,7 @@ const buildProfit = (overrides: Partial<BotProfitConfig> = {}): BotProfitConfig 
   type: overrides.type ?? 'PERCENT',
   currency: overrides.currency ?? 'USDT',
   checkPnl: overrides.checkPnl ?? null,
-  conditions: overrides.conditions ?? null,
+  conditionGroups: overrides.conditionGroups ?? null,
 });
 
 const buildDeposit = (overrides: Partial<BotDepositConfig> = {}): BotDepositConfig => ({
@@ -35,24 +35,28 @@ const buildBot = (overrides: Partial<TradingBot> = {}): TradingBot => ({
   deposit: overrides.deposit ?? buildDeposit(),
   stopLoss: overrides.stopLoss ?? null,
   settings: overrides.settings ?? buildSettings(),
-  conditions: overrides.conditions ?? [
-    {
-      type: 'GT',
-      indicator: null,
-      interval: null,
-      basic: null,
-      value: null,
-      operation: null,
-      closed: null,
-      reverse: null,
-    },
-  ],
+  conditionGroups:
+    'conditionGroups' in overrides
+      ? overrides.conditionGroups
+      : [
+          [
+            {
+              type: 'OPERATION',
+              left: { type: 'INDICATOR', indicator: 'ROC', timeFrame: 1, method: 'CLOSE', shift: 0, length: 9 },
+              operator: 'LESS',
+              right: { type: 'CONSTANT', value: 0 },
+            },
+          ],
+        ],
+  conditions: 'conditions' in overrides ? overrides.conditions : undefined,
   status: overrides.status ?? 'RUNNING',
   apiKey: overrides.apiKey !== undefined ? overrides.apiKey : 10,
   substatus: overrides.substatus ?? null,
   symbols: overrides.symbols ?? ['BTC/USDT'],
   createdAt: overrides.createdAt ?? null,
   updatedAt: overrides.updatedAt ?? null,
+  termination: overrides.termination ?? null,
+  dealsLeft: overrides.dealsLeft ?? null,
 });
 
 describe('buildBotUpdatePayload', () => {
@@ -70,7 +74,48 @@ describe('buildBotUpdatePayload', () => {
     expect(payload.deposit.marginType).toBe('ISOLATED');
     expect(payload.deposit.currency).toBe('busd');
     expect(payload.profit).not.toBe(bot.profit);
-    expect(payload.conditions).not.toBe(bot.conditions);
+    expect(payload.conditionGroups).not.toBe(bot.conditionGroups);
+  });
+
+  it('preserves the "stop after N deals" termination setting', () => {
+    const bot = buildBot({ termination: 5 });
+
+    const payload = buildBotUpdatePayload(bot, { depositAmount: 200 });
+
+    expect(payload.termination).toBe(5);
+  });
+
+  it('passes through legacy flat conditions unchanged when the bot has no conditionGroups', () => {
+    const legacyConditions = [
+      {
+        type: 'INDICATOR',
+        indicator: 'ROC',
+        interval: 'ONE_MINUTE',
+        basic: false,
+        value: -0.5,
+        operation: 'LESS',
+        closed: true,
+        reverse: false,
+      },
+    ];
+    const bot = buildBot({ conditionGroups: null, conditions: legacyConditions });
+
+    const payload = buildBotUpdatePayload(bot, { depositAmount: 200 });
+
+    expect(payload.conditions).toEqual(legacyConditions);
+    expect(payload.conditions).not.toBe(legacyConditions);
+    expect(payload.conditionGroups).toBeUndefined();
+  });
+
+  it('does not send marketplace metadata fields the source bot never had', () => {
+    const bot = buildBot();
+
+    const payload = buildBotUpdatePayload(bot, { depositAmount: 200 });
+
+    expect(payload.forBeginners).toBeUndefined();
+    expect(payload.new).toBeUndefined();
+    expect(payload.hot).toBeUndefined();
+    expect(payload.categories).toBeUndefined();
   });
 
   it('throws when api key is missing', () => {
