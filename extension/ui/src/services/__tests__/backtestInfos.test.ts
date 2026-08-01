@@ -23,7 +23,7 @@ const baseConfig: BacktestConfigDto = {
     type: 'GRID',
     includePosition: null,
   },
-  conditions: [],
+  conditionGroups: [],
   from: '2024-01-01T00:00:00Z',
   to: '2024-01-05T00:00:00Z',
   status: 'FINISHED',

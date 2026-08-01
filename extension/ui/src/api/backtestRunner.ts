@@ -1,6 +1,6 @@
 import { proxyHttpRequest } from '../lib/extensionMessaging';
 import { resolveProxyErrorMessage } from '../lib/httpErrors';
-import type { BotIdentifier, BotSettings } from '../types/bots';
+import type { BotIdentifier, BotSettings, ConditionGroups, LegacyConditionDto } from '../types/bots';
 import { buildApiUrl } from './baseUrl';
 
 const BOTS_ENDPOINT = buildApiUrl('/api/bots');
@@ -41,6 +41,9 @@ export interface BotStrategy {
   public?: boolean | null;
   algorithm?: string | null;
   settings?: BotSettings | null;
+  // The bot uses either the new conditionGroups tree or the legacy flat conditions list — never both.
+  conditionGroups?: ConditionGroups | null;
+  conditions?: LegacyConditionDto[] | null;
 }
 
 export interface BacktestCreateResponse {

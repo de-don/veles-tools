@@ -7,7 +7,7 @@ const buildProfit = (overrides: Partial<BotProfitConfig> = {}): BotProfitConfig 
   type: overrides.type ?? 'PERCENT',
   currency: overrides.currency ?? 'USDT',
   checkPnl: overrides.checkPnl ?? null,
-  conditions: overrides.conditions ?? null,
+  conditionGroups: overrides.conditionGroups ?? null,
 });
 
 const buildDeposit = (overrides: Partial<BotDepositConfig> = {}): BotDepositConfig => ({
@@ -36,27 +36,65 @@ const buildBot = (overrides: Partial<TradingBot> = {}): TradingBot => ({
   deposit: overrides.deposit ?? buildDeposit(),
   stopLoss: overrides.stopLoss ?? null,
   settings: overrides.settings ?? buildSettings(),
-  conditions: overrides.conditions ?? [
-    {
-      type: 'GT',
-      indicator: null,
-      interval: null,
-      basic: null,
-      value: null,
-      operation: null,
-      closed: null,
-      reverse: null,
-    },
-  ],
+  conditionGroups:
+    'conditionGroups' in overrides
+      ? overrides.conditionGroups
+      : [
+          [
+            {
+              type: 'OPERATION',
+              left: { type: 'INDICATOR', indicator: 'ROC', timeFrame: 1, method: 'CLOSE', shift: 0, length: 9 },
+              operator: 'LESS',
+              right: { type: 'CONSTANT', value: 0 },
+            },
+          ],
+        ],
+  conditions: 'conditions' in overrides ? overrides.conditions : undefined,
   status: overrides.status ?? 'RUNNING',
   apiKey: overrides.apiKey ?? 10,
   substatus: overrides.substatus ?? null,
   symbols: overrides.symbols ?? ['BTC/USDT'],
   createdAt: overrides.createdAt ?? null,
   updatedAt: overrides.updatedAt ?? null,
+  termination: overrides.termination ?? null,
+  dealsLeft: overrides.dealsLeft ?? null,
 });
 
 describe('buildBotClonePayload', () => {
+  it('passes through legacy flat conditions unchanged when the bot has no conditionGroups', () => {
+    const legacyConditions = [
+      {
+        type: 'INDICATOR',
+        indicator: 'ROC',
+        interval: 'ONE_MINUTE',
+        basic: false,
+        value: -0.5,
+        operation: 'LESS',
+        closed: true,
+        reverse: false,
+      },
+    ];
+    const bot = buildBot({
+      conditionGroups: null,
+      conditions: legacyConditions,
+    });
+    const descriptor: SymbolDescriptor = { base: 'BTC', quote: 'USDT', display: 'BTC/USDT', pairCode: 'BTCUSDT' };
+
+    const payload = buildBotClonePayload(bot, descriptor, {
+      apiKeyId: 1,
+      name: 'BTC clone',
+      depositAmount: 100,
+      depositLeverage: 1,
+      marginType: null,
+      depositCurrency: null,
+      profitCurrency: null,
+    });
+
+    expect(payload.conditions).toEqual(legacyConditions);
+    expect(payload.conditions).not.toBe(legacyConditions);
+    expect(payload.conditionGroups).toBeUndefined();
+  });
+
   it('normalizes currencies and margin type with fallbacks', () => {
     const bot = buildBot({
       profit: buildProfit({ currency: 'busd' }),
@@ -130,7 +168,7 @@ describe('buildBotClonePayload', () => {
     });
 
     expect(payload.profit).not.toBe(bot.profit);
-    expect(payload.conditions).not.toBe(bot.conditions);
+    expect(payload.conditionGroups).not.toBe(bot.conditionGroups);
     expect(bot.profit?.currency).toBe('USDT');
     expect(payload.id).toBeNull();
   });

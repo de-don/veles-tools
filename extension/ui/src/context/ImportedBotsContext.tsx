@@ -1,7 +1,18 @@
 import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { BotStrategy, BotStrategyCommissions, BotStrategyPair } from '../api/backtestRunner';
 import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
-import type { BotIdentifier, BotOrder, BotSettings, BotStatus, BotSummary, StrategyConditionDto } from '../types/bots';
+import type {
+  BotIdentifier,
+  BotOrder,
+  BotSettings,
+  BotStatus,
+  BotSummary,
+  ConditionGroups,
+  ConditionOperationNode,
+  ConditionSignalNode,
+  ConditionValueNode,
+  LegacyConditionDto,
+} from '../types/bots';
 
 export interface ImportedBotEntry {
   id: string;
@@ -54,7 +65,75 @@ const toNullableNumber = (value: unknown): number | null => {
   return null;
 };
 
-const parseStrategyCondition = (raw: unknown): StrategyConditionDto | null => {
+const parseConditionValueNode = (raw: unknown): ConditionValueNode | null => {
+  if (!isRecord(raw)) {
+    return null;
+  }
+  if (raw.type === 'CONSTANT') {
+    const value = toNullableNumber(raw.value);
+    return value === null ? null : { type: 'CONSTANT', value };
+  }
+  if (raw.type === 'INDICATOR') {
+    const indicator = toNullableString(raw.indicator);
+    const method = toNullableString(raw.method);
+    const timeFrame = toNullableNumber(raw.timeFrame);
+    const shift = toNullableNumber(raw.shift);
+    if (!(indicator && method) || timeFrame === null || shift === null) {
+      return null;
+    }
+    return { ...raw, type: 'INDICATOR', indicator, timeFrame, method, shift } as ConditionValueNode;
+  }
+  return null;
+};
+
+const parseOperationNode = (raw: unknown): ConditionOperationNode | null => {
+  if (!isRecord(raw) || raw.type !== 'OPERATION') {
+    return null;
+  }
+  const operator = toNullableString(raw.operator);
+  const left = parseConditionValueNode(raw.left);
+  const right = parseConditionValueNode(raw.right);
+  if (!(operator && left && right)) {
+    return null;
+  }
+  return { type: 'OPERATION', left, operator, right };
+};
+
+const parseSignalNode = (raw: unknown): ConditionSignalNode | null => {
+  if (!isRecord(raw) || raw.type !== 'SIGNAL') {
+    return null;
+  }
+  const signal = toNullableString(raw.signal);
+  const method = toNullableString(raw.method);
+  const timeFrame = toNullableNumber(raw.timeFrame);
+  const shift = toNullableNumber(raw.shift);
+  if (!(signal && method) || timeFrame === null || shift === null) {
+    return null;
+  }
+  return { ...raw, type: 'SIGNAL', signal, timeFrame, method, shift } as ConditionSignalNode;
+};
+
+const parseGroupItem = (raw: unknown): ConditionOperationNode | ConditionSignalNode | null => {
+  return parseOperationNode(raw) ?? parseSignalNode(raw);
+};
+
+const parseConditionGroups = (raw: unknown): ConditionGroups | null => {
+  if (!Array.isArray(raw)) {
+    return null;
+  }
+  const parsed = raw
+    .map((group) =>
+      Array.isArray(group)
+        ? group
+            .map((item) => parseGroupItem(item))
+            .filter((item): item is ConditionOperationNode | ConditionSignalNode => Boolean(item))
+        : [],
+    )
+    .filter((group) => group.length > 0);
+  return parsed.length > 0 ? parsed : null;
+};
+
+const parseLegacyCondition = (raw: unknown): LegacyConditionDto | null => {
   if (!isRecord(raw)) {
     return null;
   }
@@ -74,13 +153,13 @@ const parseStrategyCondition = (raw: unknown): StrategyConditionDto | null => {
   };
 };
 
-const parseConditions = (raw: unknown): StrategyConditionDto[] | null => {
+const parseLegacyConditions = (raw: unknown): LegacyConditionDto[] | null => {
   if (!Array.isArray(raw)) {
     return null;
   }
   const parsed = raw
-    .map((item) => parseStrategyCondition(item))
-    .filter((item): item is StrategyConditionDto => Boolean(item));
+    .map((item) => parseLegacyCondition(item))
+    .filter((item): item is LegacyConditionDto => Boolean(item));
   return parsed.length > 0 ? parsed : null;
 };
 
@@ -91,7 +170,8 @@ const parseOrder = (raw: unknown): BotOrder | null => {
   return {
     indent: toNullableNumber(raw.indent),
     volume: toNullableNumber(raw.volume),
-    conditions: parseConditions(raw.conditions),
+    conditionGroups: parseConditionGroups(raw.conditionGroups),
+    conditions: parseLegacyConditions(raw.conditions),
   };
 };
 
@@ -201,6 +281,8 @@ const parseBotStrategy = (strategy: unknown): BotStrategy | null => {
     public: toNullableBoolean(publicValue),
     algorithm: toNullableString(strategy.algorithm),
     settings: parseSettings(strategy.settings),
+    conditionGroups: parseConditionGroups(strategy.conditionGroups),
+    conditions: parseLegacyConditions(strategy.conditions),
   };
 
   return result;

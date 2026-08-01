@@ -3,7 +3,8 @@ import type {
   BotProfitConfigDto,
   BotSettingsDto,
   BotStopLossConfigDto,
-  StrategyConditionDto,
+  ConditionGroupsDto,
+  LegacyConditionDto,
 } from './bots.dtos';
 
 export interface BacktestStatisticsListDto {
@@ -42,7 +43,9 @@ export interface BacktestConfigDto {
   deposit: BotDepositConfigDto;
   stopLoss: BotStopLossConfigDto | null;
   settings: BotSettingsDto;
-  conditions: StrategyConditionDto[];
+  // A given backtest uses either the new conditionGroups tree or the legacy flat conditions list — never both.
+  conditionGroups?: ConditionGroupsDto | null;
+  conditions?: LegacyConditionDto[] | null;
   from: string;
   to: string;
   status: string;
