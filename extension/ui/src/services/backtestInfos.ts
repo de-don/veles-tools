@@ -98,8 +98,8 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
   const { statistics, config } = detail;
 
   const deals = cycles.map((cycle) => {
-    // biome-ignore lint/style/noNonNullAssertion: one order is guaranteed to exist
-    const startTime = Date.parse(cycle.orders.at(0)!.createdAt);
+    // The cycle-level createdAt is authoritative; orders may be empty for cancelled cycles.
+    const startTime = Date.parse(cycle.createdAt ?? cycle.orders.at(0)?.createdAt ?? cycle.date);
     const startDay = new Date(startTime);
     startDay.setHours(0, 0, 0, 0);
 
@@ -135,7 +135,7 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
   const equitySeries = buildEquitySeries(cycles);
   const maxDrawdownQuote = calculateMaxDrawdown(equitySeries);
   const pnlMaeRatio =
-    maeStats.max > 0 && Number.isFinite(statistics.netQuote) ? statistics.netQuote / maeStats.max : null;
+    maeStats.max > 0 && Number.isFinite(statistics.profitQuote) ? statistics.profitQuote / maeStats.max : null;
 
   return {
     id: statistics.id,
@@ -153,9 +153,9 @@ export const buildBacktestInfo = (detail: BacktestDetail, cycles: BacktestCycle[
     winRatePercent: calculateWinRatePercent(statistics.profits, statistics.losses),
     profitableDeals: statistics.profits,
     losingDeals: statistics.losses,
-    profitNet: statistics.netQuote,
-    netQuotePerDay: statistics.netQuotePerDay,
-    activeMaeAbsolute: latestStartedCycle?.maeAbsolute ?? null,
+    profitNet: statistics.profitQuote,
+    netQuotePerDay: statistics.quotePerDay,
+    activeMaeAbsolute: latestStartedCycle?.maeAbsolute ?? statistics.activeMaeAbsolute ?? null,
     averageDurationDays,
     maxDurationSeconds,
     tradingDays,

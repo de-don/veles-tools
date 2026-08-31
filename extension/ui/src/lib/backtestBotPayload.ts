@@ -91,7 +91,7 @@ export const buildBotCreationPayload = (detail: BacktestDetail, overrides: BotCr
   // The backtest config uses either the new conditionGroups tree or the legacy flat conditions list — never both.
   const conditionGroups = config.conditionGroups ? clonePayloadFragment(config.conditionGroups) : undefined;
   const conditions = config.conditions ? clonePayloadFragment(config.conditions) : undefined;
-  const stopLoss = clonePayloadFragment(config.stopLoss);
+  const stopLoss = clonePayloadFragment(config.stopLoss ?? null) ?? null;
 
   const resolvedSymbols = (() => {
     if (Array.isArray(overrides.symbols)) {

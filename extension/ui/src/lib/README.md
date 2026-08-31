@@ -17,6 +17,16 @@ Domain type definitions for aggregation charts and analytics: `TimeInterval`, `R
 - `toTimestamp(value)` – safely parses ISO date strings into milliseconds since epoch or returns `null` for invalid inputs.
 - `resolvePeriodDays(from, to)` – counts inclusive days between two ISO dates, returning `null` for invalid ranges.
 
+## `backtestFormatting.ts`
+- `formatAmount(value, suffix?)` – formats a number with Russian locale rounding and an optional currency suffix, returning `—` for empty values.
+- `formatPercent(value)` – formats a number as a Russian-locale percentage, returning `—` for empty values.
+- `formatLeverage(value)` – formats leverage as `Nx`, returning `—` for non-positive or invalid values.
+- `formatDateRu(value)` – formats an ISO date string as a Russian short date, returning `—` for invalid input.
+- `formatDurationMinutes(value)` – formats a duration given in seconds as minutes, hours or days.
+- `resolveDealCount(value)` – normalises a deal counter to a non-negative number.
+- `pluralizeRu(count, forms)` – picks the Russian plural form from `[1, 2-4, 5-0]`.
+- `formatDaysAsPeriodRu(value)` – formats a day count as an approximate `N лет N месяцев N дней` period (365-day years, 30-day months), returning `—` for invalid input.
+
 ## `backtestAnalytics.ts`
 - `calculateMaxDrawdown(values)` – scans an equity series and returns the maximum peak-to-trough drop before a new high.
 

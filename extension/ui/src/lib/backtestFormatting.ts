@@ -61,3 +61,50 @@ export const resolveDealCount = (value: number | null | undefined): number => {
   }
   return value > 0 ? value : 0;
 };
+
+const DAYS_IN_YEAR = 365;
+const DAYS_IN_MONTH = 30;
+
+/** Picks the Russian plural form: [1, 2-4, 5-0] — e.g. `['день', 'дня', 'дней']`. */
+export const pluralizeRu = (count: number, forms: [string, string, string]): string => {
+  const absolute = Math.abs(count) % 100;
+  const remainder = absolute % 10;
+  if (absolute > 10 && absolute < 20) {
+    return forms[2];
+  }
+  if (remainder > 1 && remainder < 5) {
+    return forms[1];
+  }
+  if (remainder === 1) {
+    return forms[0];
+  }
+  return forms[2];
+};
+
+/**
+ * Formats a day count as an approximate "N лет N месяцев N дней" period
+ * (a year is counted as 365 days, a month as 30). Zero-valued parts are omitted.
+ */
+export const formatDaysAsPeriodRu = (value: number | null | undefined): string => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return '—';
+  }
+
+  const totalDays = Math.floor(value);
+  const years = Math.floor(totalDays / DAYS_IN_YEAR);
+  const months = Math.floor((totalDays - years * DAYS_IN_YEAR) / DAYS_IN_MONTH);
+  const days = totalDays - years * DAYS_IN_YEAR - months * DAYS_IN_MONTH;
+
+  const parts: string[] = [];
+  if (years > 0) {
+    parts.push(`${years} ${pluralizeRu(years, ['год', 'года', 'лет'])}`);
+  }
+  if (months > 0) {
+    parts.push(`${months} ${pluralizeRu(months, ['месяц', 'месяца', 'месяцев'])}`);
+  }
+  if (days > 0 || parts.length === 0) {
+    parts.push(`${days} ${pluralizeRu(days, ['день', 'дня', 'дней'])}`);
+  }
+
+  return parts.join(' ');
+};
