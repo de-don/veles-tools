@@ -16,8 +16,12 @@ export interface BacktestStatisticsListDto {
 }
 
 export interface BacktestLimitsDto {
-  permits: number;
   expiration: string | number | null;
+  /** Remaining backtest period, in days. Replaced the old `permits` run counter. */
+  counter: number;
+  /** Number of backtests the tariff allows to run in parallel. */
+  threads: number;
+  tariff: 'FREE' | string;
 }
 
 export interface BacktestCyclesListDto {

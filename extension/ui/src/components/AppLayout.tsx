@@ -21,6 +21,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../assets/logo.png';
 import { APP_NAME, APP_VERSION } from '../config/version';
 import { useThemeMode } from '../context/ThemeContext';
+import { formatDaysAsPeriodRu } from '../lib/backtestFormatting';
 import { readStorageValue, writeStorageValue } from '../lib/safeStorage';
 import { backtestsService } from '../services/backtests';
 import { usersService } from '../services/users';
@@ -79,10 +80,21 @@ const formatBacktestLimitsStatus = (limits: BacktestLimits | null): string => {
   if (!limits) {
     return '—';
   }
-  if (limits.hasActiveSubscription && limits.expiration) {
-    return `Активна до ${formatBacktestLimitsExpiration(limits.expiration)}`;
+  // The API reports the remaining backtest period in days, not a run counter.
+  const remaining = `Осталось ${formatDaysAsPeriodRu(limits.remainingDays)}`;
+  if (limits.expiration) {
+    return `${remaining} до ${formatBacktestLimitsExpiration(limits.expiration)}`;
   }
-  return `Бесплатно: ${limits.permits} из 10`;
+  return remaining;
+};
+
+const formatBacktestTariff = (limits: BacktestLimits | null): string => {
+  if (!limits) {
+    return '—';
+  }
+  const tariff = limits.tariff.trim().length > 0 ? limits.tariff : '—';
+  const threads = limits.threads > 0 ? `, потоков: ${limits.threads}` : '';
+  return `${tariff}${threads}`;
 };
 
 const serviceBalanceFormatter = new Intl.NumberFormat('ru-RU', {
@@ -331,6 +343,14 @@ const AppLayout = ({ children, extensionReady, connectionStatus, onPing, onOpenV
               {backtestLimitsLoading
                 ? 'Загрузка...'
                 : (backtestLimitsError ?? formatBacktestLimitsStatus(backtestLimits))}
+            </Tag>
+          </div>
+          <div className="app-layout__status-row">
+            <Typography.Text type="secondary" className="app-layout__status-label">
+              Тариф
+            </Typography.Text>
+            <Tag color={backtestLimits?.hasActiveSubscription ? 'success' : 'default'}>
+              {backtestLimitsLoading ? 'Загрузка...' : (backtestLimitsError ?? formatBacktestTariff(backtestLimits))}
             </Tag>
           </div>
           <div className="app-layout__status-row">

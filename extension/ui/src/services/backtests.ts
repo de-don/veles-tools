@@ -92,10 +92,15 @@ export const getBacktestLimits = async (): Promise<BacktestLimits> => {
   backtestLimitsRequest = fetchBacktestLimits()
     .then((dto) => {
       const expiration = parseBacktestLimitExpiration(dto.expiration);
+      const tariff = typeof dto.tariff === 'string' ? dto.tariff : '';
       const limits: BacktestLimits = {
-        permits: dto.permits,
+        remainingDays: Number.isFinite(dto.counter) ? Math.max(dto.counter, 0) : 0,
+        threads: Number.isFinite(dto.threads) ? dto.threads : 1,
+        tariff,
         expiration,
-        hasActiveSubscription: expiration !== null && expiration.getTime() > Date.now(),
+        hasActiveSubscription:
+          (tariff.length > 0 && tariff.toUpperCase() !== 'FREE') ||
+          (expiration !== null && expiration.getTime() > Date.now()),
       };
 
       backtestLimitsCache = { value: limits, fetchedAt: Date.now() };

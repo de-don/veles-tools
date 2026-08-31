@@ -26,7 +26,10 @@ export interface BacktestStatisticsListResponse {
 }
 
 export interface BacktestLimits {
-  permits: number;
+  /** Remaining backtest period, in days. */
+  remainingDays: number;
+  threads: number;
+  tariff: string;
   expiration: Date | null;
   hasActiveSubscription: boolean;
 }
