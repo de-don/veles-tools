@@ -12,7 +12,7 @@
     "test": "vitest run --config extension/ui/vitest.config.ts",
     "test:watch": "vitest --config extension/ui/vitest.config.ts",
     "test:coverage": "vitest run --config extension/ui/vitest.config.ts --coverage",
-    "release": "npx -y -p semantic-release -p @semantic-release/commit-analyzer -p @semantic-release/release-notes-generator -p conventional-changelog-conventionalcommits -p @semantic-release/changelog -p @semantic-release/exec -p @semantic-release/git -p @semantic-release/github -p @semantic-release/npm semantic-release"
+    "release": "npx -y -p semantic-release@25.0.9 -p @semantic-release/commit-analyzer@13.0.1 -p @semantic-release/release-notes-generator@14.1.1 -p conventional-changelog-conventionalcommits@8.0.0 -p @semantic-release/changelog@7.0.0 -p @semantic-release/exec@7.1.0 -p @semantic-release/git@11.0.1 -p @semantic-release/github@12.0.9 -p @semantic-release/npm@13.1.5 semantic-release"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
