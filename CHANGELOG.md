@@ -1,3 +1,13 @@
+## [2.8.0](https://github.com/de-don/veles-tools/compare/v2.7.1...v2.8.0) (2026-08-31)
+
+### Features
+
+* **backtests:** show the remaining backtest period and tariff ([07add37](https://github.com/de-don/veles-tools/commit/07add37feb892eebd2b451bba10b7e2e8b1962cf))
+
+### Bug Fixes
+
+* **backtests:** migrate statistics DTO to current API schema ([29697aa](https://github.com/de-don/veles-tools/commit/29697aaa7032ac8fa9b6e2ee08fd7d44c7338d60))
+
 ## [2.7.1](https://github.com/de-don/veles-tools/compare/v2.7.0...v2.7.1) (2026-08-01)
 
 ## [2.7.0](https://github.com/de-don/veles-tools/compare/v2.6.1...v2.7.0) (2026-06-15)
