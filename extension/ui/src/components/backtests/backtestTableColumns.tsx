@@ -61,7 +61,8 @@ const buildColumns = (): ColumnsType<BacktestStatistics> => [
     ),
   },
   {
-    title: 'Прибыль',
+    // The API reports profitQuote/profitBase net of commissions.
+    title: 'Прибыль (net)',
     dataIndex: 'profitQuote',
     key: 'profitQuote',
     sorter: buildNumberSorter((item) => item.profitQuote),
@@ -74,13 +75,13 @@ const buildColumns = (): ColumnsType<BacktestStatistics> => [
   },
   {
     title: 'Net / день',
-    dataIndex: 'netQuote',
+    dataIndex: 'quotePerDay',
     key: 'netQuote',
-    sorter: buildNumberSorter((item) => item.netQuotePerDay),
+    sorter: buildNumberSorter((item) => item.quotePerDay),
     render: (_value, item) => (
       <div>
-        <div>{formatAmount(item.netQuote, item.quote)}</div>
-        <div className="panel__description">в день: {formatAmount(item.netQuotePerDay, item.quote)}</div>
+        <div>{formatAmount(item.quotePerDay, item.quote)}</div>
+        <div className="panel__description">Комиссии: {formatAmount(item.commissionQuote ?? 0, item.quote)}</div>
       </div>
     ),
   },

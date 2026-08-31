@@ -1,5 +1,6 @@
 import type {
   BotDepositConfigDto,
+  BotOrderDto,
   BotProfitConfigDto,
   BotSettingsDto,
   BotStopLossConfigDto,
@@ -41,7 +42,7 @@ export interface BacktestConfigDto {
   portion: number;
   profit: BotProfitConfigDto | null;
   deposit: BotDepositConfigDto;
-  stopLoss: BotStopLossConfigDto | null;
+  stopLoss?: BotStopLossConfigDto | null;
   settings: BotSettingsDto;
   // A given backtest uses either the new conditionGroups tree or the legacy flat conditions list — never both.
   conditionGroups?: ConditionGroupsDto | null;
@@ -52,11 +53,33 @@ export interface BacktestConfigDto {
   commissions: BacktestCommissionsConfigDto;
   public: boolean;
   useWicks: boolean;
+  /** Simulation accuracy mode, e.g. 'SHADOW'. Added by the 2026 schema change. */
+  accuracy?: string | null;
   cursor: string;
+}
+
+/**
+ * Condensed strategy snapshot the statistics endpoint embeds since the 2026 schema change.
+ * Mirrors the bot settings payload, but flattened (deposit/profit/orders on one level).
+ */
+export interface BacktestStatisticsSettingsDto {
+  type: string;
+  algorithm: string;
+  deposit: BotDepositConfigDto;
+  profit: BotProfitConfigDto | null;
+  stopLoss?: BotStopLossConfigDto | null;
+  portion: number | null;
+  pullUp: number | null;
+  baseOrder?: BotOrderDto | null;
+  indentType?: string | null;
+  orders?: BotOrderDto[] | null;
+  conditionGroups?: ConditionGroupsDto | null;
+  conditions?: LegacyConditionDto[] | null;
 }
 
 export interface BacktestStatisticsDto {
   id: number;
+  settings?: BacktestStatisticsSettingsDto | null;
   name: string;
   date: string;
   from: string;
@@ -67,12 +90,12 @@ export interface BacktestStatisticsDto {
   base: string;
   quote: string;
   duration: number;
+  // Since the 2026 schema change profitBase/profitQuote are NET values (commissions already
+  // subtracted); the previous netBase/netQuote/netBasePerDay/netQuotePerDay fields are gone.
   profitBase: number;
   profitQuote: number;
-  netBase: number;
-  netQuote: number;
-  netBasePerDay: number;
-  netQuotePerDay: number;
+  basePerDay: number;
+  quotePerDay: number;
   minProfitBase: number;
   maxProfitBase: number;
   avgProfitBase: number;
@@ -100,12 +123,37 @@ export interface BacktestStatisticsDto {
   mfeAbsolute: number;
   maePercent: number;
   maeAbsolute: number; // Negative value
-  commissionBase: number;
-  commissionQuote: number;
+  maeDepositPercent?: number | null;
+  mfeDepositPercent?: number | null;
+  commissionBase: number | null;
+  commissionQuote: number | null;
+  roi?: number | null;
+  profitFactor?: number | null;
+  recoveryFactor?: number | null;
+  expectedMaxLossStreak?: number | null;
+  maxLossStreak?: number | null;
+  worstStreakReserve?: number | null;
+  cagr?: number | null;
+  timeInDealsPercent?: number | null;
+  // Metrics of the deal that is still open at the end of the backtest period (null when none).
+  activeMaePercent?: number | null;
+  activeMaeAbsolute?: number | null;
+  activeDuration?: number | null;
+}
+
+/** Shape of the statistics payload before the 2026 schema change; still present in cached records. */
+export interface LegacyBacktestStatisticsDto {
+  netBase?: number;
+  netQuote?: number;
+  netBasePerDay?: number;
+  netQuotePerDay?: number;
 }
 
 export interface BacktestCycleDto {
+  backtestId?: number;
   date: string;
+  /** Cycle open time. Reliable even when the cycle carries no orders. */
+  createdAt?: string | null;
   status: 'CANCELLED' | 'FINISHED' | 'STARTED';
   substatus: 'PULL_UP' | 'TAKE_PROFIT' | string;
   exchange: 'BYBIT_FUTURES' | string;
@@ -133,15 +181,15 @@ export interface BacktestCycleDto {
 }
 
 export interface BacktestOrderDto {
-  category: 'GRID';
+  category: 'GRID' | 'PROFIT' | 'STOP_LOSS' | string;
   side: 'BUY' | 'SELL';
-  type: 'MARKET';
+  type: 'MARKET' | 'LIMIT' | string;
   position: number;
   quantity: number;
   price: number;
-  status: 'EXECUTED';
+  status: 'EXECUTED' | 'CANCELLED' | 'NEW' | string;
   createdAt: string;
-  executedAt: string;
-  commissionAmount: number;
-  commissionAsset: string;
+  executedAt: string | null;
+  commissionAmount: number | null;
+  commissionAsset: string | null;
 }

@@ -50,10 +50,8 @@ const baseStatistics: BacktestStatistics = {
   duration: 0,
   profitBase: 0,
   profitQuote: 150,
-  netBase: 0,
-  netQuote: 150,
-  netBasePerDay: 0,
-  netQuotePerDay: 30,
+  basePerDay: 0,
+  quotePerDay: 30,
   minProfitBase: 0,
   maxProfitBase: 0,
   avgProfitBase: 0,
@@ -215,7 +213,7 @@ describe('buildBacktestInfo', () => {
     expect(info.avgMaeAbsolute).toBeCloseTo((10 + 40 + 5 + 25) / 4, 5);
     expect(info.maxMfeAbsolute).toBe(60);
     expect(info.avgMfeAbsolute).toBeCloseTo((30 + 15 + 60 + 5) / 4, 5);
-    expect(info.pnlMaeRatio).toBeCloseTo(detail.statistics.netQuote / 40, 5);
+    expect(info.pnlMaeRatio).toBeCloseTo(detail.statistics.profitQuote / 40, 5);
 
     nowSpy.mockRestore();
   });
