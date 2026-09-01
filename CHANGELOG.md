@@ -1,3 +1,9 @@
+## [2.8.1](https://github.com/de-don/veles-tools/compare/v2.8.0...v2.8.1) (2026-09-01)
+
+### Bug Fixes
+
+* **backtests:** stop the sync from looping and flickering ([b091509](https://github.com/de-don/veles-tools/commit/b091509f471e0b0e00b31d36a27af1e16e2ef588))
+
 ## [2.8.0](https://github.com/de-don/veles-tools/compare/v2.7.1...v2.8.0) (2026-08-31)
 
 ### Features
