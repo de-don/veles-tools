@@ -7,6 +7,8 @@ import type { BacktestStatistics } from '../types/backtests';
 
 interface RemoteSnapshotState {
   total: number | null;
+  /** Id of the newest backtest on the server — the reliable "is the cache behind?" signal. */
+  newestId: number | null;
   loading: boolean;
   error: string | null;
   lastChecked: number | null;
@@ -58,11 +60,30 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
 
   useEffect(() => {
     let cancelled = false;
+    // A sync writes one batch per page and every write notifies. Reading the whole list back for
+    // each of them re-rendered the table on every page, so the reads are coalesced: while one is
+    // in flight the notifications collapse into a single trailing re-read.
+    let reading = false;
+    let rereadPending = false;
 
-    const hydrate = async () => {
-      const items = await readCachedBacktestList();
-      if (!cancelled) {
-        setListState({ items, loading: false });
+    const hydrate = async (): Promise<void> => {
+      if (reading) {
+        rereadPending = true;
+        return;
+      }
+
+      reading = true;
+      try {
+        do {
+          rereadPending = false;
+          const items = await readCachedBacktestList();
+          if (cancelled) {
+            return;
+          }
+          setListState({ items, loading: false });
+        } while (rereadPending);
+      } finally {
+        reading = false;
       }
     };
 
@@ -85,10 +106,12 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
 
   const [remoteState, setRemoteState] = useState<RemoteSnapshotState>({
     total: null,
+    newestId: null,
     loading: false,
     error: null,
     lastChecked: null,
   });
+  const lastAutoSyncAttemptRef = useRef<string | null>(null);
   const [lastSyncCompletedAt, setLastSyncCompletedAt] = useState<number | null>(null);
   const [autoSyncPending, setAutoSyncPending] = useState(false);
 
@@ -107,8 +130,11 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
     try {
       const response = await backtestsService.getBacktestsList({ page: 0, size: 1, sort: 'date,desc' });
       const total = typeof response.totalElements === 'number' ? response.totalElements : response.content.length;
+      // An explicit refresh is also a request to retry an auto-sync that previously made no progress.
+      lastAutoSyncAttemptRef.current = null;
       setRemoteState({
         total,
+        newestId: response.content[0]?.id ?? null,
         loading: false,
         error: null,
         lastChecked: Date.now(),
@@ -117,6 +143,7 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
       const message = error instanceof Error ? error.message : String(error);
       setRemoteState({
         total: null,
+        newestId: null,
         loading: false,
         error: message,
         lastChecked: Date.now(),
@@ -151,71 +178,83 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
     };
   }, []);
 
-  const startSync = useCallback(
-    async ({ clearBefore = false }: { clearBefore?: boolean } = {}) => {
-      if (syncControllerRef.current) {
-        return null;
+  // Kept in refs so that startSync has a stable identity: it is a dependency of the auto-sync
+  // effect below, and a callback rebuilt on every progress update would retrigger that effect.
+  const remoteTotalRef = useRef<number | null>(null);
+  const syncSnapshotRef = useRef<BacktestsSyncSnapshot | null>(null);
+
+  useEffect(() => {
+    remoteTotalRef.current = remoteState.total;
+  }, [remoteState.total]);
+
+  useEffect(() => {
+    syncSnapshotRef.current = syncSnapshot;
+  }, [syncSnapshot]);
+
+  const startSync = useCallback(async ({ clearBefore = false }: { clearBefore?: boolean } = {}) => {
+    if (syncControllerRef.current) {
+      return null;
+    }
+
+    const controller = new AbortController();
+    syncControllerRef.current = controller;
+    let active = true;
+
+    const initialTotal = remoteTotalRef.current ?? syncSnapshotRef.current?.totalRemote ?? null;
+
+    setSyncSnapshot({
+      status: 'running',
+      processed: 0,
+      stored: 0,
+      fetchedPages: 0,
+      totalRemote: initialTotal,
+    });
+
+    setRemoteState((prev) => ({ ...prev, loading: true, error: null }));
+
+    const handleProgress = (snapshot: BacktestsSyncSnapshot) => {
+      if (!active) {
+        return;
       }
-
-      const controller = new AbortController();
-      syncControllerRef.current = controller;
-      let active = true;
-
-      const initialTotal = remoteState.total ?? syncSnapshot?.totalRemote ?? null;
-
-      setSyncSnapshot({
-        status: 'running',
-        processed: 0,
-        stored: 0,
-        fetchedPages: 0,
-        totalRemote: initialTotal,
-      });
-
-      setRemoteState((prev) => ({ ...prev, loading: true, error: null }));
-
-      const handleProgress = (snapshot: BacktestsSyncSnapshot) => {
-        if (!active) {
-          return;
-        }
-        setSyncSnapshot(snapshot);
-        if (snapshot.totalRemote !== null) {
-          setRemoteState((prev) => ({
-            total: snapshot.totalRemote ?? prev.total,
-            loading: false,
-            error: null,
-            lastChecked: Date.now(),
-          }));
-        }
-      };
-
-      const result = await performBacktestsSync({
-        clearBeforeSync: clearBefore,
-        signal: controller.signal,
-        onProgress: handleProgress,
-      });
-
-      if (active) {
-        setSyncSnapshot(result);
+      setSyncSnapshot(snapshot);
+      if (snapshot.totalRemote !== null) {
         setRemoteState((prev) => ({
-          total: result.totalRemote ?? prev.total,
+          ...prev,
+          total: snapshot.totalRemote ?? prev.total,
           loading: false,
-          error: result.status === 'error' ? (result.error ?? prev.error) : prev.error,
+          error: null,
           lastChecked: Date.now(),
         }));
-        if (result.status === 'success') {
-          setLastSyncCompletedAt(Date.now());
-        }
       }
+    };
 
-      if (syncControllerRef.current === controller) {
-        syncControllerRef.current = null;
+    const result = await performBacktestsSync({
+      clearBeforeSync: clearBefore,
+      signal: controller.signal,
+      onProgress: handleProgress,
+    });
+
+    if (active) {
+      setSyncSnapshot(result);
+      setRemoteState((prev) => ({
+        ...prev,
+        total: result.totalRemote ?? prev.total,
+        loading: false,
+        error: result.status === 'error' ? (result.error ?? prev.error) : prev.error,
+        lastChecked: Date.now(),
+      }));
+      if (result.status === 'success') {
+        setLastSyncCompletedAt(Date.now());
       }
-      active = false;
+    }
 
-      return result;
-    },
-    [syncSnapshot, remoteState.total],
-  );
+    if (syncControllerRef.current === controller) {
+      syncControllerRef.current = null;
+    }
+    active = false;
+
+    return result;
+  }, []);
 
   const stopSync = useCallback(() => {
     const controller = syncControllerRef.current;
@@ -227,6 +266,7 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
   const backtests = listState.items;
   const backtestsLoading = listState.loading;
   const localCount = backtests.length;
+  const localIds = useMemo(() => new Set(backtests.map((item) => item.id)), [backtests]);
   const oldestLocalDate = useMemo(() => resolveOldestDate(backtests), [backtests]);
   const isSyncRunning = syncSnapshot?.status === 'running';
   useEffect(() => {
@@ -239,9 +279,21 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
       return;
     }
 
-    if (localCount >= remote) {
+    const newestId = remoteState.newestId;
+    const isBehind = newestId !== null ? !localIds.has(newestId) : localCount < remote;
+    if (!isBehind) {
       return;
     }
+
+    // A sync can legitimately end with fewer local records than the server reports: it may count
+    // backtests the list no longer returns, and a deal finishing mid-sync shifts the pages under
+    // us. Without this guard the counts would never converge and the effect would restart the
+    // sync forever, which is what made the page flicker between the list and the sync placeholder.
+    const attempt = `${remote}:${localCount}`;
+    if (lastAutoSyncAttemptRef.current === attempt) {
+      return;
+    }
+    lastAutoSyncAttemptRef.current = attempt;
 
     autoSyncInFlightRef.current = true;
     setAutoSyncPending(true);
@@ -262,7 +314,7 @@ export const BacktestsSyncProvider = ({ extensionReady, children }: PropsWithChi
       autoSyncInFlightRef.current = false;
       setAutoSyncPending(false);
     });
-  }, [extensionReady, isSyncRunning, remoteState.total, localCount, startSync]);
+  }, [extensionReady, isSyncRunning, remoteState.total, remoteState.newestId, localIds, localCount, startSync]);
 
   useEffect(() => {
     if (typeof window === 'undefined') {

@@ -132,10 +132,9 @@ export const performBacktestsSync = async (options: BacktestsSyncOptions = {}): 
         totalRemote: remoteTotal,
       });
 
-      if (remoteTotal !== null && knownIds.size >= remoteTotal) {
-        break;
-      }
-
+      // The local cache also keeps backtests that were already deleted on the server, so the
+      // number of known ids says nothing about how much of the remote list has been walked —
+      // only the page count does.
       if (totalPages !== null && page >= totalPages - 1) {
         break;
       }
