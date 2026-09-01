@@ -210,7 +210,10 @@ const BacktestsPageContent = ({ extensionReady }: BacktestsPageProps) => {
     });
   }, [startSync]);
 
-  const syncReady = !(backtestsLoading || isSyncRunning || autoSyncPending);
+  // Only hide the table while there is nothing to show yet. Swapping the whole page for the
+  // placeholder on every background sync is what users saw as flickering.
+  const hasLocalData = localCount > 0;
+  const syncReady = !backtestsLoading && (hasLocalData || !(isSyncRunning || autoSyncPending));
 
   const handleTableChange = useCallback<NonNullable<TableProps<BacktestStatistics>['onChange']>>(
     (pagination) => {

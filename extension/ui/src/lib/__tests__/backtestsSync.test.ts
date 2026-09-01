@@ -160,9 +160,33 @@ describe('performBacktestsSync', () => {
     const result = await performBacktestsSync({ pageSize: 2 });
 
     const requestedPages = getBacktestsListMock.mock.calls.map(([params]) => params.page);
-    expect(requestedPages).toEqual([0, 1]);
+    expect(requestedPages).toEqual([0, 1, 2]);
     expect(writeBatchMock).toHaveBeenCalledWith(page1Entries);
     expect(result.stored).toBe(2);
+    expect(result.status).toBe('success');
+  });
+
+  it('walks every page when the cache holds backtests already deleted on the server', async () => {
+    // Three cached backtests, but only two of them still exist remotely — the number of known
+    // ids must not be treated as progress through the remote list.
+    readIdsMock.mockResolvedValue(new Set([10, 11, 12]));
+
+    const knownEntry = buildBacktest(11);
+    const freshEntry = buildBacktest(13);
+
+    getBacktestsListMock.mockImplementation(async ({ page }) => {
+      if (page === 0) {
+        return { content: [knownEntry], totalElements: 2, totalPages: 2, pageNumber: 0 };
+      }
+      return { content: [freshEntry], totalElements: 2, totalPages: 2, pageNumber: 1 };
+    });
+
+    const result = await performBacktestsSync({ pageSize: 1 });
+
+    const requestedPages = getBacktestsListMock.mock.calls.map(([params]) => params.page);
+    expect(requestedPages).toEqual([0, 1]);
+    expect(writeBatchMock).toHaveBeenCalledWith([freshEntry]);
+    expect(result.stored).toBe(1);
     expect(result.status).toBe('success');
   });
 });
