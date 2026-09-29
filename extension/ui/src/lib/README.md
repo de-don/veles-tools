@@ -63,7 +63,14 @@ Domain type definitions for aggregation charts and analytics: `TimeInterval`, `R
 - `createDailyConcurrencyChartOptions(records, stats?, range?, filterMode?, themeMode?)` – builds ECharts options for daily concurrency charts with optional summary stats, zoom range handling, and theme mode.
 
 ## `botUpdatePayload.ts`
-- `buildBotUpdatePayload(bot, overrides)` – creates a DTO payload for updating an existing bot while applying deposit/leverage overrides and keeping other config fields intact.
+- `buildBotUpdatePayload(bot, overrides)` – creates a DTO payload for updating an existing bot while applying deposit/leverage/reinvest overrides and keeping other config fields intact.
+
+## `reinvest.ts`
+- `REINVEST_MIN_PERCENT`, `REINVEST_DEFAULT_PERCENT`, `REINVEST_MAX_PERCENT_SPOT`, `REINVEST_MAX_PERCENT_FUTURES` – profit reinvest limits mirrored from the Veles bot editor.
+- `isFuturesExchange(exchange)` – detects derivatives exchanges by the `FUTURES` marker in the Veles exchange id.
+- `resolveReinvestMaxPercent(exchanges)` – upper reinvest bound for a set of exchanges (futures limit wins when mixed or empty).
+- `isReinvestEnabled(value)` / `formatReinvestInput(value)` / `formatReinvestRange(max)` – helpers for the `deposit.reinvest` percent (`null` means disabled).
+- `parseReinvestInput(enabled, raw, max)` – validates the form input and returns the `deposit.reinvest` value or an error message.
 
 ## `cabinetUrls.ts`
 - `buildVelesUrl(path?)` – builds an absolute URL to the active veles.* origin derived from the stored connection or current location, normalising slashes.

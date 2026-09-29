@@ -26,6 +26,7 @@ import { parseAssetList } from '../lib/assetList';
 import { buildCabinetUrl } from '../lib/cabinetUrls';
 import { applyBotNameTemplate } from '../lib/nameTemplate';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
+import { clampPeriodStartToListing, getPairListingDate } from '../services/pairsAvailability';
 import { DEFAULT_V2_BACKTEST_DELAY_MS, readBacktestV2LaunchDelay } from '../storage/backtestLaunchDelayStore';
 import { readMultiCurrencyAssetList, writeMultiCurrencyAssetList } from '../storage/backtestPreferences';
 import type { BacktestGroup } from '../types/backtestGroups';
@@ -547,6 +548,44 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
           resolvedTargetGroup = updatedGroup;
         };
 
+        const formatIsoDate = (iso: string) => new Date(iso).toLocaleDateString('ru-RU', { timeZone: 'UTC' });
+
+        // Veles has no candles before the pair listing, so start such backtests from the listing date
+        // (the same date the "Весь период" preset uses). Returns null when the pair is not listed in the period.
+        const resolvePeriodStart = async (
+          strategy: BotStrategy,
+          descriptor: SymbolDescriptor,
+          backtestName: string,
+        ): Promise<string | null> => {
+          const exchange = strategy.pair?.exchange ?? strategy.exchange ?? null;
+          if (!exchange) {
+            return startISO;
+          }
+
+          let listingDate: Date | null = null;
+          try {
+            listingDate = await getPairListingDate(exchange, descriptor.display);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            appendLog(`⚠️ Не удалось получить дату листинга ${descriptor.display}: ${message}`);
+            return startISO;
+          }
+
+          const resolution = clampPeriodStartToListing(startISO, endISO, listingDate);
+          if (resolution.kind === 'notListed') {
+            return null;
+          }
+          if (resolution.kind === 'clamped') {
+            appendLog(
+              `ℹ️ «${backtestName}»: ${descriptor.display} торгуется с ${formatIsoDate(resolution.startISO)} — начало периода сдвинуто.`,
+            );
+          }
+          return resolution.startISO;
+        };
+
+        const notListedMessage = (backtestName: string, descriptor: SymbolDescriptor) =>
+          `⏭️ «${backtestName}»: ${descriptor.display} не торговалась в выбранный период — пропуск.`;
+
         const postBacktestWithRateLimitRetry = async (
           body: BotStrategy,
           version: BacktestApiVersion,
@@ -661,13 +700,22 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
               );
 
               try {
+                const periodStartISO = await resolvePeriodStart(strategy, descriptor, backtestName);
+                if (!periodStartISO) {
+                  if (pendingId) {
+                    replaceLog(pendingId, notListedMessage(backtestName, descriptor));
+                  } else {
+                    appendLog(notListedMessage(backtestName, descriptor));
+                  }
+                  continue;
+                }
                 const body = buildBacktestPayload(strategy, {
                   name: backtestName,
                   makerCommission: payload.makerCommission,
                   takerCommission: payload.takerCommission,
                   includeWicks: payload.includeWicks,
                   isPublic: payload.isPublic,
-                  periodStartISO: startISO,
+                  periodStartISO,
                   periodEndISO: endISO,
                   overrideSymbol: descriptor,
                 });
@@ -745,13 +793,22 @@ const BacktestModal = ({ variant, selectedBots, onClose }: BacktestModalProps) =
                 .slice(2)}`,
             );
             try {
+              const periodStartISO = await resolvePeriodStart(strategy, descriptor, backtestName);
+              if (!periodStartISO) {
+                if (logId) {
+                  replaceLog(logId, notListedMessage(backtestName, descriptor));
+                } else {
+                  appendLog(notListedMessage(backtestName, descriptor));
+                }
+                continue;
+              }
               const body = buildBacktestPayload(strategy, {
                 name: backtestName,
                 makerCommission: payload.makerCommission,
                 takerCommission: payload.takerCommission,
                 includeWicks: payload.includeWicks,
                 isPublic: payload.isPublic,
-                periodStartISO: startISO,
+                periodStartISO,
                 periodEndISO: endISO,
                 overrideSymbol: descriptor,
               });
