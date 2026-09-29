@@ -1,3 +1,10 @@
+## [2.9.0](https://github.com/de-don/veles-tools/compare/v2.8.1...v2.9.0) (2026-09-29)
+
+### Features
+
+* **backtests:** start backtests from the pair listing date ([8c44a4e](https://github.com/de-don/veles-tools/commit/8c44a4ef3fa11e525cf41f2523d75f0f625dc214))
+* **bots:** configure profit reinvest when cloning, editing and creating bots ([0164285](https://github.com/de-don/veles-tools/commit/0164285a33dcac4132c8b8a78074ea734df5e6b2))
+
 ## [2.8.1](https://github.com/de-don/veles-tools/compare/v2.8.0...v2.8.1) (2026-09-01)
 
 ### Bug Fixes
