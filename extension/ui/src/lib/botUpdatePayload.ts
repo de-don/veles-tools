@@ -5,6 +5,8 @@ import type { TradingBot } from '../types/bots';
 export interface BotUpdateOverrides {
   depositAmount?: number;
   depositLeverage?: number;
+  /** Reinvest percent; `null` disables it, `undefined` keeps the bot value. */
+  reinvest?: number | null;
 }
 
 const deepClone = <T>(value: T): T => {
@@ -52,6 +54,9 @@ export const buildBotUpdatePayload = (bot: TradingBot, overrides: BotUpdateOverr
     amount: depositAmount,
     leverage: depositLeverage,
   };
+  if (overrides.reinvest !== undefined) {
+    deposit.reinvest = overrides.reinvest;
+  }
 
   const profit: BotProfitConfigDto | null = bot.profit ? deepClone(bot.profit) : null;
   // The bot uses either the new conditionGroups tree or the legacy flat conditions list — never both.

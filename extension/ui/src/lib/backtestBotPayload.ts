@@ -8,6 +8,8 @@ export interface BotCreationOverrides {
   depositLeverage: number;
   marginType: BotDepositConfigDto['marginType'];
   symbols?: string[] | null;
+  /** Reinvest percent; `null` disables it, `undefined` keeps the backtest value. */
+  reinvest?: number | null;
 }
 
 const sanitizeMarginType = (value: string): BotDepositConfigDto['marginType'] | null => {
@@ -33,7 +35,7 @@ const buildDepositConfig = (
     leverage: overrides.depositLeverage,
     marginType: normalizedMarginType,
     currency: resolvedCurrency,
-    reinvest: detailDeposit.reinvest ?? null,
+    reinvest: overrides.reinvest !== undefined ? overrides.reinvest : (detailDeposit.reinvest ?? null),
   };
 };
 

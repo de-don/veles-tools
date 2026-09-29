@@ -188,3 +188,19 @@ describe('buildBotCreationPayload', () => {
     expect(payload.stopLoss).toEqual(detail.config.stopLoss);
   });
 });
+
+describe('buildBotCreationPayload reinvest', () => {
+  const overrides = { apiKeyId: 1, depositAmount: 100, depositLeverage: 5, marginType: 'CROSS' as const };
+  const detail = buildDetail({
+    config: { deposit: { amount: 100, leverage: 5, marginType: 'CROSS', currency: 'USDT', reinvest: 35 } },
+  });
+
+  it('keeps the backtest reinvest without an override', () => {
+    expect(buildBotCreationPayload(detail, overrides).deposit.reinvest).toBe(35);
+  });
+
+  it('applies the reinvest override', () => {
+    expect(buildBotCreationPayload(detail, { ...overrides, reinvest: 10 }).deposit.reinvest).toBe(10);
+    expect(buildBotCreationPayload(detail, { ...overrides, reinvest: null }).deposit.reinvest).toBeNull();
+  });
+});

@@ -4,8 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { updateBot } from '../../api/bots';
 import { type BotUpdateOverrides, buildBotUpdatePayload } from '../../lib/botUpdatePayload';
 import { parseNumericInput } from '../../lib/numericInput';
+import {
+  formatReinvestInput,
+  isReinvestEnabled,
+  parseReinvestInput,
+  resolveReinvestMaxPercent,
+} from '../../lib/reinvest';
 import type { TradingBot } from '../../types/bots';
 import type { BulkActionResult } from './BulkActionModal';
+import ReinvestField from './ReinvestField';
 
 const { Paragraph, Text } = Typography;
 
@@ -57,12 +64,17 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
   const [depositValue, setDepositValue] = useState('');
   const [leverageEnabled, setLeverageEnabled] = useState(true);
   const [leverageValue, setLeverageValue] = useState('');
+  const [reinvestChangeEnabled, setReinvestChangeEnabled] = useState(false);
+  const [reinvestEnabled, setReinvestEnabled] = useState(false);
+  const [reinvestValue, setReinvestValue] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [processedCount, setProcessedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BulkActionResult | null>(null);
 
   const totalBots = bots.length;
+
+  const reinvestMaxPercent = useMemo(() => resolveReinvestMaxPercent(bots.map((bot) => bot.exchange)), [bots]);
 
   useEffect(() => {
     if (!open) {
@@ -74,6 +86,9 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
     setLeverageValue(firstBot ? normalizeNumberValue(firstBot.deposit.leverage) : '');
     setDepositEnabled(true);
     setLeverageEnabled(true);
+    setReinvestChangeEnabled(false);
+    setReinvestEnabled(isReinvestEnabled(firstBot?.deposit.reinvest));
+    setReinvestValue(formatReinvestInput(firstBot?.deposit.reinvest));
     setError(null);
     setIsRunning(false);
     setProcessedCount(0);
@@ -95,7 +110,7 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
   };
 
   const resolveOverrides = (): BotUpdateOverrides | null => {
-    if (!(depositEnabled || leverageEnabled)) {
+    if (!(depositEnabled || leverageEnabled || reinvestChangeEnabled)) {
       setError('Выберите хотя бы один параметр для изменения.');
       return null;
     }
@@ -118,6 +133,15 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
         return null;
       }
       overrides.depositLeverage = leverage;
+    }
+
+    if (reinvestChangeEnabled) {
+      const reinvest = parseReinvestInput(reinvestEnabled, reinvestValue, reinvestMaxPercent);
+      if (!reinvest.ok) {
+        setError(reinvest.error);
+        return null;
+      }
+      overrides.reinvest = reinvest.value;
     }
 
     setError(null);
@@ -198,7 +222,7 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
         </Button>,
       ]}
     >
-      <Paragraph>Единообразно обновим депозит и плечо всех выбранных ботов.</Paragraph>
+      <Paragraph>Единообразно обновим депозит, плечо и реинвест всех выбранных ботов.</Paragraph>
 
       <div className="form-field">
         <Checkbox
@@ -256,6 +280,36 @@ const BulkEditBotsModal = ({ open, bots, onClose, onCompleted }: BulkEditBotsMod
           disabled={!leverageEnabled || isRunning}
           placeholder="Например, 5"
         />
+      </div>
+
+      <div className="form-field">
+        <Checkbox
+          checked={reinvestChangeEnabled}
+          disabled={isRunning}
+          onChange={(event) => {
+            setReinvestChangeEnabled(event.target.checked);
+            setError(null);
+          }}
+        >
+          Изменить реинвест
+        </Checkbox>
+        <div className="u-mt-8">
+          <ReinvestField
+            id="bulk-edit-reinvest"
+            enabled={reinvestEnabled}
+            value={reinvestValue}
+            maxPercent={reinvestMaxPercent}
+            disabled={!reinvestChangeEnabled || isRunning}
+            onEnabledChange={(enabled) => {
+              setReinvestEnabled(enabled);
+              setError(null);
+            }}
+            onValueChange={(value) => {
+              setReinvestValue(value);
+              setError(null);
+            }}
+          />
+        </div>
       </div>
 
       {error && <div className="form-error u-mt-8">{error}</div>}

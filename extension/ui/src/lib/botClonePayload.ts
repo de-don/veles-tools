@@ -12,6 +12,8 @@ export interface BotCloneOverrides {
   depositCurrency: string | null;
   profitCurrency: string | null;
   symbols?: string[] | null;
+  /** Reinvest percent; `null` disables it, `undefined` keeps the source bot value. */
+  reinvest?: number | null;
 }
 
 const deepClone = <T>(value: T): T => {
@@ -72,7 +74,7 @@ export const buildBotClonePayload = (
     leverage: overrides.depositLeverage,
     marginType,
     currency: normalizedDepositCurrency,
-    reinvest: bot.deposit.reinvest ?? null,
+    reinvest: overrides.reinvest !== undefined ? overrides.reinvest : (bot.deposit.reinvest ?? null),
   };
 
   const settingsPayload: BotSettingsDto = deepClone(bot.settings);

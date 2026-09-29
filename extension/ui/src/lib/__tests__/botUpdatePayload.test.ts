@@ -14,6 +14,7 @@ const buildDeposit = (overrides: Partial<BotDepositConfig> = {}): BotDepositConf
   leverage: overrides.leverage ?? 5,
   marginType: overrides.marginType ?? 'CROSS',
   currency: overrides.currency ?? 'USDT',
+  reinvest: overrides.reinvest ?? null,
 });
 
 const buildSettings = (overrides: Partial<BotSettings> = {}): BotSettings => ({
@@ -132,5 +133,19 @@ describe('buildBotUpdatePayload', () => {
     expect(payload.deposit.leverage).toBe(10);
     expect(bot.deposit.leverage).not.toBe(10);
     expect(payload.symbols).toEqual(bot.symbols);
+  });
+});
+
+describe('buildBotUpdatePayload reinvest', () => {
+  it('keeps reinvest untouched without an override', () => {
+    const bot = buildBot({ deposit: buildDeposit({ reinvest: 15 }) });
+    expect(buildBotUpdatePayload(bot, { depositAmount: 200 }).deposit.reinvest).toBe(15);
+  });
+
+  it('sets or clears reinvest when overridden', () => {
+    const bot = buildBot({ deposit: buildDeposit({ reinvest: 15 }) });
+    expect(buildBotUpdatePayload(bot, { reinvest: 30 }).deposit.reinvest).toBe(30);
+    expect(buildBotUpdatePayload(bot, { reinvest: null }).deposit.reinvest).toBeNull();
+    expect(bot.deposit.reinvest).toBe(15);
   });
 });

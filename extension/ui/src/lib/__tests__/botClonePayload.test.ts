@@ -15,6 +15,7 @@ const buildDeposit = (overrides: Partial<BotDepositConfig> = {}): BotDepositConf
   leverage: overrides.leverage ?? 5,
   marginType: overrides.marginType ?? 'CROSS',
   currency: overrides.currency ?? 'USDT',
+  reinvest: overrides.reinvest ?? null,
 });
 
 const buildSettings = (overrides: Partial<BotSettings> = {}): BotSettings => ({
@@ -196,5 +197,29 @@ describe('buildBotClonePayload', () => {
     expect(payload.symbols).toEqual(['APT/USDT']);
     expect(payload.apiKey).toBe(99);
     expect(payload.id).toBeNull();
+  });
+});
+
+describe('buildBotClonePayload reinvest', () => {
+  const descriptor: SymbolDescriptor = { base: 'ETH', quote: 'USDT', display: 'ETH/USDT', pairCode: 'ETHUSDT' };
+  const baseOverrides = {
+    apiKeyId: 1,
+    name: 'ETH clone',
+    depositAmount: 100,
+    depositLeverage: 1,
+    marginType: null,
+    depositCurrency: null,
+    profitCurrency: null,
+  };
+
+  it('keeps the source reinvest when no override is given', () => {
+    const bot = buildBot({ deposit: buildDeposit({ reinvest: 25 }) });
+    expect(buildBotClonePayload(bot, descriptor, baseOverrides).deposit.reinvest).toBe(25);
+  });
+
+  it('applies the reinvest override, including disabling it', () => {
+    const bot = buildBot({ deposit: buildDeposit({ reinvest: 25 }) });
+    expect(buildBotClonePayload(bot, descriptor, { ...baseOverrides, reinvest: 40 }).deposit.reinvest).toBe(40);
+    expect(buildBotClonePayload(bot, descriptor, { ...baseOverrides, reinvest: null }).deposit.reinvest).toBeNull();
   });
 });

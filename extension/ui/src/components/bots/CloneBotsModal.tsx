@@ -6,8 +6,15 @@ import { parseAssetList } from '../../lib/assetList';
 import { buildBotClonePayload } from '../../lib/botClonePayload';
 import { applyBotNameTemplate } from '../../lib/nameTemplate';
 import { parseNumericInput } from '../../lib/numericInput';
+import {
+  formatReinvestInput,
+  isReinvestEnabled,
+  parseReinvestInput,
+  resolveReinvestMaxPercent,
+} from '../../lib/reinvest';
 import type { ApiKey } from '../../types/apiKeys';
 import type { BotDepositConfig, TradingBot } from '../../types/bots';
+import ReinvestField from './ReinvestField';
 
 interface CloneBotsModalProps {
   open: boolean;
@@ -74,6 +81,8 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
   const [nameTemplate, setNameTemplate] = useState(DEFAULT_TEMPLATE);
   const [depositAmount, setDepositAmount] = useState('');
   const [depositLeverage, setDepositLeverage] = useState('');
+  const [reinvestEnabled, setReinvestEnabled] = useState(false);
+  const [reinvestValue, setReinvestValue] = useState('');
   const [assetList, setAssetList] = useState('');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -83,6 +92,8 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
   const totalBots = bots.length;
 
   const defaultDepositCurrency = useMemo(() => resolveQuoteCurrency(bots[0]), [bots]);
+
+  const reinvestMaxPercent = useMemo(() => resolveReinvestMaxPercent(bots.map((bot) => bot.exchange)), [bots]);
 
   const defaultMarginType = useMemo(() => normalizeMarginType(bots[0]?.deposit.marginType ?? null), [bots]);
 
@@ -108,10 +119,14 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
       setApiKeyId(firstBot.apiKey);
       setDepositAmount(normalizeNumberValue(firstBot.deposit.amount ?? null));
       setDepositLeverage(normalizeNumberValue(firstBot.deposit.leverage ?? null));
+      setReinvestEnabled(isReinvestEnabled(firstBot.deposit.reinvest));
+      setReinvestValue(formatReinvestInput(firstBot.deposit.reinvest));
     } else {
       setApiKeyId(apiKeys.at(0)?.id ?? null);
       setDepositAmount(normalizeNumberValue(null));
       setDepositLeverage(normalizeNumberValue(null));
+      setReinvestEnabled(false);
+      setReinvestValue('');
     }
 
     setNameTemplate(DEFAULT_TEMPLATE);
@@ -158,6 +173,12 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
     const leverage = parseNumericInput(depositLeverage);
     if (leverage === null || leverage <= 0) {
       setError('Введите корректное плечо.');
+      return;
+    }
+
+    const reinvest = parseReinvestInput(reinvestEnabled, reinvestValue, reinvestMaxPercent);
+    if (!reinvest.ok) {
+      setError(reinvest.error);
       return;
     }
 
@@ -227,6 +248,7 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
             marginType: defaultMarginType,
             depositCurrency: defaultDepositCurrency ?? quote,
             profitCurrency: bot.profit?.currency ?? quote,
+            reinvest: reinvest.value,
           });
 
           const response = await createBot(payload);
@@ -316,6 +338,18 @@ const CloneBotsModal = ({ open, bots, apiKeys, onClose, onCompleted }: CloneBots
             placeholder="Например 10"
           />
         </div>
+      </div>
+
+      <div className="u-mt-16">
+        <ReinvestField
+          id="clone-bots-reinvest"
+          enabled={reinvestEnabled}
+          value={reinvestValue}
+          maxPercent={reinvestMaxPercent}
+          disabled={isRunning}
+          onEnabledChange={setReinvestEnabled}
+          onValueChange={setReinvestValue}
+        />
       </div>
 
       <div className="form-field u-mt-16">

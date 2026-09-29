@@ -6,8 +6,10 @@ import type { CreateBotResponse } from '../api/bots';
 import { createBot, startBot } from '../api/bots';
 import { type BotCreationOverrides, buildBotCreationPayload } from '../lib/backtestBotPayload';
 import { parseNumericInput } from '../lib/numericInput';
+import { formatReinvestInput, isReinvestEnabled, parseReinvestInput, resolveReinvestMaxPercent } from '../lib/reinvest';
 import type { ApiKey } from '../types/apiKeys';
 import type { BacktestDetail } from '../types/backtests';
+import ReinvestField from './bots/ReinvestField';
 
 export interface BacktestBotTarget {
   id: number;
@@ -56,6 +58,8 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
   const [depositAmount, setDepositAmount] = useState('');
   const [depositLeverage, setDepositLeverage] = useState('');
   const [marginType, setMarginType] = useState<MarginType>('CROSS');
+  const [reinvestEnabled, setReinvestEnabled] = useState(false);
+  const [reinvestValue, setReinvestValue] = useState('');
   const [autoStart, setAutoStart] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -63,6 +67,11 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
   const [processed, setProcessed] = useState(0);
 
   const totalTargets = targets.length;
+
+  const reinvestMaxPercent = useMemo(
+    () => resolveReinvestMaxPercent(targets.map((target) => target.detail.config.exchange)),
+    [targets],
+  );
 
   useEffect(() => {
     if (!open) {
@@ -105,10 +114,14 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
       setDepositAmount(String(amount));
       setDepositLeverage(String(leverage));
       setMarginType(normalizeMarginType(detailMargin));
+      setReinvestEnabled(isReinvestEnabled(depositConfig.reinvest));
+      setReinvestValue(formatReinvestInput(depositConfig.reinvest));
     } else {
       setDepositAmount('');
       setDepositLeverage('');
       setMarginType('CROSS');
+      setReinvestEnabled(false);
+      setReinvestValue('');
     }
     setLogs([]);
     setProcessed(0);
@@ -155,6 +168,11 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
       setError('Введите корректное значение плеча.');
       return;
     }
+    const reinvest = parseReinvestInput(reinvestEnabled, reinvestValue, reinvestMaxPercent);
+    if (!reinvest.ok) {
+      setError(reinvest.error);
+      return;
+    }
 
     setError(null);
     setIsRunning(true);
@@ -166,6 +184,7 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
       depositAmount: normalizedAmount,
       depositLeverage: normalizedLeverage,
       marginType,
+      reinvest: reinvest.value,
     };
 
     let succeeded = 0;
@@ -287,6 +306,18 @@ const CreateBotsFromBacktestsModal = ({ open, targets, onClose, onCompleted }: C
             disabled={isRunning}
           />
         </div>
+      </div>
+
+      <div className="u-mt-16">
+        <ReinvestField
+          id="create-bots-reinvest"
+          enabled={reinvestEnabled}
+          value={reinvestValue}
+          maxPercent={reinvestMaxPercent}
+          disabled={isRunning}
+          onEnabledChange={setReinvestEnabled}
+          onValueChange={setReinvestValue}
+        />
       </div>
 
       <Checkbox
